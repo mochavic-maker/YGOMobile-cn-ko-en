@@ -677,6 +677,22 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
             box.addView(makeSubtleText("奖励：胜 +" + opp.winRewardTokens + " / 平 +" + opp.drawRewardTokens + " / 负 +" + opp.lossRewardTokens + " 代币"));
 
+            RpgProfile.RecentMatchStats rs = profile.getRecentStats(profile.currentTimelineDate, opp.id);
+            TextView wrTv;
+            if (rs.total == 0) {
+                wrTv = makeSubtleText("当前时间点近20局胜率：暂无交手记录 (0/20)");
+                wrTv.setTextColor(Color.parseColor("#94A3B8"));
+            } else {
+                String drawPart = rs.draws > 0 ? (" " + rs.draws + "平") : "";
+                wrTv = makeSubtleText(String.format(Locale.US,
+                        "当前时间点近20局胜率：%.1f%%（%d胜 %d负%s / 共%d局）",
+                        rs.winRatePercent, rs.wins, rs.losses, drawPart, rs.total));
+                wrTv.setTextColor(Color.parseColor(
+                        rs.winRatePercent >= 60.0 ? "#34D399"
+                                : (rs.winRatePercent >= 40.0 ? "#FBBF24" : "#F87171")));
+            }
+            box.addView(wrTv);
+
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setPadding(0, dp(8), 0, 0);

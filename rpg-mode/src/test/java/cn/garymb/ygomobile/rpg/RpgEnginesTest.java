@@ -599,4 +599,78 @@ public class RpgEnginesTest {
             }
         }
     }
+
+    @Test
+    public void recentTwentyMatchWinRateTracksRollingWindowPerDateAndOpponent() throws Exception {
+        RpgProfile profile = new RpgProfile();
+        profile.currentTimelineDate = "1999-02-04";
+        List<AiOpponent> opponents = AiDeckGenerator.getDemoOpponents();
+        AiOpponent opp0 = opponents.get(0);
+        AiOpponent opp1 = opponents.get(1);
+
+        // Initially 0/20
+        RpgProfile.RecentMatchStats empty = profile.getRecentStats("1999-02-04", opp0.id);
+        assertEquals(0, empty.total);
+        assertEquals(0.0, empty.winRatePercent, 0.001);
+
+        // Settle 10 losses followed by 20 wins on 1999-02-04 vs opp0 -> oldest 10 losses must roll out
+        for (int i = 0; i < 10; i++) {
+            DuelRewardEngine.settle(profile, opp0, false, false);
+        }
+        for (int i = 0; i < 20; i++) {
+            DuelRewardEngine.settle(profile, opp0, true, false);
+        }
+        RpgProfile.RecentMatchStats allWins = profile.getRecentStats("1999-02-04", opp0.id);
+        assertEquals(20, allWins.total);
+        assertEquals(20, allWins.wins);
+        assertEquals(0, allWins.losses);
+        assertEquals(0, allWins.draws);
+        assertEquals(100.0, allWins.winRatePercent, 0.001);
+
+        // Add 1 loss and 1 draw -> rolling window keeps last 20 (18W, 1L, 1D => 90.0%)
+        DuelRewardEngine.settle(profile, opp0, false, false);
+        DuelRewardEngine.settle(profile, opp0, false, true);
+        RpgProfile.RecentMatchStats mixed = profile.getRecentStats("1999-02-04", opp0.id);
+        assertEquals(20, mixed.total);
+        assertEquals(18, mixed.wins);
+        assertEquals(1, mixed.losses);
+        assertEquals(1, mixed.draws);
+        assertEquals(90.0, mixed.winRatePercent, 0.001);
+
+        // Strict isolation across timeline dates and opponents
+        assertEquals(0, profile.getRecentStats("1999-03-27", opp0.id).total);
+        assertEquals(0, profile.getRecentStats("1999-02-04", opp1.id).total);
+
+        // Record separate match at a later timeline date
+        profile.currentTimelineDate = "1999-05-25";
+        DuelRewardEngine.settle(profile, opp0, true, false);
+        DuelRewardEngine.settle(profile, opp0, false, false);
+        RpgProfile.RecentMatchStats mayStats = profile.getRecentStats("1999-05-25", opp0.id);
+        assertEquals(2, mayStats.total);
+        assertEquals(1, mayStats.wins);
+        assertEquals(1, mayStats.losses);
+        assertEquals(50.0, mayStats.winRatePercent, 0.001);
+        // Earlier date stats remain untouched
+        assertEquals(20, profile.getRecentStats("1999-02-04", opp0.id).total);
+
+        // Verify RpgRepository save/load round-trip preserves recentMatchHistory
+        java.io.File tempDir = java.nio.file.Files.createTempDirectory("rpg_recent_winrate_test").toFile();
+        try {
+            cn.garymb.ygomobile.rpg.data.RpgRepository repo = new cn.garymb.ygomobile.rpg.data.RpgRepository(tempDir);
+            repo.saveProfile(profile);
+            RpgProfile reloaded = repo.loadProfile();
+            RpgProfile.RecentMatchStats febReloaded = reloaded.getRecentStats("1999-02-04", opp0.id);
+            assertEquals(20, febReloaded.total);
+            assertEquals(18, febReloaded.wins);
+            assertEquals(1, febReloaded.losses);
+            assertEquals(1, febReloaded.draws);
+            assertEquals(90.0, febReloaded.winRatePercent, 0.001);
+            assertEquals(50.0, reloaded.getRecentStats("1999-05-25", opp0.id).winRatePercent, 0.001);
+        } finally {
+            for (java.io.File f : tempDir.listFiles() != null ? tempDir.listFiles() : new java.io.File[0]) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
 }

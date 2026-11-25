@@ -39,6 +39,9 @@ public final class DuelRewardEngine {
             label = "败北（参与奖励）";
         }
         profile.tokens += earned;
+        if (opponent != null) {
+            profile.recordMatchOutcome(profile.currentTimelineDate, opponent.id, playerWon, isDraw);
+        }
         return new RewardSettlement(label, earned, profile.tokens);
     }
 }

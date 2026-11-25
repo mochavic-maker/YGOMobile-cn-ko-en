@@ -29,15 +29,78 @@ public class RpgProfile {
     /** Consecutive packs opened without pulling R or higher. */
     public int packsSinceLastRare = 0;
 
+    public static final int RECENT_MATCH_WINDOW = 20;
+
     public int wins = 0;
     public int losses = 0;
     public int draws = 0;
     public int tournamentWins = 0;
     public int tournamentsPlayed = 0;
 
+    /**
+     * Per-(timelineDate|opponentId) rolling list of up to 20 most recent duel outcomes ("W", "L", "D").
+     */
+    public Map<String, List<String>> recentMatchHistory = new HashMap<>();
+
     /** Active RPG deck (card passcodes). */
     public List<Integer> activeDeckMain = new ArrayList<>();
     public List<Integer> activeDeckExtra = new ArrayList<>();
+
+    public static class RecentMatchStats {
+        public final int total;
+        public final int wins;
+        public final int losses;
+        public final int draws;
+        public final double winRatePercent;
+
+        public RecentMatchStats(int total, int wins, int losses, int draws) {
+            this.total = total;
+            this.wins = wins;
+            this.losses = losses;
+            this.draws = draws;
+            this.winRatePercent = total > 0 ? (wins * 100.0 / total) : 0.0;
+        }
+    }
+
+    public static String recentHistoryKey(String timelineDate, String opponentId) {
+        return (timelineDate != null ? timelineDate : DEFAULT_START_DATE) + "|" + (opponentId != null ? opponentId : "");
+    }
+
+    public void recordMatchOutcome(String timelineDate, String opponentId, boolean playerWon, boolean isDraw) {
+        if (opponentId == null || opponentId.isEmpty()) return;
+        if (recentMatchHistory == null) {
+            recentMatchHistory = new HashMap<>();
+        }
+        String key = recentHistoryKey(timelineDate, opponentId);
+        List<String> list = recentMatchHistory.get(key);
+        if (list == null) {
+            list = new ArrayList<>();
+            recentMatchHistory.put(key, list);
+        }
+        list.add(isDraw ? "D" : (playerWon ? "W" : "L"));
+        while (list.size() > RECENT_MATCH_WINDOW) {
+            list.remove(0);
+        }
+    }
+
+    public RecentMatchStats getRecentStats(String timelineDate, String opponentId) {
+        if (recentMatchHistory == null || opponentId == null) {
+            return new RecentMatchStats(0, 0, 0, 0);
+        }
+        List<String> list = recentMatchHistory.get(recentHistoryKey(timelineDate, opponentId));
+        if (list == null || list.isEmpty()) {
+            return new RecentMatchStats(0, 0, 0, 0);
+        }
+        int start = Math.max(0, list.size() - RECENT_MATCH_WINDOW);
+        int w = 0, l = 0, d = 0;
+        for (int i = start; i < list.size(); i++) {
+            String r = list.get(i);
+            if ("W".equals(r)) w++;
+            else if ("L".equals(r)) l++;
+            else if ("D".equals(r)) d++;
+        }
+        return new RecentMatchStats(w + l + d, w, l, d);
+    }
 
     public int getOwnedCount(int cardId) {
         Integer count = collection.get(cardId);
