@@ -104,6 +104,7 @@ public final class QuickDuelSimulator {
 
     private static int captureFrame(List<ReplayFrame> frames, List<String> logs, int lastLogCursor,
                                     int turn, String phase, String activeName, Side p, Side a, boolean force) {
+        if (frames == null) return logs.size();
         if (!force && logs.size() <= lastLogCursor) return lastLogCursor;
         List<String> delta = new ArrayList<>();
         for (int i = lastLogCursor; i < logs.size(); i++) {
@@ -157,6 +158,118 @@ public final class QuickDuelSimulator {
         return simulateBetweenDecks(catalog, "你", playerDeckIds, opponent.name, aiDeckIds, currentDate, rng);
     }
 
+    public static class BatchShowdownReport {
+        public final String sideAName;
+        public final String sideBName;
+        public final String timelineDate;
+        public final OcgRuleSet appliedRule;
+        public final int totalGames;
+        public final int sideAWins;
+        public final int sideBWins;
+        public final int draws;
+        public final int sideAFirstGames;
+        public final int sideAFirstWins;
+        public final int sideASecondGames;
+        public final int sideASecondWins;
+        public final double avgTurns;
+        public final long elapsedMs;
+        public final QuickDuelReport sampleLastReport;
+
+        public BatchShowdownReport(String sideAName, String sideBName, String timelineDate,
+                                   OcgRuleSet appliedRule, int totalGames,
+                                   int sideAWins, int sideBWins, int draws,
+                                   int sideAFirstGames, int sideAFirstWins,
+                                   int sideASecondGames, int sideASecondWins,
+                                   double avgTurns, long elapsedMs,
+                                   QuickDuelReport sampleLastReport) {
+            this.sideAName = sideAName;
+            this.sideBName = sideBName;
+            this.timelineDate = timelineDate;
+            this.appliedRule = appliedRule;
+            this.totalGames = totalGames;
+            this.sideAWins = sideAWins;
+            this.sideBWins = sideBWins;
+            this.draws = draws;
+            this.sideAFirstGames = sideAFirstGames;
+            this.sideAFirstWins = sideAFirstWins;
+            this.sideASecondGames = sideASecondGames;
+            this.sideASecondWins = sideASecondWins;
+            this.avgTurns = avgTurns;
+            this.elapsedMs = elapsedMs;
+            this.sampleLastReport = sampleLastReport;
+        }
+
+        public double getSideAWinRate() {
+            return totalGames > 0 ? (sideAWins * 100.0 / totalGames) : 0.0;
+        }
+
+        public double getSideBWinRate() {
+            return totalGames > 0 ? (sideBWins * 100.0 / totalGames) : 0.0;
+        }
+
+        public double getSideAFirstWinRate() {
+            return sideAFirstGames > 0 ? (sideAFirstWins * 100.0 / sideAFirstGames) : 0.0;
+        }
+
+        public double getSideASecondWinRate() {
+            return sideASecondGames > 0 ? (sideASecondWins * 100.0 / sideASecondGames) : 0.0;
+        }
+    }
+
+    /**
+     * Runs a batch (default 100) of pure AI-vs-AI quick duels between any two decks at the given
+     * timeline date without touching player tokens or win-rate statistics.
+     * Alternates first player 50/50 for unbiased win-rate evaluation and captures a step-by-step
+     * replay only for the final sample game.
+     */
+    public static BatchShowdownReport simulateBatch(RpgCatalog catalog,
+                                                    String sideAName,
+                                                    List<Integer> deckAIds,
+                                                    String sideBName,
+                                                    List<Integer> deckBIds,
+                                                    String currentDate,
+                                                    int gameCount,
+                                                    Random rng) {
+        int total = Math.max(1, gameCount);
+        long t0 = System.currentTimeMillis();
+        OcgRuleSet rule = TimelineEngine.getActiveRuleSet(catalog, currentDate);
+        int winsA = 0, winsB = 0, draws = 0;
+        int aFirstGames = 0, aFirstWins = 0;
+        int aSecondGames = 0, aSecondWins = 0;
+        long turnSum = 0;
+        QuickDuelReport lastReport = null;
+
+        for (int i = 0; i < total; i++) {
+            boolean aFirst = (i % 2 == 0);
+            boolean recordFrames = (i == total - 1);
+            QuickDuelReport r = simulateBetweenDecksInternal(
+                    catalog, sideAName, deckAIds, sideBName, deckBIds, currentDate, rng, aFirst, recordFrames);
+            turnSum += r.turns;
+            if (aFirst) aFirstGames++;
+            else aSecondGames++;
+
+            if (r.isDraw) {
+                draws++;
+            } else if (r.playerWon) {
+                winsA++;
+                if (aFirst) aFirstWins++;
+                else aSecondWins++;
+            } else {
+                winsB++;
+            }
+            if (recordFrames) {
+                lastReport = r;
+            }
+        }
+        long elapsed = System.currentTimeMillis() - t0;
+        return new BatchShowdownReport(
+                sideAName, sideBName, currentDate, rule, total,
+                winsA, winsB, draws,
+                aFirstGames, aFirstWins, aSecondGames, aSecondWins,
+                turnSum / (double) total, elapsed, lastReport
+        );
+    }
+
     public static QuickDuelReport simulateBetweenDecks(RpgCatalog catalog,
                                                        String sideAName,
                                                        List<Integer> deckAIds,
@@ -164,11 +277,23 @@ public final class QuickDuelSimulator {
                                                        List<Integer> deckBIds,
                                                        String currentDate,
                                                        Random rng) {
+        return simulateBetweenDecksInternal(catalog, sideAName, deckAIds, sideBName, deckBIds, currentDate, rng, null, true);
+    }
+
+    private static QuickDuelReport simulateBetweenDecksInternal(RpgCatalog catalog,
+                                                                String sideAName,
+                                                                List<Integer> deckAIds,
+                                                                String sideBName,
+                                                                List<Integer> deckBIds,
+                                                                String currentDate,
+                                                                Random rng,
+                                                                Boolean forcedSideAFirst,
+                                                                boolean recordFrames) {
         OcgRuleSet rule = TimelineEngine.getActiveRuleSet(catalog, currentDate);
         Side p = new Side(rule.startLp, deckAIds, rng);
         Side a = new Side(rule.startLp, deckBIds, rng);
         List<String> logs = new ArrayList<>();
-        List<ReplayFrame> frames = new ArrayList<>();
+        List<ReplayFrame> frames = recordFrames ? new ArrayList<ReplayFrame>() : null;
         int logCursor = 0;
         logs.add("快速决斗开始：" + sideAName + " vs " + sideBName + "（时间轴：" + currentDate + " · 规则：" + rule.name + "）");
 
@@ -178,7 +303,7 @@ public final class QuickDuelSimulator {
         }
 
         int turn = 1;
-        boolean playerTurn = rng.nextBoolean();
+        boolean playerTurn = forcedSideAFirst != null ? forcedSideAFirst : rng.nextBoolean();
         logs.add("🪙 抛硬币决定先手：" + (playerTurn ? sideAName + "先攻" : sideBName + "先攻"));
         logCursor = captureFrame(frames, logs, logCursor, 1, "开局", playerTurn ? sideAName : sideBName, p, a, true);
         int maxTurns = 40;

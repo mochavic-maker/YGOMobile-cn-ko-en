@@ -751,4 +751,47 @@ public class RpgEnginesTest {
             tempDir.delete();
         }
     }
+
+    @Test
+    public void aiShowdownBatchRuns100FastGamesWithZeroProfileSideEffects() {
+        RpgProfile profile = new RpgProfile();
+        profile.currentTimelineDate = "1999-05-25";
+        profile.tokens = 2500;
+        int tokensBefore = profile.tokens;
+        int winsBefore = profile.wins;
+        int lossesBefore = profile.losses;
+        int drawsBefore = profile.draws;
+
+        List<AiOpponent> opps = TimelineEngine.getAvailableOpponents(
+                AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
+        AiOpponent oppA = opps.get(0);
+        AiOpponent oppB = opps.get(opps.size() - 1);
+        AiDeckGenerator.GeneratedAiDeck deckA = AiDeckGenerator.generateDeck(catalog, oppA, profile.currentTimelineDate, new Random(1L));
+        AiDeckGenerator.GeneratedAiDeck deckB = AiDeckGenerator.generateDeck(catalog, oppB, profile.currentTimelineDate, new Random(2L));
+
+        QuickDuelSimulator.BatchShowdownReport batch = QuickDuelSimulator.simulateBatch(
+                catalog,
+                oppA.name, deckA.main,
+                oppB.name, deckB.main,
+                profile.currentTimelineDate,
+                100,
+                new Random(99L)
+        );
+
+        assertEquals(100, batch.totalGames);
+        assertEquals(100, batch.sideAWins + batch.sideBWins + batch.draws);
+        assertEquals(50, batch.sideAFirstGames);
+        assertEquals(50, batch.sideASecondGames);
+        assertTrue(batch.avgTurns >= 1.0);
+        assertNotNull("Last sample match should include replay frames", batch.sampleLastReport);
+        assertTrue(batch.sampleLastReport.replayFrames.size() >= 2);
+
+        // Strictly zero side effects on player profile (no tokens, no win-rate changes)
+        assertEquals(tokensBefore, profile.tokens);
+        assertEquals(winsBefore, profile.wins);
+        assertEquals(lossesBefore, profile.losses);
+        assertEquals(drawsBefore, profile.draws);
+        assertEquals(0, profile.getRecentStats(profile.currentTimelineDate, oppA.id).total);
+        assertEquals(0, profile.getRecentStats(profile.currentTimelineDate, oppB.id).total);
+    }
 }

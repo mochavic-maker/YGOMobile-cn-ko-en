@@ -83,6 +83,9 @@ public class RpgHomeActivity extends AppCompatActivity {
     private int activeTab = 0;
     private boolean collectionOnlyOwned = false;
     private boolean errataOnly1999 = true;
+    private String showdownKeyA = "current";
+    private String showdownKeyB = null;
+    private QuickDuelSimulator.BatchShowdownReport lastShowdownReport = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -121,6 +124,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         tabLayout.addTab(tabLayout.newTab().setText("AI 对战"));
         tabLayout.addTab(tabLayout.newTab().setText("🏆 锦标赛"));
         tabLayout.addTab(tabLayout.newTab().setText("效果勘误"));
+        tabLayout.addTab(tabLayout.newTab().setText("⚔️ AI 对决"));
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -290,6 +294,9 @@ public class RpgHomeActivity extends AppCompatActivity {
                 break;
             case 6:
                 renderErrataTab();
+                break;
+            case 7:
+                renderAiShowdownTab();
                 break;
         }
     }
@@ -1380,6 +1387,194 @@ public class RpgHomeActivity extends AppCompatActivity {
         b.setLayoutParams(lp);
         b.setPadding(dp(12), 0, dp(12), 0);
         return b;
+    }
+
+    private static class ShowdownDeckChoice {
+        final String key;
+        final String group;
+        final String label;
+        final List<Integer> main;
+        final List<Integer> extra;
+
+        ShowdownDeckChoice(String key, String group, String label, List<Integer> main, List<Integer> extra) {
+            this.key = key;
+            this.group = group;
+            this.label = label;
+            this.main = main != null ? new ArrayList<>(main) : new ArrayList<>();
+            this.extra = extra != null ? new ArrayList<>(extra) : new ArrayList<>();
+        }
+    }
+
+    private List<ShowdownDeckChoice> buildShowdownChoices() {
+        List<ShowdownDeckChoice> list = new ArrayList<>();
+        list.add(new ShowdownDeckChoice(
+                "current",
+                "当前卡组",
+                "[当前卡组] 当前编辑中的 RPG 卡组（主 " + profile.activeDeckMain.size() + " / 额外 " + profile.activeDeckExtra.size() + "）",
+                profile.activeDeckMain,
+                profile.activeDeckExtra
+        ));
+        if (profile.savedDecks != null) {
+            for (RpgProfile.SavedDeck sd : profile.savedDecks) {
+                if (sd == null) continue;
+                int m = sd.main != null ? sd.main.size() : 0;
+                int e = sd.extra != null ? sd.extra.size() : 0;
+                list.add(new ShowdownDeckChoice(
+                        "saved:" + sd.id,
+                        "已保存卡组",
+                        "[已保存] " + sd.name + "（主 " + m + " / 额外 " + e + "）",
+                        sd.main,
+                        sd.extra
+                ));
+            }
+        }
+        List<AiOpponent> opps = TimelineEngine.getAvailableOpponents(
+                AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
+        for (AiOpponent opp : opps) {
+            AiDeckGenerator.GeneratedAiDeck gen = AiDeckGenerator.generateDeck(
+                    catalog, opp, profile.currentTimelineDate, new Random(opp.id.hashCode()));
+            String eraName = gen.appliedProfile != null ? (" · " + gen.appliedProfile.deckName) : "";
+            list.add(new ShowdownDeckChoice(
+                    "ai:" + opp.id,
+                    "当前时间点 AI 卡组",
+                    "[AI] " + opp.name + eraName + "（主 " + gen.main.size() + "）",
+                    gen.main,
+                    gen.extra
+            ));
+        }
+        return list;
+    }
+
+    private ShowdownDeckChoice findShowdownChoice(List<ShowdownDeckChoice> list, String key, int fallbackIdx) {
+        if (key != null) {
+            for (ShowdownDeckChoice c : list) {
+                if (key.equals(c.key)) return c;
+            }
+        }
+        if (list.isEmpty()) return null;
+        return list.get(Math.min(fallbackIdx, list.size() - 1));
+    }
+
+    private void showShowdownPickerDialog(final boolean isSideA, final List<ShowdownDeckChoice> choices) {
+        String[] labels = new String[choices.size()];
+        for (int i = 0; i < choices.size(); i++) {
+            labels[i] = choices.get(i).label;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(isSideA ? "选择 A 方卡组" : "选择 B 方卡组")
+                .setItems(labels, (dlg, which) -> {
+                    if (isSideA) showdownKeyA = choices.get(which).key;
+                    else showdownKeyB = choices.get(which).key;
+                    renderCurrentTab();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    // ==================== TAB 7: 100-GAME AI SHOWDOWN ====================
+    private void renderAiShowdownTab() {
+        List<ShowdownDeckChoice> choices = buildShowdownChoices();
+        final ShowdownDeckChoice choiceA = findShowdownChoice(choices, showdownKeyA, 0);
+        final ShowdownDeckChoice choiceB = findShowdownChoice(choices, showdownKeyB, choices.size() > 1 ? choices.size() - 1 : 0);
+        if (choiceA != null) showdownKeyA = choiceA.key;
+        if (choiceB != null) showdownKeyB = choiceB.key;
+
+        layoutTabActions.addView(makeSubtleText("⚔️ 自由 100 局 AI 快战测试 · 不计入战绩/近20局胜率，也不发放代币（严格按当前时间轴规则与勘误执行）"));
+
+        LinearLayout pickerCard = makeCardContainer();
+        pickerCard.addView(makeTitleText("选择对战双方卡组（时间轴：" + profile.currentTimelineDate + "）"));
+        pickerCard.addView(makeSubtleText("A 方：" + (choiceA != null ? choiceA.label : "未选择")));
+        pickerCard.addView(makeSubtleText("B 方：" + (choiceB != null ? choiceB.label : "未选择")));
+
+        LinearLayout pickRow = new LinearLayout(this);
+        pickRow.setOrientation(LinearLayout.HORIZONTAL);
+        pickRow.setPadding(0, dp(8), 0, 0);
+
+        Button pickABtn = makeActionButton("选择 A 方", "#0284C7");
+        pickABtn.setOnClickListener(v -> showShowdownPickerDialog(true, choices));
+        pickRow.addView(pickABtn);
+
+        Button pickBBtn = makeActionButton("选择 B 方", "#7C3AED");
+        pickBBtn.setOnClickListener(v -> showShowdownPickerDialog(false, choices));
+        pickRow.addView(pickBBtn);
+
+        Button swapBtn = makeActionButton("🔄 互换", "#475569");
+        swapBtn.setOnClickListener(v -> {
+            String tmp = showdownKeyA;
+            showdownKeyA = showdownKeyB;
+            showdownKeyB = tmp;
+            renderCurrentTab();
+        });
+        pickRow.addView(swapBtn);
+        pickerCard.addView(pickRow);
+
+        LinearLayout runRow = new LinearLayout(this);
+        runRow.setOrientation(LinearLayout.HORIZONTAL);
+        runRow.setPadding(0, dp(8), 0, 0);
+
+        Button run100Btn = makeActionButton("⚡ 开始 100 局 AI 对决", "#059669");
+        run100Btn.setOnClickListener(v -> {
+            if (choiceA == null || choiceB == null) return;
+            if (choiceA.main.size() < 5 || choiceB.main.size() < 5) {
+                Toast.makeText(this, "双方主卡组均需至少 5 张卡片才能开始模拟", Toast.LENGTH_LONG).show();
+                return;
+            }
+            lastShowdownReport = QuickDuelSimulator.simulateBatch(
+                    catalog,
+                    choiceA.label, choiceA.main,
+                    choiceB.label, choiceB.main,
+                    profile.currentTimelineDate,
+                    100,
+                    new Random()
+            );
+            Toast.makeText(this, "已完成 100 局 AI 快战（耗时 " + lastShowdownReport.elapsedMs + "ms，不计战绩与代币）", Toast.LENGTH_SHORT).show();
+            renderCurrentTab();
+        });
+        runRow.addView(run100Btn);
+        pickerCard.addView(runRow);
+        layoutContent.addView(pickerCard);
+
+        if (lastShowdownReport != null) {
+            QuickDuelSimulator.BatchShowdownReport r = lastShowdownReport;
+            LinearLayout resCard = makeCardContainer();
+            TextView resTitle = makeTitleText(String.format(Locale.US,
+                    "📊 %d 局对决结果（%s · %s）",
+                    r.totalGames, r.timelineDate, r.appliedRule.name));
+            resTitle.setTextColor(Color.parseColor("#38BDF8"));
+            resCard.addView(resTitle);
+
+            TextView aTv = makeSubtleText(String.format(Locale.US,
+                    "A 方胜率：%.1f%%（%d 胜 / %d 局）— %s",
+                    r.getSideAWinRate(), r.sideAWins, r.totalGames, r.sideAName));
+            aTv.setTextColor(Color.parseColor("#34D399"));
+            resCard.addView(aTv);
+
+            TextView bTv = makeSubtleText(String.format(Locale.US,
+                    "B 方胜率：%.1f%%（%d 胜 / %d 局）— %s",
+                    r.getSideBWinRate(), r.sideBWins, r.totalGames, r.sideBName));
+            bTv.setTextColor(Color.parseColor("#F87171"));
+            resCard.addView(bTv);
+
+            resCard.addView(makeSubtleText(String.format(Locale.US,
+                    "平局：%d 局 · 平均回合数：%.1f · 耗时：%d ms",
+                    r.draws, r.avgTurns, r.elapsedMs)));
+            resCard.addView(makeSubtleText(String.format(Locale.US,
+                    "先后攻拆分（50/50 交替）：A 先攻胜率 %.1f%%（%d/%d） · A 后攻胜率 %.1f%%（%d/%d）",
+                    r.getSideAFirstWinRate(), r.sideAFirstWins, r.sideAFirstGames,
+                    r.getSideASecondWinRate(), r.sideASecondWins, r.sideASecondGames)));
+            resCard.addView(makeSubtleText("说明：本次测试纯内存模拟，不计入胜率统计，也不发放代币。"));
+
+            if (r.sampleLastReport != null && !r.sampleLastReport.replayFrames.isEmpty()) {
+                LinearLayout repRow = new LinearLayout(this);
+                repRow.setOrientation(LinearLayout.HORIZONTAL);
+                repRow.setPadding(0, dp(8), 0, 0);
+                Button sampleBtn = makeActionButton("🎬 回放样本对局(第100局)", "#0284C7");
+                sampleBtn.setOnClickListener(v -> showQuickDuelReplayDialog(r.sampleLastReport));
+                repRow.addView(sampleBtn);
+                resCard.addView(repRow);
+            }
+            layoutContent.addView(resCard);
+        }
     }
 
     private int dp(int v) {
