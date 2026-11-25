@@ -20,10 +20,12 @@ public class RpgCatalog {
     public List<OcgBanlist> banlists = new ArrayList<>();
     public List<OcgPack> packs = new ArrayList<>();
     public List<OcgEvent> events = new ArrayList<>();
+    public List<OcgCardErrata> errataRecords = new ArrayList<>();
 
     private transient Map<Integer, RpgCard> cardById;
     private transient Map<Integer, String> earliestReleaseByCardId;
     private transient Map<Integer, Rarity> highestRarityByCardId;
+    private transient Map<Integer, OcgCardErrata> errataByCardId;
 
     public static class CraftingRules {
         public Map<String, Integer> dismantleDust = new HashMap<>();
@@ -44,6 +46,7 @@ public class RpgCatalog {
         cardById = new LinkedHashMap<>();
         earliestReleaseByCardId = new HashMap<>();
         highestRarityByCardId = new HashMap<>();
+        errataByCardId = new LinkedHashMap<>();
         if (packs != null) {
             for (OcgPack pack : packs) {
                 indexCardList(pack.cards, pack.releaseDate);
@@ -52,6 +55,13 @@ public class RpgCatalog {
         if (events != null) {
             for (OcgEvent ev : events) {
                 indexCardList(ev.rewardCards, ev.releaseDate);
+            }
+        }
+        if (errataRecords != null) {
+            for (OcgCardErrata rec : errataRecords) {
+                if (rec != null && rec.cardId > 0) {
+                    errataByCardId.put(rec.cardId, rec);
+                }
             }
         }
     }
@@ -99,6 +109,15 @@ public class RpgCatalog {
         ensureIndexed();
         Rarity r = highestRarityByCardId.get(cardId);
         return r != null ? r : Rarity.N;
+    }
+
+    public OcgCardErrata findErrata(int cardId) {
+        ensureIndexed();
+        return errataByCardId != null ? errataByCardId.get(cardId) : null;
+    }
+
+    public List<OcgCardErrata> getErrataRecords() {
+        return errataRecords != null ? Collections.unmodifiableList(errataRecords) : Collections.emptyList();
     }
 
     public OcgPack findPack(String packId) {

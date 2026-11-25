@@ -32,6 +32,7 @@ import cn.garymb.ygomobile.rpg.bridge.RpgSessionManager;
 import cn.garymb.ygomobile.rpg.data.RpgCatalogLoader;
 import cn.garymb.ygomobile.rpg.data.RpgRepository;
 import cn.garymb.ygomobile.rpg.engine.AiDeckGenerator;
+import cn.garymb.ygomobile.rpg.engine.CardErrataEngine;
 import cn.garymb.ygomobile.rpg.engine.CraftingEngine;
 import cn.garymb.ygomobile.rpg.engine.DeckValidator;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
@@ -41,6 +42,7 @@ import cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgCardErrata;
 import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
@@ -53,9 +55,10 @@ import cn.garymb.ygomobile.rpg.model.RpgProfile;
  * Self-contained Android UI for the 1999 OCG Timeline RPG Mode (1999-02-04 ~ 1999-12-31):
  * - Tab 0: Shop (Vol.1-6 / Booster 1-6 / STARTER BOX / EX / LE1 / PP1-2 at authentic JPY prices)
  * - Tab 1: 1999 Special Promo & Event Card Giveaways
- * - Tab 2: Card Collection & Dust Dismantle / Craft
+ * - Tab 2: Card Collection & Dust Dismantle / Craft (with timeline-resolved errata text)
  * - Tab 3: Ownership + Timeline + Banlist Restricted Deck Builder
  * - Tab 4: Timeline-Compliant AI Duel Launcher (Manual WindBot & Quick Duel) & Token Rewards
+ * - Tab 5: OCG Official Card Errata History Archive (Series 1 ~ Series 13)
  */
 public class RpgHomeActivity extends AppCompatActivity {
 
@@ -76,6 +79,7 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     private int activeTab = 0;
     private boolean collectionOnlyOwned = false;
+    private boolean errataOnly1999 = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,6 +115,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         tabLayout.addTab(tabLayout.newTab().setText("卡库/合成"));
         tabLayout.addTab(tabLayout.newTab().setText("RPG 组卡"));
         tabLayout.addTab(tabLayout.newTab().setText("AI 对战"));
+        tabLayout.addTab(tabLayout.newTab().setText("效果勘误"));
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -163,9 +168,10 @@ public class RpgHomeActivity extends AppCompatActivity {
         profile.currentTimelineDate = TimelineEngine.clampDate(catalog, profile.currentTimelineDate);
         tvTokens.setText("代币: " + profile.tokens);
         tvDust.setText("尘埃: " + profile.dust);
+        int preErrataCnt = CardErrataEngine.getRequiredPreErrataScriptIds(catalog, profile.currentTimelineDate).size();
         tvTimelineDate.setText("当前时间轴: " + profile.currentTimelineDate
-                + "（范围 1999.02.04~1999.12.31 · 已收集 " + profile.collection.size()
-                + " 种 / 共 " + profile.getTotalOwnedCards() + " 张）");
+                + "（已收集 " + profile.collection.size()
+                + " 种 / " + profile.getTotalOwnedCards() + " 张 · 当前生效旧版勘误卡 " + preErrataCnt + " 张）");
 
         OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
         tvActiveBanlist.setText("当前禁限表: " + banlist.name + " — " + banlist.description);
@@ -240,6 +246,9 @@ public class RpgHomeActivity extends AppCompatActivity {
                 break;
             case 4:
                 renderAiDuelTab();
+                break;
+            case 5:
+                renderErrataTab();
                 break;
         }
     }
@@ -411,10 +420,13 @@ public class RpgHomeActivity extends AppCompatActivity {
             int dismantleGain = catalog.craftingRules.getDismantleDust(rarity);
             int craftCost = catalog.craftingRules.getCraftCostDust(rarity);
             String limitBadge = banlist.getLimitBadge(card.id);
+            String errataBadge = CardErrataEngine.getVersionBadge(catalog, card.id, profile.currentTimelineDate);
+            final OcgCardErrata errataRec = catalog.findErrata(card.id);
 
             LinearLayout box = makeCardContainer();
             String header = "[" + rarity.code + "] " + card.getDisplayName()
                     + (limitBadge.isEmpty() ? "" : " 【" + limitBadge + "】")
+                    + (errataBadge.isEmpty() ? "" : " ⟪" + errataBadge + "⟫")
                     + "  x" + owned;
             TextView tvTitle = makeTitleText(header);
             tvTitle.setTextColor(Color.parseColor(rarity.colorHex));
@@ -425,6 +437,15 @@ public class RpgHomeActivity extends AppCompatActivity {
                     card.level, card.attribute, card.race, card.atk, card.def, card.setCode)
                     : card.cardType + " (" + card.setCode + ")";
             box.addView(makeSubtleText(stats));
+
+            String effectiveDesc = CardErrataEngine.getEffectiveDescCn(catalog, card, profile.currentTimelineDate);
+            if (!effectiveDesc.isEmpty()) {
+                TextView tvDesc = makeSubtleText(effectiveDesc);
+                if (!errataBadge.isEmpty()) {
+                    tvDesc.setTextColor(Color.parseColor("#FDE68A"));
+                }
+                box.addView(tvDesc);
+            }
 
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -453,12 +474,17 @@ public class RpgHomeActivity extends AppCompatActivity {
                 });
                 row.addView(disBtn);
             }
+            if (errataRec != null) {
+                Button histBtn = makeActionButton("勘误史(" + errataRec.revisions.size() + ")", "#7C3AED");
+                histBtn.setOnClickListener(v -> showErrataHistoryDialog(errataRec));
+                row.addView(histBtn);
+            }
             box.addView(row);
             layoutContent.addView(box);
         }
     }
 
-    // ==================== TAB 2: RPG DECK BUILDER ====================
+    // ==================== TAB 3: RPG DECK BUILDER ====================
     private void renderDeckTab() {
         Button autoBtn = makeActionButton("智能组卡 (40张)", "#059669");
         autoBtn.setOnClickListener(v -> {
@@ -506,11 +532,18 @@ public class RpgHomeActivity extends AppCompatActivity {
             int legalMax = Math.min(owned, banlist.getMaxCopies(card.id));
             LinearLayout box = makeCardContainer();
             String badge = banlist.getLimitBadge(card.id);
+            String errataBadge = CardErrataEngine.getVersionBadge(catalog, card.id, profile.currentTimelineDate);
             TextView tv = makeTitleText("[" + card.rarity + "] " + card.getDisplayName()
-                    + (badge.isEmpty() ? "" : " 【" + badge + "】"));
+                    + (badge.isEmpty() ? "" : " 【" + badge + "】")
+                    + (errataBadge.isEmpty() ? "" : " ⟪" + errataBadge + "⟫"));
             tv.setTextColor(Color.parseColor(card.getRarityEnum().colorHex));
             box.addView(tv);
             box.addView(makeSubtleText("已投入 " + inDeck + " / 上限 " + legalMax + "（拥有 " + owned + " 张）"));
+            if (!errataBadge.isEmpty()) {
+                TextView tvErrDesc = makeSubtleText(CardErrataEngine.getEffectiveDescCn(catalog, card, profile.currentTimelineDate));
+                tvErrDesc.setTextColor(Color.parseColor("#FDE68A"));
+                box.addView(tvErrDesc);
+            }
 
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -549,7 +582,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
     }
 
-    // ==================== TAB 3: AI DUEL ====================
+    // ==================== TAB 4: AI DUEL ====================
     private void renderAiDuelTab() {
         layoutTabActions.addView(makeSubtleText("战绩：" + profile.wins + " 胜 " + profile.losses + " 负 " + profile.draws + " 平 · AI 卡组严格遵守当前时间轴与禁限表"));
 
@@ -585,6 +618,75 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
     }
 
+    // ==================== TAB 5: OFFICIAL OCG ERRATA ARCHIVE ====================
+    private void renderErrataTab() {
+        int totalErrata = catalog.getErrataRecords().size();
+        int cnt1999 = 0;
+        for (OcgCardErrata r : catalog.getErrataRecords()) {
+            if (r.in1999Catalog) cnt1999++;
+        }
+
+        Button scopeBtn = makeActionButton(
+                errataOnly1999 ? "范围: 仅1999卡池 (" + cnt1999 + "张)" : "范围: 全OCG历次勘误 (" + totalErrata + "张)",
+                "#7C3AED");
+        scopeBtn.setOnClickListener(v -> {
+            errataOnly1999 = !errataOnly1999;
+            renderCurrentTab();
+        });
+        layoutTabActions.addView(scopeBtn);
+
+        TextView info = makeSubtleText("随当前时间轴 (" + profile.currentTimelineDate + ") 自动切换卡片生效版本，点击任意卡片可查看完整历次修改史。");
+        layoutContent.addView(info);
+
+        for (final OcgCardErrata rec : catalog.getErrataRecords()) {
+            if (errataOnly1999 && !rec.in1999Catalog) continue;
+            OcgCardErrata.Revision active = CardErrataEngine.getActiveRevision(rec, profile.currentTimelineDate);
+            boolean preErrata = CardErrataEngine.isPreErrataAt(catalog, rec.cardId, profile.currentTimelineDate);
+
+            LinearLayout box = makeCardContainer();
+            String badge = active != null ? ("⟪" + active.effectiveDate.replace("-", ".") + " v" + active.versionIndex + "/" + rec.revisions.size() + "⟫") : "";
+            TextView tvTitle = makeTitleText(rec.getDisplayName() + "  (" + rec.nameJp + ")  " + badge);
+            tvTitle.setTextColor(Color.parseColor(preErrata ? "#FBBF24" : "#34D399"));
+            box.addView(tvTitle);
+            box.addView(makeSubtleText(rec.era + " · " + rec.getCategoryLabelCn()
+                    + " · 共 " + rec.revisions.size() + " 个版本"
+                    + (rec.in1999Catalog ? " · ★1999卡池收录" : " · 后续世代存档")));
+            if (active != null) {
+                box.addView(makeSubtleText("当前生效: " + active.descCn));
+            }
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(0, dp(6), 0, 0);
+            Button detailBtn = makeActionButton("查看全部 " + rec.revisions.size() + " 次变更对比", "#334155");
+            detailBtn.setOnClickListener(v -> showErrataHistoryDialog(rec));
+            row.addView(detailBtn);
+            box.addView(row);
+            layoutContent.addView(box);
+        }
+    }
+
+    private void showErrataHistoryDialog(OcgCardErrata rec) {
+        OcgCardErrata.Revision active = CardErrataEngine.getActiveRevision(rec, profile.currentTimelineDate);
+        StringBuilder sb = new StringBuilder();
+        sb.append("日文名：").append(rec.nameJp).append("\n")
+                .append("分类：").append(rec.era).append(" · ").append(rec.getCategoryLabelCn()).append("\n")
+                .append("当前时间轴：").append(profile.currentTimelineDate).append("\n\n");
+        for (OcgCardErrata.Revision rev : rec.revisions) {
+            boolean isCurrent = active != null && rev.versionIndex == active.versionIndex;
+            sb.append(isCurrent ? "▶ [当前生效] " : "• ")
+                    .append("v").append(rev.versionIndex).append(" (").append(rev.effectiveDate).append(") ")
+                    .append(rev.sourceLabel).append("\n")
+                    .append("  变更要点：").append(rev.summary).append("\n")
+                    .append("  效果文本：").append(rev.descCn).append("\n\n");
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("官方勘误档案 · " + rec.getDisplayName())
+                .setMessage(sb.toString().trim())
+                .setPositiveButton("知道了", null)
+                .show();
+    }
+
     private void runQuickDuel(AiOpponent opponent) {
         DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
         if (!val.valid) {
@@ -592,7 +694,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     .setTitle("RPG 卡组未通过校验")
                     .setMessage(android.text.TextUtils.join("\n", val.errors))
                     .setPositiveButton("去组卡", (d, w) -> {
-                        TabLayout.Tab t = tabLayout.getTabAt(2);
+                        TabLayout.Tab t = tabLayout.getTabAt(3);
                         if (t != null) t.select();
                     })
                     .setNegativeButton("取消", null)
@@ -635,7 +737,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     .setTitle("RPG 卡组未通过校验")
                     .setMessage(android.text.TextUtils.join("\n", val.errors))
                     .setPositiveButton("去组卡", (d, w) -> {
-                        TabLayout.Tab t = tabLayout.getTabAt(2);
+                        TabLayout.Tab t = tabLayout.getTabAt(3);
                         if (t != null) t.select();
                     })
                     .setNegativeButton("取消", null)

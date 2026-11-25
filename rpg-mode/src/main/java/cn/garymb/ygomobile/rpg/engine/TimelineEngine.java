@@ -179,6 +179,7 @@ public final class TimelineEngine {
                     if (r.effectiveDate != null && !r.effectiveDate.isEmpty()) dates.add(r.effectiveDate);
                 }
             }
+            dates.addAll(CardErrataEngine.getErrataMilestonesInRange(catalog));
             if (catalog.maxTimelineDate != null && !catalog.maxTimelineDate.isEmpty()) {
                 dates.add(catalog.maxTimelineDate);
             }

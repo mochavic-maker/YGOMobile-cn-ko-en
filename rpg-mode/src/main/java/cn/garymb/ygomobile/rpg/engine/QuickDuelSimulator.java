@@ -11,10 +11,17 @@ import cn.garymb.ygomobile.rpg.model.RpgCard;
 import cn.garymb.ygomobile.rpg.model.RpgCatalog;
 
 /**
- * Pure-Java quick duel auto-resolver obeying the active timeline's OCG rule set
- * (tribute rules, once-per-turn spell/trap limit under 1999 Official Rule, first-turn draw, deck-out).
+ * Pure-Java quick duel auto-resolver obeying both:
+ * 1) the active timeline's OCG rule set (Official Rule vs Expert Rule), and
+ * 2) the active timeline's OCG card errata version (e.g. Sangan 1999-11-18 any-GY vs 1999-12-20 field-only,
+ *    Witch of the Black Forest 1999-11-18 any-GY, Crush Card Virus 1999 3-turn draw virus, Last Will 1999).
  */
 public final class QuickDuelSimulator {
+    private static final int CARD_SANGAN = 26202165;
+    private static final int CARD_WITCH = 78010363;
+    private static final int CARD_CCV = 57728570;
+    private static final int CARD_LAST_WILL = 85602018;
+
     private QuickDuelSimulator() {}
 
     public static class QuickDuelReport {
@@ -51,7 +58,13 @@ public final class QuickDuelSimulator {
         List<MonsterSlot> monsters = new ArrayList<>();
         List<RpgCard> gy = new ArrayList<>();
         int swordsTurns = 0;
+        int ccvInfectedTurns = 0;
         boolean hasTrapHole = false;
+        boolean hasCcvSet = false;
+        boolean lastWillActive = false;
+        boolean sanganUsedThisTurn = false;
+        boolean witchUsedThisTurn = false;
+        boolean oppNoDamageThisTurn = false;
 
         Side(int startLp, List<Integer> deckIds, Random rng) {
             this.lp = startLp;
@@ -70,7 +83,7 @@ public final class QuickDuelSimulator {
         Side p = new Side(rule.startLp, playerDeckIds, rng);
         Side a = new Side(rule.startLp, aiDeckIds, rng);
         List<String> logs = new ArrayList<>();
-        logs.add("快速决斗开始：你 vs " + opponent.name + "（规则：" + rule.name + "）");
+        logs.add("快速决斗开始：你 vs " + opponent.name + "（时间轴：" + currentDate + " · 规则：" + rule.name + "）");
 
         for (int i = 0; i < rule.startHand; i++) {
             draw(catalog, p);
@@ -85,9 +98,15 @@ public final class QuickDuelSimulator {
             Side cur = playerTurn ? p : a;
             Side opp = playerTurn ? a : p;
             String curName = playerTurn ? "你" : opponent.name;
+            String oppName = playerTurn ? opponent.name : "你";
+            cur.sanganUsedThisTurn = false;
+            cur.witchUsedThisTurn = false;
+            cur.lastWillActive = false;
+            cur.oppNoDamageThisTurn = false;
 
             if (turn > 1 || rule.firstTurnDrawEnabled) {
-                if (!draw(catalog, cur)) {
+                RpgCard drawn = draw(catalog, cur);
+                if (drawn == null) {
                     logs.add("T" + turn + " " + curName + " 卡组抽干！");
                     if (rule.deckOutCompareLp) {
                         boolean pWin = p.lp > a.lp;
@@ -95,6 +114,15 @@ public final class QuickDuelSimulator {
                         return new QuickDuelReport(pWin, draw, p.lp, a.lp, turn, rule, logs);
                     }
                     return new QuickDuelReport(!playerTurn, false, p.lp, a.lp, turn, rule, logs);
+                }
+                // 1999 pre-errata Crush Card Virus 3-turn draw destruction
+                if (cur.ccvInfectedTurns > 0) {
+                    if (drawn.isMonster() && drawn.atk >= 1500) {
+                        cur.hand.remove(drawn);
+                        sendToGy(catalog, cur, drawn, false, currentDate, turn, curName, logs);
+                        logs.add("T" + turn + " 「死之卡组破坏病毒」[1999初版] 破坏了 " + curName + " 抽到的「" + drawn.getDisplayName() + "」！");
+                    }
+                    cur.ccvInfectedTurns--;
                 }
             }
 
@@ -108,7 +136,7 @@ public final class QuickDuelSimulator {
             int spellLimit = rule.spellTrapOncePerTurnLimit ? 1 : 99;
             int trapLimit = rule.spellTrapOncePerTurnLimit ? 1 : 99;
 
-            // Spells: Raigeki / Dark Hole / Fissure / Pot of Greed / Graceful Charity / Feather Duster / Change of Heart / Reborn / Swords / Burn / Heal
+            // Spells phase
             for (int i = cur.hand.size() - 1; i >= 0 && spellsPlayed < spellLimit; i--) {
                 if (i >= cur.hand.size()) continue;
                 RpgCard c = cur.hand.get(i);
@@ -123,32 +151,45 @@ public final class QuickDuelSimulator {
                         logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
                         return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
                     }
-                } else if (c.id == 79571449) { // Graceful Charity
+                } else if (c.id == 79571449) { // Graceful Charity (synergizes with 1999 pre-errata Sangan / Witch!)
                     cur.hand.remove(i);
                     cur.gy.add(c);
                     draw(catalog, cur);
                     draw(catalog, cur);
                     draw(catalog, cur);
-                    for (int d = 0; d < 2 && !cur.hand.isEmpty(); d++) {
-                        cur.gy.add(cur.hand.remove(cur.hand.size() - 1));
-                    }
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「天使的施舍」抽 3 弃 2！");
+                    for (int d = 0; d < 2 && !cur.hand.isEmpty(); d++) {
+                        int discardIdx = pickDiscardIndex(catalog, cur.hand, currentDate);
+                        RpgCard discarded = cur.hand.remove(discardIdx);
+                        sendToGy(catalog, cur, discarded, false, currentDate, turn, curName, logs);
+                    }
                     if (hasExodia(cur)) {
                         logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
                         return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
                     }
+                } else if (c.id == CARD_LAST_WILL) { // Last Will (EX 1999-12-16)
+                    cur.hand.remove(i);
+                    cur.gy.add(c);
+                    cur.lastWillActive = true;
+                    spellsPlayed++;
+                    logs.add("T" + turn + " " + curName + " 发动「遗言状」["
+                            + CardErrataEngine.getVersionBadge(catalog, CARD_LAST_WILL, currentDate) + "]！");
                 } else if (c.id == 12580477 && !opp.monsters.isEmpty()) { // Raigeki
                     cur.hand.remove(i);
                     cur.gy.add(c);
-                    for (MonsterSlot ms : opp.monsters) opp.gy.add(ms.card);
+                    List<MonsterSlot> destroyed = new ArrayList<>(opp.monsters);
                     opp.monsters.clear();
+                    for (MonsterSlot ms : destroyed) {
+                        sendToGy(catalog, opp, ms.card, true, currentDate, turn, oppName, logs);
+                    }
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「雷击」摧毁对手全怪兽！");
-                } else if (c.id == 18144506 && (opp.hasTrapHole || opp.swordsTurns > 0)) { // Harpie's Feather Duster
+                } else if (c.id == 18144506 && (opp.hasTrapHole || opp.hasCcvSet || opp.swordsTurns > 0)) { // Feather Duster
                     cur.hand.remove(i);
                     cur.gy.add(c);
                     opp.hasTrapHole = false;
+                    opp.hasCcvSet = false;
                     opp.swordsTurns = 0;
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「鹰身女妖的羽毛扫」清空对手后场！");
@@ -161,23 +202,26 @@ public final class QuickDuelSimulator {
                     cur.monsters.add(bestOpp);
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「心变」夺取「" + bestOpp.card.getDisplayName() + "」！");
-                } else if (c.id == 53129443 && !opp.monsters.isEmpty() && cur.monsters.isEmpty()) {
+                } else if (c.id == 53129443 && !opp.monsters.isEmpty() && cur.monsters.isEmpty()) { // Dark Hole
                     cur.hand.remove(i);
                     cur.gy.add(c);
-                    for (MonsterSlot ms : opp.monsters) opp.gy.add(ms.card);
+                    List<MonsterSlot> destroyed = new ArrayList<>(opp.monsters);
                     opp.monsters.clear();
+                    for (MonsterSlot ms : destroyed) {
+                        sendToGy(catalog, opp, ms.card, true, currentDate, turn, oppName, logs);
+                    }
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「黑洞」清场！");
-                } else if (c.id == 66788016 && !opp.monsters.isEmpty()) {
+                } else if (c.id == 66788016 && !opp.monsters.isEmpty()) { // Fissure
                     cur.hand.remove(i);
                     cur.gy.add(c);
                     MonsterSlot weakest = opp.monsters.get(0);
                     for (MonsterSlot ms : opp.monsters) if (ms.atk() < weakest.atk()) weakest = ms;
                     opp.monsters.remove(weakest);
-                    opp.gy.add(weakest.card);
+                    sendToGy(catalog, opp, weakest.card, true, currentDate, turn, oppName, logs);
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「地割」破坏了「" + weakest.card.getDisplayName() + "」");
-                } else if (c.id == 83764718 && cur.monsters.size() < 5) {
+                } else if (c.id == 83764718 && cur.monsters.size() < 5) { // Monster Reborn
                     RpgCard bestGy = pickStrongestGyMonster(cur, opp);
                     if (bestGy != null) {
                         cur.hand.remove(i);
@@ -188,7 +232,7 @@ public final class QuickDuelSimulator {
                         spellsPlayed++;
                         logs.add("T" + turn + " " + curName + " 发动「死者苏生」特召「" + bestGy.getDisplayName() + "」");
                     }
-                } else if (c.id == 72302403 && cur.swordsTurns == 0 && !opp.monsters.isEmpty()) {
+                } else if (c.id == 72302403 && cur.swordsTurns == 0 && !opp.monsters.isEmpty()) { // Swords
                     cur.hand.remove(i);
                     cur.swordsTurns = 3;
                     spellsPlayed++;
@@ -197,7 +241,9 @@ public final class QuickDuelSimulator {
                     int dmg = c.id == 19523799 ? 800 : (c.id == 73134081 ? 600 : (c.id == 46130346 ? 500 : (c.id == 56260110 ? 300 : 200)));
                     cur.hand.remove(i);
                     cur.gy.add(c);
-                    opp.lp = Math.max(0, opp.lp - dmg);
+                    if (!cur.oppNoDamageThisTurn) {
+                        opp.lp = Math.max(0, opp.lp - dmg);
+                    }
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「" + c.getDisplayName() + "」造成 " + dmg + " 伤害");
                 } else if (c.id == 11868825 || c.id == 38199696 || c.id == 84257639 || c.id == 20871001) {
@@ -209,6 +255,40 @@ public final class QuickDuelSimulator {
                 }
             }
             if (p.lp <= 0 || a.lp <= 0) break;
+
+            // Trigger set Crush Card Virus if cur has a DARK monster ATK <= 1000 on field
+            if (cur.hasCcvSet) {
+                MonsterSlot fodder = findCcvFodder(cur);
+                if (fodder != null) {
+                    cur.hasCcvSet = false;
+                    cur.monsters.remove(fodder);
+                    sendToGy(catalog, cur, fodder.card, true, currentDate, turn, curName, logs);
+                    boolean is1999 = CardErrataEngine.hasFlag(catalog, CARD_CCV, currentDate, "CCV_ORIGINAL_3TURN_DRAW");
+                    int destroyedCnt = 0;
+                    for (int k = opp.monsters.size() - 1; k >= 0; k--) {
+                        if (opp.monsters.get(k).atk() >= 1500) {
+                            RpgCard rm = opp.monsters.remove(k).card;
+                            sendToGy(catalog, opp, rm, true, currentDate, turn, oppName, logs);
+                            destroyedCnt++;
+                        }
+                    }
+                    for (int k = opp.hand.size() - 1; k >= 0; k--) {
+                        RpgCard hc = opp.hand.get(k);
+                        if (hc.isMonster() && hc.atk >= 1500) {
+                            opp.hand.remove(k);
+                            sendToGy(catalog, opp, hc, false, currentDate, turn, oppName, logs);
+                            destroyedCnt++;
+                        }
+                    }
+                    if (is1999) {
+                        opp.ccvInfectedTurns = 3;
+                        logs.add("T" + turn + " " + curName + " 发动「死之卡组破坏病毒」[1999初版] 破坏对手 " + destroyedCnt + " 只怪兽，并封锁其后续 3 回合抽卡！");
+                    } else {
+                        cur.oppNoDamageThisTurn = true;
+                        logs.add("T" + turn + " " + curName + " 发动「死之卡组破坏病毒」[2015改版] 破坏对手 " + destroyedCnt + " 只怪兽（本回合对手不受伤害）");
+                    }
+                }
+            }
 
             // Normal Summon respecting active OcgRuleSet tribute rules
             int bestIdx = -1;
@@ -232,11 +312,11 @@ public final class QuickDuelSimulator {
                     MonsterSlot weakest = cur.monsters.get(0);
                     for (MonsterSlot ms : cur.monsters) if (ms.atk() < weakest.atk()) weakest = ms;
                     cur.monsters.remove(weakest);
-                    cur.gy.add(weakest.card);
+                    sendToGy(catalog, cur, weakest.card, true, currentDate, turn, curName, logs);
                 }
                 if (opp.hasTrapHole && summoned.atk >= 1000) {
                     opp.hasTrapHole = false;
-                    cur.gy.add(summoned);
+                    sendToGy(catalog, cur, summoned, true, currentDate, turn, curName, logs);
                     logs.add("T" + turn + " " + curName + " 召唤「" + summoned.getDisplayName() + "」被对手「落穴」破坏！");
                 } else {
                     MonsterSlot ms = new MonsterSlot();
@@ -246,16 +326,27 @@ public final class QuickDuelSimulator {
                 }
             }
 
-            // Set Trap Hole if allowed
-            if (!cur.hasTrapHole && trapsSet < trapLimit) {
-                for (int i = 0; i < cur.hand.size(); i++) {
-                    if (cur.hand.get(i).id == 4206964) {
+            // Set Trap Hole or Crush Card Virus if allowed
+            if (trapsSet < trapLimit) {
+                for (int i = 0; i < cur.hand.size() && trapsSet < trapLimit; i++) {
+                    int id = cur.hand.get(i).id;
+                    if (id == 4206964 && !cur.hasTrapHole) {
                         cur.hand.remove(i);
                         cur.hasTrapHole = true;
                         trapsSet++;
                         break;
+                    } else if (id == CARD_CCV && !cur.hasCcvSet) {
+                        cur.hand.remove(i);
+                        cur.hasCcvSet = true;
+                        trapsSet++;
+                        break;
                     }
                 }
+            }
+
+            if (hasExodia(cur)) {
+                logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
+                return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
             }
 
             // Battle Phase (turn > 1 and not blocked by Swords)
@@ -263,7 +354,9 @@ public final class QuickDuelSimulator {
                 for (MonsterSlot attacker : new ArrayList<>(cur.monsters)) {
                     if (opp.lp <= 0) break;
                     if (opp.monsters.isEmpty()) {
-                        opp.lp = Math.max(0, opp.lp - attacker.atk());
+                        if (!cur.oppNoDamageThisTurn) {
+                            opp.lp = Math.max(0, opp.lp - attacker.atk());
+                        }
                         logs.add("T" + turn + " 「" + attacker.card.getDisplayName() + "」直击 -" + attacker.atk() + " LP");
                     } else {
                         MonsterSlot target = null;
@@ -274,9 +367,11 @@ public final class QuickDuelSimulator {
                         }
                         if (target != null) {
                             int dmg = attacker.atk() - target.atk();
-                            opp.lp = Math.max(0, opp.lp - dmg);
+                            if (!cur.oppNoDamageThisTurn) {
+                                opp.lp = Math.max(0, opp.lp - dmg);
+                            }
                             opp.monsters.remove(target);
-                            opp.gy.add(target.card);
+                            sendToGy(catalog, opp, target.card, true, currentDate, turn, oppName, logs);
                             logs.add("T" + turn + " 「" + attacker.card.getDisplayName() + "」击破「" + target.card.getDisplayName() + "」-" + dmg + " LP");
                         }
                     }
@@ -293,12 +388,109 @@ public final class QuickDuelSimulator {
         return new QuickDuelReport(pWin, isDraw, p.lp, a.lp, turn - 1, rule, logs);
     }
 
-    private static boolean draw(RpgCatalog catalog, Side side) {
-        if (side.deck.isEmpty()) return false;
+    /**
+     * Handles sending a card to GY and triggering timeline-accurate errata effects:
+     * - Sangan (26202165): 1999-11-18 triggers from ANY zone; 1999-12-20 triggers from FIELD only; 2016-04-01 HOPT.
+     * - Witch (78010363): 1999-11-18 triggers from ANY zone; 2000-04-20 triggers from FIELD only; 2017-04-01 HOPT.
+     * - Last Will (85602018): 1999-12-16 summons ATK<=1500 from deck when a monster hits GY.
+     */
+    private static void sendToGy(RpgCatalog catalog, Side owner, RpgCard card, boolean fromField,
+                                 String currentDate, int turn, String ownerName, List<String> logs) {
+        if (card == null) return;
+        owner.gy.add(card);
+
+        if (card.id == CARD_SANGAN) {
+            boolean anyGy = CardErrataEngine.hasFlag(catalog, CARD_SANGAN, currentDate, "SANGAN_ANY_GY");
+            boolean hopt = CardErrataEngine.hasFlag(catalog, CARD_SANGAN, currentDate, "HOPT");
+            if ((fromField || anyGy) && (!hopt || !owner.sanganUsedThisTurn)) {
+                owner.sanganUsedThisTurn = true;
+                RpgCard found = searchDeckMonster(catalog, owner, true, 1500);
+                if (found != null) {
+                    owner.hand.add(found);
+                    String badge = CardErrataEngine.getVersionBadge(catalog, CARD_SANGAN, currentDate);
+                    logs.add("T" + turn + " " + ownerName + " 触发「三眼怪」[" + badge
+                            + (fromField ? "·场上送墓" : "·手卡/非场上送墓") + "] 检索了「" + found.getDisplayName() + "」！");
+                }
+            }
+        } else if (card.id == CARD_WITCH) {
+            boolean anyGy = CardErrataEngine.hasFlag(catalog, CARD_WITCH, currentDate, "WITCH_ANY_GY");
+            boolean hopt = CardErrataEngine.hasFlag(catalog, CARD_WITCH, currentDate, "HOPT");
+            if ((fromField || anyGy) && (!hopt || !owner.witchUsedThisTurn)) {
+                owner.witchUsedThisTurn = true;
+                RpgCard found = searchDeckMonster(catalog, owner, false, 1500);
+                if (found != null) {
+                    owner.hand.add(found);
+                    String badge = CardErrataEngine.getVersionBadge(catalog, CARD_WITCH, currentDate);
+                    logs.add("T" + turn + " " + ownerName + " 触发「黑森林的魔女」[" + badge
+                            + (fromField ? "·场上送墓" : "·手卡/非场上送墓") + "] 检索了「" + found.getDisplayName() + "」！");
+                }
+            }
+        }
+
+        if (card.isMonster() && owner.lastWillActive && owner.monsters.size() < 5) {
+            boolean broad = CardErrataEngine.hasFlag(catalog, CARD_LAST_WILL, currentDate, "LAST_WILL_1999_BROAD");
+            if (fromField || broad) {
+                owner.lastWillActive = false;
+                RpgCard sp = searchDeckMonster(catalog, owner, true, 1500);
+                if (sp != null) {
+                    MonsterSlot ms = new MonsterSlot();
+                    ms.card = sp;
+                    owner.monsters.add(ms);
+                    logs.add("T" + turn + " " + ownerName + " 「遗言状」特召了「" + sp.getDisplayName() + "」(ATK " + sp.atk + ")！");
+                }
+            }
+        }
+    }
+
+    private static int pickDiscardIndex(RpgCatalog catalog, List<RpgCard> hand, String currentDate) {
+        // Under 1999 pre-errata, discarding Sangan/Witch from hand triggers their search!
+        boolean sanganAny = CardErrataEngine.hasFlag(catalog, CARD_SANGAN, currentDate, "SANGAN_ANY_GY");
+        boolean witchAny = CardErrataEngine.hasFlag(catalog, CARD_WITCH, currentDate, "WITCH_ANY_GY");
+        for (int i = 0; i < hand.size(); i++) {
+            int id = hand.get(i).id;
+            if (id == CARD_SANGAN && sanganAny) return i;
+            if (id == CARD_WITCH && witchAny) return i;
+        }
+        return hand.size() - 1;
+    }
+
+    private static RpgCard searchDeckMonster(RpgCatalog catalog, Side side, boolean byAtk, int maxStat) {
+        int bestIdx = -1;
+        int bestScore = -1;
+        for (int i = 0; i < side.deck.size(); i++) {
+            RpgCard c = catalog.findCard(side.deck.get(i));
+            if (c == null || !c.isMonster() || c.isExtraDeckCard()) continue;
+            int stat = byAtk ? c.atk : c.def;
+            if (stat <= maxStat) {
+                int score = isExodiaPiece(c.id) ? 10000 : c.atk;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestIdx = i;
+                }
+            }
+        }
+        if (bestIdx >= 0) {
+            int id = side.deck.remove(bestIdx);
+            return catalog.findCard(id);
+        }
+        return null;
+    }
+
+    private static MonsterSlot findCcvFodder(Side side) {
+        for (MonsterSlot ms : side.monsters) {
+            if (ms.card != null && "DARK".equalsIgnoreCase(ms.card.attribute) && ms.atk() <= 1000) {
+                return ms;
+            }
+        }
+        return null;
+    }
+
+    private static RpgCard draw(RpgCatalog catalog, Side side) {
+        if (side.deck.isEmpty()) return null;
         int id = side.deck.remove(side.deck.size() - 1);
         RpgCard c = catalog.findCard(id);
         if (c != null) side.hand.add(c);
-        return true;
+        return c;
     }
 
     private static RpgCard pickStrongestGyMonster(Side cur, Side opp) {
@@ -312,6 +504,10 @@ public final class QuickDuelSimulator {
         }
         if (best != null && owner != null) owner.gy.remove(best);
         return best;
+    }
+
+    private static boolean isExodiaPiece(int id) {
+        return id == 33396948 || id == 7902349 || id == 70903634 || id == 44519536 || id == 8124921;
     }
 
     private static boolean hasExodia(Side side) {

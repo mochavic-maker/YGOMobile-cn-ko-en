@@ -1,0 +1,3378 @@
+{
+  "format": "OCG",
+  "source": "遊戯王カードWiki エラッタ (Series 1 ~ Series 13) + ygocdb.com",
+  "totalCards": 106,
+  "in1999Count": 28,
+  "records": [
+    {
+      "cardId": 26202165,
+      "nameCn": "三眼怪",
+      "nameJp": "クリッター",
+      "nameEn": "Sangan",
+      "era": "第1期 (1999)",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-11-18",
+          "sourceLabel": "Vol.6 初版",
+          "summary": "任意区域（手卡/卡组/场上）送墓均触发检索，无1回合1次，检索卡当回合可发动",
+          "descCn": "【1999.11.18 初版】这张卡被放置到墓地时（无论从场上、手卡还是卡组），从自己卡组把1只攻击力1500以下的怪兽加入手卡，之后洗切卡组。（无1回合1次，无当回合发动限制）",
+          "flags": [
+            "SANGAN_ANY_GY",
+            "NO_OPT",
+            "NO_SEARCH_LOCK"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "1999-12-20",
+          "sourceLabel": "Jump 2000年3·4合并号裁定变更 / 2000.09 MR 文本修正",
+          "summary": "第1次修改：改为仅「从场上送去墓地时」触发（手卡丢弃/卡组堆墓不再触发）",
+          "descCn": "【1999.12.20 改版】这张卡从场上送去墓地时，从自己卡组选择1只攻击力1500以下的怪兽给双方确认并加入手卡。之后卡组洗切。（仍无1回合1次与当回合自肃）",
+          "flags": [
+            "SANGAN_FIELD_ONLY",
+            "NO_OPT",
+            "NO_SEARCH_LOCK"
+          ]
+        },
+        {
+          "versionIndex": 3,
+          "effectiveDate": "2016-04-01",
+          "sourceLabel": "2016.04.01 禁止解除官方勘误",
+          "summary": "第2次修改：追加「1回合1次」及「本回合不能把检索卡及其同名卡的效果发动」",
+          "descCn": "【2016.04.01 现行版】「三眼怪」的效果1回合只能使用1次。①：这张卡从场上送去墓地的场合发动。从卡组把1只攻击力1500以下的怪兽加入手卡。这个回合，自己不能把这个效果加入手卡的卡以及那些同名卡的效果发动。",
+          "flags": [
+            "SANGAN_FIELD_ONLY",
+            "HOPT",
+            "SEARCH_LOCK"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 78010363,
+      "nameCn": "黑森林的魔女",
+      "nameJp": "黒き森のウィッチ",
+      "nameEn": "Witch of the Black Forest",
+      "era": "第1期 (1999)",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-11-18",
+          "sourceLabel": "Vol.6 初版",
+          "summary": "任意区域（手卡/卡组/场上）送墓均触发检索，无1回合1次，检索卡当回合可发动",
+          "descCn": "【1999.11.18 初版】这张卡被放置到墓地时（无论从场上、手卡还是卡组），从自己卡组把1只守备力1500以下的怪兽加入手卡，之后洗切卡组。（无1回合1次，无当回合发动限制）",
+          "flags": [
+            "WITCH_ANY_GY",
+            "NO_OPT",
+            "NO_SEARCH_LOCK"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-04-20",
+          "sourceLabel": "The Valuable Book 2 规则变更 / 2000.09 MR 文本修正",
+          "summary": "第1次修改：改为仅「从场上送去墓地时」触发（手卡/卡组送墓不再触发）",
+          "descCn": "【2000.04.20 改版】这张卡从场上送去墓地时，从自己卡组选择1只守备力1500以下的怪兽给双方确认并加入手卡。之后卡组洗切。（仍无1回合1次与当回合自肃）",
+          "flags": [
+            "WITCH_FIELD_ONLY",
+            "NO_OPT",
+            "NO_SEARCH_LOCK"
+          ]
+        },
+        {
+          "versionIndex": 3,
+          "effectiveDate": "2017-04-01",
+          "sourceLabel": "2017.04.01 禁止解除官方勘误",
+          "summary": "第2次修改：追加「1回合1次」及「本回合不能把检索卡及其同名卡的效果发动」",
+          "descCn": "【2017.04.01 现行版】这个卡名的效果1回合只能使用1次。①：这张卡从场上送去墓地的场合发动。从卡组把1只守备力1500以下的怪兽加入手卡。这个回合，自己不能把这个效果加入手卡的卡以及那些同名卡的效果发动。",
+          "flags": [
+            "WITCH_FIELD_ONLY",
+            "HOPT",
+            "SEARCH_LOCK"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 57728570,
+      "nameCn": "死之卡组破坏病毒",
+      "nameJp": "死のデッキ破壊ウイルス",
+      "nameEn": "Crush Card Virus",
+      "era": "第1期 (1999)",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-07-08",
+          "sourceLabel": "DM2 暗界决斗记 初版",
+          "summary": "原版：破坏对方场上/手卡及接下来对方3回合抽到的全部 ATK≥1500 怪兽，无伤害归零副作用",
+          "descCn": "【1999.07.08 初版】把自己场上1只攻击力1000以下的暗属性怪兽作为祭品发动。确认对方场上怪兽、对方手卡以及按对方回合计算3回合内对方抽到的全部卡，把其中攻击力1500以上的怪兽全部破坏。",
+          "flags": [
+            "CCV_ORIGINAL_3TURN_DRAW"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-01-01",
+          "sourceLabel": "2015.01.01 禁止解除官方勘误",
+          "summary": "大幅弱化：取消3回合抽卡破坏，改为对方可从卡组选最多3只堆墓，且下回合结束前对方伤害为0",
+          "descCn": "【2015.01.01 现行版】①：把自己场上1只攻击力1000以下的暗属性怪兽解放发动。确认对方场上怪兽与对方手卡，把其中攻击力1500以上的怪兽全部破坏。那之后，对方可从卡组选最多3只攻击力1500以上的怪兽破坏。这张卡发动后，直到下个回合结束时对方受到的全部伤害变成0。",
+          "flags": [
+            "CCV_2015_NERFED"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 71625222,
+      "nameCn": "时间魔术师",
+      "nameJp": "時の魔術師",
+      "nameEn": "Time Wizard",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-08-26",
+          "sourceLabel": "PREMIUM PACK 初版",
+          "summary": "原版：未写「1回合1次」次数限制，猜错为「失去生命值」",
+          "descCn": "【1999.08.26 初版】投掷硬币猜正反面。猜中则对方场上怪兽全灭；猜错则自己场上怪兽全灭，并失去那些怪兽合计攻击力一半的生命值。（初版未限制1回合1次）",
+          "flags": [
+            "TIME_WIZARD_NO_OPT"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-09-21",
+          "sourceLabel": "钢铁袭击者（MR）勘误",
+          "summary": "第1次修改：追加「这个效果在自己回合只能使用1次」",
+          "descCn": "【2000.09.21 改版】投掷硬币猜正反面。猜中则对方场上怪兽全灭；猜错则自己场上怪兽全灭，并失去其合计攻击力一半的生命值。这个效果在自己回合只能使用1次。",
+          "flags": [
+            "TIME_WIZARD_OPT"
+          ]
+        },
+        {
+          "versionIndex": 3,
+          "effectiveDate": "2003-01-23",
+          "sourceLabel": "DL4 勘误",
+          "summary": "第2次修改：限定仅自己主要阶段，且「失去生命值」改为「受到效果伤害」",
+          "descCn": "【2003.01.23 现行版】1回合1次，自己主要阶段投掷硬币猜正反面。猜中则对方场上怪兽全部破坏；猜错则自己场上怪兽全部破坏，自己受到破坏怪兽攻击力合计一半的伤害。",
+          "flags": [
+            "TIME_WIZARD_OPT",
+            "EFFECT_DAMAGE"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 25955164,
+      "nameCn": "雷魔神-桑迦",
+      "nameJp": "雷魔神－サンガ",
+      "nameEn": "Sanga of the Thunder",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-09-23",
+          "sourceLabel": "Vol.5 初版",
+          "summary": "原版：仅将对方怪兽造成的战斗伤害1次变为0（不能将对方攻击力变0反杀）",
+          "descCn": "【1999.09.23 初版】把对方怪兽造成的伤害仅有1次变为0。这个效果的发动时机可由玩家自由选择。",
+          "flags": [
+            "GUARDIAN_DAMAGE_ZERO"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "暗黑魔龙复活（RB）勘误",
+          "summary": "效果强化：改为把对方攻击怪兽的攻击力变为0，可直接战斗反杀对方",
+          "descCn": "【2000.07.13 现行版】对方怪兽向这张卡攻击的伤害计算时，这张卡在场上表侧表示存在期间仅1次，把那1只攻击怪兽的攻击力在伤害计算时变为0。",
+          "flags": [
+            "GUARDIAN_ATK_ZERO"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 62340868,
+      "nameCn": "风魔神-修迦",
+      "nameJp": "風魔神－ヒューガ",
+      "nameEn": "Kazejin",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-09-23",
+          "sourceLabel": "Vol.5 初版",
+          "summary": "原版：仅将对方怪兽造成的战斗伤害1次变为0（不能将对方攻击力变0反杀）",
+          "descCn": "【1999.09.23 初版】把对方怪兽造成的伤害仅有1次变为0。这个效果的发动时机可由玩家自由选择。",
+          "flags": [
+            "GUARDIAN_DAMAGE_ZERO"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "暗黑魔龙复活（RB）勘误",
+          "summary": "效果强化：改为把对方攻击怪兽的攻击力变为0，可直接战斗反杀对方",
+          "descCn": "【2000.07.13 现行版】对方怪兽向这张卡攻击的伤害计算时，这张卡在场上表侧表示存在期间仅1次，把那1只攻击怪兽的攻击力在伤害计算时变为0。",
+          "flags": [
+            "GUARDIAN_ATK_ZERO"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 98434877,
+      "nameCn": "水魔神-斯迦",
+      "nameJp": "水魔神－スーガ",
+      "nameEn": "Suijin",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-09-23",
+          "sourceLabel": "Vol.5 初版",
+          "summary": "原版：仅将对方怪兽造成的战斗伤害1次变为0（不能将对方攻击力变0反杀）",
+          "descCn": "【1999.09.23 初版】把对方怪兽造成的伤害仅有1次变为0。这个效果的发动时机可由玩家自由选择。",
+          "flags": [
+            "GUARDIAN_DAMAGE_ZERO"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "暗黑魔龙复活（RB）勘误",
+          "summary": "效果强化：改为把对方攻击怪兽的攻击力变为0，可直接战斗反杀对方",
+          "descCn": "【2000.07.13 现行版】对方怪兽向这张卡攻击的伤害计算时，这张卡在场上表侧表示存在期间仅1次，把那1只攻击怪兽的攻击力在伤害计算时变为0。",
+          "flags": [
+            "GUARDIAN_ATK_ZERO"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 5758500,
+      "nameCn": "魂之解放",
+      "nameJp": "魂の解放",
+      "nameEn": "Soul Release",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-09-23",
+          "sourceLabel": "Vol.5 初版",
+          "summary": "原版：自己与对方墓地「各最多5张」（合计最多除外10张！）",
+          "descCn": "【1999.09.23 初版】从自己与对方墓地各移除最多5张卡（最多共10张）。被移除的卡在本次决斗中不可使用。",
+          "flags": [
+            "SOUL_RELEASE_5_EACH"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "暗黑魔龙复活（RB）勘误",
+          "summary": "上限减半：改为双方墓地「合计最多5张」除外",
+          "descCn": "【2000.07.13 现行版】选择自己或对方墓地合计最多5张卡从游戏中除外。",
+          "flags": [
+            "SOUL_RELEASE_5_TOTAL"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 69015963,
+      "nameCn": "恶魔科学怪人",
+      "nameJp": "デビル・フランケン",
+      "nameEn": "Cyber-Stein",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-12-01",
+          "sourceLabel": "Booster 6 初版",
+          "summary": "原版：支付5000 LP 特召融合怪兽，不限表示形式（可守备表示出）",
+          "descCn": "【1999.12.01 初版】支付5000生命值，可以从自己融合卡组把1只融合怪兽出到场上（未限定攻击表示）。",
+          "flags": [
+            "CYBER_STEIN_ANY_POS"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-11-23",
+          "sourceLabel": "Booster R3 勘误",
+          "summary": "修改：限定融合怪兽只能「攻击表示」特殊召唤",
+          "descCn": "【2000.11.23 现行版】支付5000基本分发动。从额外卡组把1只融合怪兽以攻击表示特殊召唤。",
+          "flags": [
+            "CYBER_STEIN_ATK_ONLY"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 28563545,
+      "nameCn": "杀龙者",
+      "nameJp": "竜殺者",
+      "nameEn": "Dragon Seeker",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-10-17",
+          "sourceLabel": "Booster 5 初版",
+          "summary": "原版：变为攻击表示时「可以」破坏1只龙族怪兽（选发，变表也可触发）",
+          "descCn": "【1999.10.17 初版】「杀龙者」变为攻击表示时，可以破坏1只龙族怪兽。",
+          "flags": [
+            "DRAGON_PIPER_CHANGE_POS_OPT"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-11-23",
+          "sourceLabel": "Booster R3 勘误",
+          "summary": "修改：改为仅「召唤·反转召唤成功时」必发破坏1只表侧龙族怪兽",
+          "descCn": "【2000.11.23 现行版】这张卡召唤·反转召唤成功时，选择场上1只表侧表示的龙族怪兽破坏。",
+          "flags": [
+            "DRAGON_PIPER_SUMMON_MANDATORY"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 53119267,
+      "nameCn": "魔力之棘",
+      "nameJp": "魔力の棘",
+      "nameEn": "Magical Thorn",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-12-01",
+          "sourceLabel": "Booster 6 初版",
+          "summary": "原版：对方因效果丢弃至墓地的卡（含卡组/融合卡组）每张造成500伤害",
+          "descCn": "【1999.12.01 初版】对方因魔法·陷阱·怪兽的效果丢弃到墓地的卡每有1张，给与对方500点伤害。",
+          "flags": [
+            "MAGICAL_THORN_ANY_ZONE"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2001-08-30",
+          "sourceLabel": "Booster Chronicle 勘误",
+          "summary": "修改：限定仅对方「手卡」被丢弃至墓地时造成伤害",
+          "descCn": "【2001.08.30 现行版】对方手卡被丢弃去墓地时，每丢弃1张给与对方500分伤害。",
+          "flags": [
+            "MAGICAL_THORN_HAND_ONLY"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 12607053,
+      "nameCn": "和睦的使者",
+      "nameJp": "和睦の使者",
+      "nameEn": "Waboku",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-12-16",
+          "sourceLabel": "EX 初版",
+          "summary": "原版：发动后留场直至回合结束才自毁（可被陷阱解除破坏）",
+          "descCn": "【1999.12.16 初版】对方怪兽造成的战斗伤害仅在发动回合变为0。回合结束时破坏这张卡（发动期间留在场上）。",
+          "flags": [
+            "WABOKU_STAYS_ON_FIELD"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-11-23",
+          "sourceLabel": "EX-R 勘误",
+          "summary": "第1次修改：改为通常陷阱即时送墓，不再留场",
+          "descCn": "【2000.11.23 改版】这张卡发动的回合，对方怪兽造成的全部战斗伤害变为0。",
+          "flags": [
+            "WABOKU_NORMAL_TRAP"
+          ]
+        },
+        {
+          "versionIndex": 3,
+          "effectiveDate": "2004-06-17",
+          "sourceLabel": "SD 守护神之砦 勘误",
+          "summary": "第2次修改：明文补全「本回合自己怪兽不会被战斗破坏」",
+          "descCn": "【2004.06.17 现行版】这个回合，对方怪兽造成的战斗伤害全部变为0，自己怪兽不会被战斗破坏。",
+          "flags": [
+            "WABOKU_NORMAL_TRAP",
+            "WABOKU_BATTLE_PROTECT"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 85602018,
+      "nameCn": "遗言状",
+      "nameJp": "遺言状",
+      "nameEn": "Last Will",
+      "era": "第1期 (1999)",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-12-16",
+          "sourceLabel": "EX 初版",
+          "summary": "原版：本回合有怪兽送墓时即可从卡组特召1只 ATK≤1500 怪兽（初版文本极其宽泛）",
+          "descCn": "【1999.12.16 初版】作为这个回合被送去墓地的1只怪兽的代替，可以从卡组把1只攻击力1500以下的怪兽特殊召唤到场上。",
+          "flags": [
+            "LAST_WILL_1999_BROAD"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-11-23",
+          "sourceLabel": "EX-R 勘误",
+          "summary": "修改：严格限定仅「自己场上怪兽送去自己墓地时」本回合仅1次",
+          "descCn": "【2000.11.23 现行版】这个回合中自己场上的怪兽送去自己墓地时，仅有1次可以从卡组把1只攻击力1500以下的怪兽特殊召唤。",
+          "flags": [
+            "LAST_WILL_FIELD_ONCE"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 66788016,
+      "nameCn": "地割",
+      "nameJp": "地割れ",
+      "nameEn": "Fissure",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-02-04",
+          "sourceLabel": "Vol.1 初刷",
+          "summary": "初刷未注明「表侧表示」，容易引发是否包含里侧怪兽的争议",
+          "descCn": "【1999.02.04 初刷】破坏对方场上攻击力最低的1只怪兽。",
+          "flags": [
+            "FISSURE_INITIAL_TEXT"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "1999-05-05",
+          "sourceLabel": "官方指南书 Starter Book 勘误",
+          "summary": "1999.05.05 明确限定仅破坏对方「表侧表示」怪兽中攻击力最低的1只",
+          "descCn": "【1999.05.05 勘误版】破坏对方场上表侧表示怪兽中攻击力最低的1只怪兽。",
+          "flags": [
+            "FISSURE_FACEUP_ONLY"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 4206964,
+      "nameCn": "落穴",
+      "nameJp": "落とし穴",
+      "nameEn": "Trap Hole",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-02-04",
+          "sourceLabel": "Vol.1 初刷",
+          "summary": "初刷印为「召還」且仅写召唤，未明确是否对应反转召唤",
+          "descCn": "【1999.02.04 初刷】对方在场上召唤攻击力1000以上的怪兽时，破坏「落穴」和那1只怪兽。",
+          "flags": [
+            "TRAP_HOLE_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "1999-05-05",
+          "sourceLabel": "官方指南书 Starter Book 勘误",
+          "summary": "1999.05.05 修正错字并明确表侧化（反转召唤）也可破坏",
+          "descCn": "【1999.05.05 勘误版】对方在场上表侧表示召唤（含反转表侧）的怪兽攻击力在1000以上时，可将其与「落穴」一并破坏。",
+          "flags": [
+            "TRAP_HOLE_FLIP_CLARIFIED"
+          ]
+        },
+        {
+          "versionIndex": 3,
+          "effectiveDate": "2000-05-18",
+          "sourceLabel": "青眼白龙传说（LB）勘误",
+          "summary": "明文限定「召唤·反转召唤」，排除战斗翻开等非反转召唤情形",
+          "descCn": "【2000.05.18 现行版】对方对攻击力1000以上的怪兽召唤·反转召唤成功时，破坏那1只怪兽。",
+          "flags": [
+            "TRAP_HOLE_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 72302403,
+      "nameCn": "光之护封剑",
+      "nameJp": "光の護封剣",
+      "nameEn": "Swords of Revealing Light",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-03-27",
+          "sourceLabel": "Vol.2 初刷",
+          "summary": "初刷写「翻开里侧怪兽」，未注明仅限对方怪兽及3回合后自毁",
+          "descCn": "【1999.03.27 初刷】敌方怪兽全部在3回合内不能攻击。发动时把里侧的怪兽全部翻为表侧。",
+          "flags": [
+            "SWORDS_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "1999-05-05",
+          "sourceLabel": "官方指南书 Starter Book 勘误",
+          "summary": "1999.05.05 明确仅翻开「对方」里侧怪兽",
+          "descCn": "【1999.05.05 勘误版】敌方怪兽全部在3回合内不能攻击。发动时把对方里侧怪兽全部翻为表侧。",
+          "flags": [
+            "SWORDS_OPP_ONLY"
+          ]
+        },
+        {
+          "versionIndex": 3,
+          "effectiveDate": "2002-07-25",
+          "sourceLabel": "DL2 勘误",
+          "summary": "明文「按对方回合计算3回合后破坏离场」",
+          "descCn": "【2002.07.25 现行版】对方场上里侧怪兽全部变为表侧表示。这张卡发动后按对方回合计算3回合内留在场上，对方怪兽不能攻击宣言。",
+          "flags": [
+            "SWORDS_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 12580477,
+      "nameCn": "雷击",
+      "nameJp": "サンダー・ボルト",
+      "nameEn": "Raigeki",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-03-06",
+          "sourceLabel": "STARTER BOX 初版",
+          "summary": "初版仅写「破坏全部对方怪兽」，未注明“场上”",
+          "descCn": "【1999.03.06 初版】破坏所有对方怪兽。",
+          "flags": [
+            "RAIGEKI_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-05-18",
+          "sourceLabel": "青眼白龙传说（LB）勘误",
+          "summary": "明确限定「对方场上」全部怪兽",
+          "descCn": "【2000.05.18 现行版】对方场上存在的怪兽全部破坏。",
+          "flags": [
+            "RAIGEKI_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 99426834,
+      "nameCn": "沼地的魔兽王",
+      "nameJp": "沼地の魔獣王",
+      "nameEn": "Beastking of the Swamps",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-12-01",
+          "sourceLabel": "Booster 6 初版",
+          "summary": "初版未写明「其他融合素材必须是正规素材」",
+          "descCn": "【1999.12.01 初版】这张卡可以代替1只融合素材怪兽使用。",
+          "flags": [
+            "FUSION_SUB_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-11-23",
+          "sourceLabel": "Booster R3 勘误",
+          "summary": "补充「此时其他融合素材必须是正规素材」，禁止双代用融合",
+          "descCn": "【2000.11.23 现行版】这张卡可以作为1只融合素材怪兽的代替。那时，其他的融合素材怪兽必须是正规素材。",
+          "flags": [
+            "FUSION_SUB_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 50259460,
+      "nameCn": "破坏神 瓦沙克",
+      "nameJp": "破壊神 ヴァサーゴ",
+      "nameEn": "Versago the Destroyer",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-12-01",
+          "sourceLabel": "Booster 6 初版",
+          "summary": "初版未写明「其他融合素材必须是正规素材」",
+          "descCn": "【1999.12.01 初版】这张卡可以代替1只融合素材怪兽使用。",
+          "flags": [
+            "FUSION_SUB_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-11-23",
+          "sourceLabel": "Booster R3 勘误",
+          "summary": "补充「此时其他融合素材必须是正规素材」",
+          "descCn": "【2000.11.23 现行版】这张卡可以作为1只融合素材怪兽的代替。那时，其他的融合素材怪兽必须是正规素材。",
+          "flags": [
+            "FUSION_SUB_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 7565547,
+      "nameCn": "力之集约",
+      "nameJp": "力の集約",
+      "nameEn": "Collected Power",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-12-01",
+          "sourceLabel": "Booster 6 初版",
+          "summary": "初版未写明「其他融合素材必须是正规素材」",
+          "descCn": "【1999.12.01 初版】这张卡可以代替1只融合素材怪兽使用。",
+          "flags": [
+            "FUSION_SUB_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-11-23",
+          "sourceLabel": "Booster R3 勘误",
+          "summary": "补充「此时其他融合素材必须是正规素材」",
+          "descCn": "【2000.11.23 现行版】这张卡可以作为1只融合素材怪兽的代替。那时，其他的融合素材怪兽必须是正规素材。",
+          "flags": [
+            "FUSION_SUB_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 53493204,
+      "nameCn": "心眼之女神",
+      "nameJp": "心眼の女神",
+      "nameEn": "Goddess with the Third Eye",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-12-01",
+          "sourceLabel": "Booster 6 初版",
+          "summary": "初版未写明「其他融合素材必须是正规素材」",
+          "descCn": "【1999.12.01 初版】这张卡可以代替1只融合素材怪兽使用。",
+          "flags": [
+            "FUSION_SUB_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-11-23",
+          "sourceLabel": "Booster R3 勘误",
+          "summary": "补充「此时其他融合素材必须是正规素材」",
+          "descCn": "【2000.11.23 现行版】这张卡可以作为1只融合素材怪兽的代替。那时，其他的融合素材怪兽必须是正规素材。",
+          "flags": [
+            "FUSION_SUB_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 41420027,
+      "nameCn": "神之宣告",
+      "nameJp": "神の宣告",
+      "nameEn": "Solemn Judgment",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-11-18",
+          "sourceLabel": "Vol.6 初版",
+          "summary": "初版写「失去一半LP」且未写明特殊召唤与反转召唤",
+          "descCn": "【1999.11.18 初版】失去一半生命值。使魔法·陷阱的发动、怪兽的召唤其中1项无效并破坏。",
+          "flags": [
+            "SOLEMN_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2000-09-21",
+          "sourceLabel": "钢铁袭击者（MR）勘误",
+          "summary": "改为「支付一半LP」并追加特殊召唤",
+          "descCn": "【2000.09.21 改版】支付一半生命值。使魔法·陷阱的发动、怪兽的召唤·特殊召唤其中1项无效并破坏。",
+          "flags": [
+            "SOLEMN_PAY_SS"
+          ]
+        },
+        {
+          "versionIndex": 3,
+          "effectiveDate": "2003-01-23",
+          "sourceLabel": "DL4 勘误",
+          "summary": "明确补全「召唤·反转召唤·特殊召唤」",
+          "descCn": "【2003.01.23 现行版】支付一半基本分。魔法·陷阱卡的发动、怪兽的召唤·反转召唤·特殊召唤其中1项无效并破坏。",
+          "flags": [
+            "SOLEMN_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 98069388,
+      "nameCn": "升天之角笛",
+      "nameJp": "昇天の角笛",
+      "nameEn": "Horn of Heaven",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-11-18",
+          "sourceLabel": "Vol.6 初版",
+          "summary": "初版仅写「怪兽的召唤」，未明文反转召唤/特殊召唤",
+          "descCn": "【1999.11.18 初版】把自己场上1只怪兽作为祭品。使怪兽的召唤无效并破坏。",
+          "flags": [
+            "HORN_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2003-01-23",
+          "sourceLabel": "DL4 勘误",
+          "summary": "明确补全「召唤·反转召唤·特殊召唤」",
+          "descCn": "【2003.01.23 现行版】把自己场上1只怪兽解放发动。怪兽的召唤·反转召唤·特殊召唤无效并破坏。",
+          "flags": [
+            "HORN_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 3819470,
+      "nameCn": "盗贼的七道具",
+      "nameJp": "盗賊の七つ道具",
+      "nameEn": "Seven Tools of the Bandit",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-11-18",
+          "sourceLabel": "Vol.6 初版",
+          "summary": "初版表述为「失去1000生命值」",
+          "descCn": "【1999.11.18 初版】失去1000生命值。使陷阱卡的发动无效并破坏。",
+          "flags": [
+            "SEVEN_TOOLS_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2003-01-23",
+          "sourceLabel": "DL4 勘误",
+          "summary": "修正为「支付1000基本分」",
+          "descCn": "【2003.01.23 现行版】支付1000基本分发动。陷阱卡的发动无效并破坏。",
+          "flags": [
+            "SEVEN_TOOLS_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 80604091,
+      "nameCn": "血之代偿",
+      "nameJp": "血の代償",
+      "nameEn": "Ultimate Offering",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-07-05",
+          "sourceLabel": "Booster 3 初版",
+          "summary": "初版仅写「每支付500 LP 即可追加通常召唤」，未限定发动阶段",
+          "descCn": "【1999.07.05 初版】每支付500生命值，就可以在通常召唤之外额外召唤1只怪兽。",
+          "flags": [
+            "OFFERING_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2003-04-24",
+          "sourceLabel": "SD 城之内2 勘误",
+          "summary": "明确限定仅在「自己主要阶段及对方战斗阶段」发动",
+          "descCn": "【2003.04.24 现行版】自己主要阶段及对方战斗阶段，支付500基本分可以把1只怪兽通常召唤。",
+          "flags": [
+            "OFFERING_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 54098121,
+      "nameCn": "谜之傀儡师",
+      "nameJp": "謎の傀儡師",
+      "nameEn": "Mysterious Puppeteer",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-10-17",
+          "sourceLabel": "Booster 5 初版",
+          "summary": "初版括注「含变为表侧表示时」，易与战斗翻开混淆",
+          "descCn": "【1999.10.17 初版】有怪兽召唤·反转召唤（含变为表侧表示时），每1只回复500生命值。",
+          "flags": [
+            "PUPPETEER_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2008-10-01",
+          "sourceLabel": "TP2008 Vol.3 勘误",
+          "summary": "删除括注，明确仅「召唤·反转召唤成功时」回复500",
+          "descCn": "【2008.10.01 现行版】怪兽召唤·反转召唤成功时，自己回复500基本分。",
+          "flags": [
+            "PUPPETEER_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 63224564,
+      "nameCn": "电子紧身衣",
+      "nameJp": "サイバー・ボンテージ",
+      "nameEn": "Cyber Shield",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-07-08",
+          "sourceLabel": "DM2 特典初版",
+          "summary": "初版误印片假名「ハーピィ・レディー」（多长音符）",
+          "descCn": "【1999.07.08 初版】鹰身女妖1只或鹰身女妖三姐妹1只的攻击力上升500！（原日文卡名误印）",
+          "flags": [
+            "CYBER_SHIELD_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2009-01-01",
+          "sourceLabel": "TP2009 Vol.4 勘误",
+          "summary": "修正装备对象的正规字段卡名",
+          "descCn": "【2009.01.01 现行版】「鹰身女妖」「鹰身女妖三姐妹」才能装备。装备怪兽的攻击力上升500。",
+          "flags": [
+            "CYBER_SHIELD_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 32012841,
+      "nameCn": "千年盾",
+      "nameJp": "千年の盾",
+      "nameEn": "Millennium Shield",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-06-01",
+          "sourceLabel": "LIMITED EDITION 1 初版",
+          "summary": "初版描述写为「千年神器之一」（后与原作7件千年神器设定冲突）",
+          "descCn": "【1999.06.01 初版】千年神器之一。据说无论多强的攻击都能挡下。",
+          "flags": [
+            "MILLENNIUM_SHIELD_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2001-08-10",
+          "sourceLabel": "PREMIUM PACK 5 勘误",
+          "summary": "改写为「相传自古埃及王家流传的传说之盾」",
+          "descCn": "【2001.08.10 现行版】相传从古埃及王家流传下来的传说之盾。据说无论多强的攻击都能挡下。",
+          "flags": [
+            "MILLENNIUM_SHIELD_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 41356845,
+      "nameCn": "蓄积硫酸的落穴",
+      "nameJp": "硫酸のたまった落とし穴",
+      "nameEn": "Acid Trap Hole",
+      "era": "第1期 (1999)",
+      "category": "EARLY_TEXT_FIX",
+      "in1999Catalog": true,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "1999-07-08",
+          "sourceLabel": "DM2 特典初版",
+          "summary": "初版独特表述「把蓄积硫酸的落穴作为祭品」",
+          "descCn": "【1999.07.08 初版】把「蓄积硫酸的落穴」作为祭品。把1只里侧守备表示怪兽翻开，守备力2000以下则破坏，超过2000则盖回。",
+          "flags": [
+            "ACID_TRAP_INITIAL"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2001-08-10",
+          "sourceLabel": "PREMIUM PACK 5 勘误",
+          "summary": "删除第1期冗余自毁/祭品句式，统一为通常陷阱格式",
+          "descCn": "【2001.08.10 现行版】选择场上1只里侧守备表示怪兽翻开，守备力2000以下则破坏，超过2000则恢复原状。",
+          "flags": [
+            "ACID_TRAP_STANDARD"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 15259703,
+      "nameCn": "卡通世界",
+      "nameJp": "トゥーン・ワールド",
+      "nameEn": "Toon World",
+      "era": "第２期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版（参考现行版区别：SD 贝卡斯编：取消每回合维持费500LP与离场返还，仅发动付1000LP）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2002-01-24",
+          "sourceLabel": "2002-01-24 OCG 官方勘误版",
+          "summary": "SD 贝卡斯编：取消每回合维持费500LP与离场返还，仅发动付1000LP",
+          "descCn": "【2002-01-24 勘误后】支付1000基本分才能把这张卡发动。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 70344351,
+      "nameCn": "力场",
+      "nameJp": "フォースフィールド",
+      "nameEn": "Riryoku Field",
+      "era": "第２期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-07-12",
+          "sourceLabel": "2001-07-12 勘误前初版",
+          "summary": "LN 初版",
+          "descCn": "【2001-07-12 勘误前初版】LN 初版（参考现行版区别：SD 贝卡斯编：限定仅能无效以「场上」怪兽为对象的魔法）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2002-01-24",
+          "sourceLabel": "2002-01-24 OCG 官方勘误版",
+          "summary": "SD 贝卡斯编：限定仅能无效以「场上」怪兽为对象的魔法",
+          "descCn": "【2002-01-24 勘误后】以场上的1只怪兽为对象的魔法的发动无效并破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 44656491,
+      "nameCn": "和平使者",
+      "nameJp": "平和の使者",
+      "nameEn": "Messenger of Peace",
+      "era": "第３期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版（参考现行版区别：DL1：维持费100LP由强制支付改为任意支付）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2002-06-20",
+          "sourceLabel": "2002-06-20 OCG 官方勘误版",
+          "summary": "DL1：维持费100LP由强制支付改为任意支付",
+          "descCn": "【2002-06-20 勘误后】场上表侧表示存在的攻击力1500以上的怪兽不能攻击宣言。这张卡的控制者在每次自己的准备阶段支付100基本分。或者不支付100基本分让这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 95174353,
+      "nameCn": "阿米巴",
+      "nameJp": "アメーバ",
+      "nameEn": "Ameba",
+      "era": "第３期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-04-20",
+          "sourceLabel": "2000-04-20 勘误前初版",
+          "summary": "MR 初版",
+          "descCn": "【2000-04-20 勘误前初版】MR 初版（参考现行版区别：DL1：明确仅表侧表示转移控制权时触发2000伤害）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2002-06-20",
+          "sourceLabel": "2002-06-20 OCG 官方勘误版",
+          "summary": "DL1：明确仅表侧表示转移控制权时触发2000伤害",
+          "descCn": "【2002-06-20 勘误后】场上表侧表示存在的这张卡的控制权转移给对方时，对方受到2000分的伤害。这个效果只在这张卡在场上表侧表示存在能使用1次。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 11324436,
+      "nameCn": "电蛇",
+      "nameJp": "エレクトリック・スネーク",
+      "nameEn": "Electric Snake",
+      "era": "第３期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-04-20",
+          "sourceLabel": "2000-04-20 勘误前初版",
+          "summary": "MR 初版",
+          "descCn": "【2000-04-20 勘误前初版】MR 初版（参考现行版区别：DL1：由“从手卡送去墓地”改为“从手卡丢弃”）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2002-06-20",
+          "sourceLabel": "2002-06-20 OCG 官方勘误版",
+          "summary": "DL1：由“从手卡送去墓地”改为“从手卡丢弃”",
+          "descCn": "【2002-06-20 勘误后】这张卡被对方的卡的效果从手卡丢弃去墓地时，从自己卡组抽2张卡。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 64631466,
+      "nameCn": "纳祭之魔",
+      "nameJp": "サクリファイス",
+      "nameEn": "Relinquished",
+      "era": "第３期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-04-20",
+          "sourceLabel": "2000-04-20 勘误前初版",
+          "summary": "MR 初版",
+          "descCn": "【2000-04-20 勘误前初版】MR 初版（参考现行版区别：DL1/BE1：明文装备怪兽代破与双方战伤反射条件）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2002-06-20",
+          "sourceLabel": "2002-06-20 OCG 官方勘误版",
+          "summary": "DL1/BE1：明文装备怪兽代破与双方战伤反射条件",
+          "descCn": "【2002-06-20 勘误后】「幻想的仪式」降临。\r\n①：1回合1次，以对方场上1只怪兽为对象才能发动。那只对方怪兽当作装备卡使用给这张卡装备（只有1只可以装备）。\r\n②：这张卡的攻击力·守备力变成这张卡的效果装备的怪兽的各自数值，这张卡被战斗破坏的场合，作为代替把装备的那只怪兽破坏。\r\n③：用这张卡的效果把怪兽装备的这张卡的战斗让自己受到战斗伤害时，对方也受到相同数值的效果伤害。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 93016201,
+      "nameCn": "王宫的弹压",
+      "nameJp": "王宮の弾圧",
+      "nameEn": "Royal Oppression",
+      "era": "第３期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-11-29",
+          "sourceLabel": "2001-11-29 勘误前初版",
+          "summary": "MA 初版",
+          "descCn": "【2001-11-29 勘误前初版】MA 初版（参考现行版区别：DL5：无效特殊召唤明确对象与连锁限制）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2003-04-24",
+          "sourceLabel": "2003-04-24 OCG 官方勘误版",
+          "summary": "DL5：无效特殊召唤明确对象与连锁限制",
+          "descCn": "【2003-04-24 勘误后】可以支付800基本分，怪兽的特殊召唤以及包含怪兽的特殊召唤的效果无效并破坏。这个效果对方玩家也能使用。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 99173029,
+      "nameCn": "灵子能固定装置",
+      "nameJp": "霊子エネルギー固定装置",
+      "nameEn": "Spiritual Energy Settle Machine",
+      "era": "第３期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-09-20",
+          "sourceLabel": "2001-09-20 勘误前初版",
+          "summary": "SC 初版",
+          "descCn": "【2001-09-20 勘误前初版】SC 初版（参考现行版区别：DL5：离场处理修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2003-04-24",
+          "sourceLabel": "2003-04-24 OCG 官方勘误版",
+          "summary": "DL5：离场处理修正",
+          "descCn": "【2003-04-24 勘误后】只要这张卡在场上存在，灵魂怪兽持续留在场上。自己的结束阶段时丢弃1张手卡，若不丢弃，这张卡破坏。并且，这张卡从场上离开时，在场上存在的表侧表示的灵魂怪兽全部回到持有者的手卡。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 70797118,
+      "nameCn": "雷电娘娘",
+      "nameJp": "雷電娘々",
+      "nameEn": "Thunder Nyan Nyan",
+      "era": "第３期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2002-03-21",
+          "sourceLabel": "2002-03-21 勘误前初版",
+          "summary": "PG 初版",
+          "descCn": "【2002-03-21 勘误前初版】PG 初版（参考现行版区别：DL5：自毁条件由“其他怪兽存在”细化为“光属性以外怪兽”）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2003-04-24",
+          "sourceLabel": "2003-04-24 OCG 官方勘误版",
+          "summary": "DL5：自毁条件由“其他怪兽存在”细化为“光属性以外怪兽”",
+          "descCn": "【2003-04-24 勘误后】自己场上存在光属性以外的表侧表示怪兽的场合，表侧表示的这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 99789342,
+      "nameCn": "黑魔术的幕帘",
+      "nameJp": "黒魔術のカーテン",
+      "nameEn": "Dark Magic Curtain",
+      "era": "第３期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-04-20",
+          "sourceLabel": "2000-04-20 勘误前初版",
+          "summary": "初版",
+          "descCn": "【2000-04-20 勘误前初版】初版（参考现行版区别：BE1：明确发动回合召唤/反转召唤/特殊召唤限制）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2004-03-18",
+          "sourceLabel": "2004-03-18 OCG 官方勘误版",
+          "summary": "BE1：明确发动回合召唤/反转召唤/特殊召唤限制",
+          "descCn": "【2004-03-18 勘误后】这张卡发动的回合，自己不能用这张卡的效果以外把怪兽召唤·反转召唤·特殊召唤。\r\n①：把基本分支付一半才能发动。从卡组把1只「黑魔术师」特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 56460688,
+      "nameCn": "异次元隔离机",
+      "nameJp": "異次元隔離マシーン",
+      "nameEn": "Different Dimension Gate",
+      "era": "第４期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2002-07-18",
+          "sourceLabel": "2002-07-18 勘误前初版",
+          "summary": "302 初版",
+          "descCn": "【2002-07-18 勘误前初版】302 初版（参考现行版区别：EE2：对象离场后归还处理修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2004-06-24",
+          "sourceLabel": "2004-06-24 OCG 官方勘误版",
+          "summary": "EE2：对象离场后归还处理修正",
+          "descCn": "【2004-06-24 勘误后】从自己和对方场上各选择1只怪兽，从游戏中除外。这张卡被破坏并送去墓地时，被除外怪兽以相同的表示形式回到原本所在的场上。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 303660,
+      "nameCn": "电脑增幅器",
+      "nameJp": "電脳増幅器",
+      "nameEn": "Amplifier",
+      "era": "第４期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2003-07-17",
+          "sourceLabel": "2003-07-17 勘误前初版",
+          "summary": "306 初版",
+          "descCn": "【2003-07-17 勘误前初版】306 初版（参考现行版区别：EE3：装备离场破坏对象逻辑修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2005-03-17",
+          "sourceLabel": "2005-03-17 OCG 官方勘误版",
+          "summary": "EE3：装备离场破坏对象逻辑修正",
+          "descCn": "【2005-03-17 勘误后】「人造人-念力震慑者」才能装备。这张卡的发动和效果不会被无效化。\r\n①：装备怪兽持有的「双方不能把场上的陷阱卡的效果发动，场上的陷阱卡的效果无效化」效果作为「对方不能把场上的陷阱卡的效果发动，对方场上的陷阱卡的效果无效化」适用。\r\n②：这张卡从场上离开时装备怪兽破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 13955608,
+      "nameCn": "机动城 堡垒",
+      "nameJp": "機動砦 ストロング・ホールド",
+      "nameEn": "Stronghold the Moving Fortress",
+      "era": "第５期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2004-04-20",
+          "sourceLabel": "2004-04-20 勘误前初版",
+          "summary": "2004-04-20 初版效果（勘误前）",
+          "descCn": "【2004-04-20 勘误前初版】2004-04-20 初版效果（勘误前）（参考现行版区别：SD10 勘误：攻击力计算方式由固定3000调整）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2006-09-14",
+          "sourceLabel": "2006-09-14 OCG 官方勘误版",
+          "summary": "SD10 勘误：攻击力计算方式由固定3000调整",
+          "descCn": "【2006-09-14 勘误后】①：这张卡发动后变成效果怪兽（机械族·地·4星·攻0/守2000）在怪兽区域守备表示特殊召唤。这张卡也当作陷阱卡使用。\r\n②：自己场上有「绿色零件」「红色零件」「黄色零件」存在的场合，这张卡的效果特殊召唤的这张卡的攻击力上升3000。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 96782886,
+      "nameCn": "精神脑魔",
+      "nameJp": "メンタルマスター",
+      "nameEn": "Mind Master",
+      "era": "第６期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2008-04-19",
+          "sourceLabel": "2008-04-19 勘误前初版",
+          "summary": "TDGS 初版无次数限制",
+          "descCn": "【2008-04-19 勘误前初版】TDGS 初版无次数限制（参考现行版区别：2026.07.01 禁止解除勘误（1回合1次等））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2026-07-01",
+          "sourceLabel": "2026-07-01 OCG 官方勘误版",
+          "summary": "2026.07.01 禁止解除勘误（1回合1次等）",
+          "descCn": "【2026-07-01 勘误后】这个卡名的效果1回合只能使用1次。\r\n①：支付800基本分，把自己场上1只念动力族怪兽解放才能发动。从卡组把1只4星以下的念动力族怪兽攻击表示特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 16589042,
+      "nameCn": "疾风之暗黑骑士 盖亚",
+      "nameJp": "疾風の暗黒騎士ガイア",
+      "nameEn": "Swift Gaia the Fierce Knight",
+      "era": "第６期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-08-10",
+          "sourceLabel": "2000-08-10 勘误前初版",
+          "summary": "PP3 初版",
+          "descCn": "【2000-08-10 勘误前初版】PP3 初版（参考现行版区别：TP 勘误：手卡0张时无需祭品通常召唤条件整理）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2008-10-01",
+          "sourceLabel": "2008-10-01 OCG 官方勘误版",
+          "summary": "TP 勘误：手卡0张时无需祭品通常召唤条件整理",
+          "descCn": "【2008-10-01 勘误后】①：手卡只有这1张卡的场合，这张卡可以不用解放作召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 45894482,
+      "nameCn": "骏足之迅猛龙",
+      "nameJp": "俊足のギラザウルス",
+      "nameEn": "Gilasaurus",
+      "era": "第７期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-07-12",
+          "sourceLabel": "2001-07-12 勘误前初版",
+          "summary": "LN 初版",
+          "descCn": "【2001-07-12 勘误前初版】LN 初版（参考现行版区别：TP 勘误：特殊召唤变为不入连锁规则特召）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2010-07-01",
+          "sourceLabel": "2010-07-01 OCG 官方勘误版",
+          "summary": "TP 勘误：特殊召唤变为不入连锁规则特召",
+          "descCn": "【2010-07-01 勘误后】①：这张卡可以从手卡特殊召唤。\r\n②：这张卡的①的方法特殊召唤成功的场合发动。对方可以选自身墓地1只怪兽特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 43586926,
+      "nameCn": "多尔·多拉",
+      "nameJp": "ドル・ドラ",
+      "nameEn": "Twin-Headed Behemoth",
+      "era": "第７期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2002-05-16",
+          "sourceLabel": "2002-05-16 勘误前初版",
+          "summary": "301 初版",
+          "descCn": "【2002-05-16 勘误前初版】301 初版（参考现行版区别：TP 勘误：复活效果改为“决斗中只能使用1次”）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2010-10-01",
+          "sourceLabel": "2010-10-01 OCG 官方勘误版",
+          "summary": "TP 勘误：复活效果改为“决斗中只能使用1次”",
+          "descCn": "【2010-10-01 勘误后】这个卡名的效果在决斗中只能使用1次。\r\n①：场上的这张卡被破坏送去墓地的回合的结束阶段才能发动。这张卡从墓地特殊召唤。这个效果特殊召唤的这张卡的攻击力·守备力变成1000。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 57774843,
+      "nameCn": "裁决之龙",
+      "nameJp": "裁きの龍",
+      "nameEn": "Judgment Dragon",
+      "era": "第８期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2008-02-23",
+          "sourceLabel": "2008-02-23 勘误前初版",
+          "summary": "LODT 初版",
+          "descCn": "【2008-02-23 勘误前初版】LODT 初版（参考现行版区别：DS14 勘误：结束阶段堆墓改为不连锁的诱发效果）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2012-07-01",
+          "sourceLabel": "2012-07-01 OCG 官方勘误版",
+          "summary": "DS14 勘误：结束阶段堆墓改为不连锁的诱发效果",
+          "descCn": "【2012-07-01 勘误后】这张卡不能通常召唤。自己墓地的「光道」怪兽是4种类以上的场合才能特殊召唤。\r\n①：支付1000基本分才能发动。场上的其他卡全部破坏。\r\n②：自己结束阶段发动。从自己卡组上面把4张卡送去墓地。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 95727991,
+      "nameCn": "弹射龟",
+      "nameJp": "カタパルト・タートル",
+      "nameEn": "Catapult Turtle",
+      "era": "第８期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-01-27",
+          "sourceLabel": "2000-01-27 勘误前初版",
+          "summary": "Vol.7 初版无次数限制",
+          "descCn": "【2000-01-27 勘误前初版】Vol.7 初版无次数限制（参考现行版区别：2014.01 勘误为「1回合只能使用1次」）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2014-01-01",
+          "sourceLabel": "2014-01-01 OCG 官方勘误版",
+          "summary": "2014.01 勘误为「1回合只能使用1次」",
+          "descCn": "【2014-01-01 勘误后】1回合1次，把自己场上1只怪兽解放才能发动。给与对方基本分解放的怪兽的攻击力一半数值的伤害。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 32646477,
+      "nameCn": "暗黑俯冲轰炸机",
+      "nameJp": "ダーク・ダイブ・ボンバー",
+      "nameEn": "Dark Strike Fighter",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2008-11-15",
+          "sourceLabel": "2008-11-15 勘误前初版",
+          "summary": "CRMS 初版无次数限制且战阶可发",
+          "descCn": "【2008-11-15 勘误前初版】CRMS 初版无次数限制且战阶可发（参考现行版区别：2014.04.01 禁止解除勘误（仅主阶1、1回合1次））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2014-04-01",
+          "sourceLabel": "2014-04-01 OCG 官方勘误版",
+          "summary": "2014.04.01 禁止解除勘误（仅主阶1、1回合1次）",
+          "descCn": "【2014-04-01 勘误后】调整＋调整以外的怪兽1只以上\r\n「暗黑俯冲轰炸机」的效果1回合只能使用1次。\r\n①：自己主要阶段1把自己场上1只怪兽解放才能发动。给与对方解放的怪兽的等级×200伤害。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 40044918,
+      "nameCn": "元素英雄 天空侠",
+      "nameJp": "E・HERO エアーマン",
+      "nameEn": "Elemental HERO Stratos",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2006-08-21",
+          "sourceLabel": "2006-08-21 勘误前初版",
+          "summary": "VJ 初版",
+          "descCn": "【2006-08-21 勘误前初版】VJ 初版（参考现行版区别：SD27：破坏魔陷改为不取对象）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2014-06-21",
+          "sourceLabel": "2014-06-21 OCG 官方勘误版",
+          "summary": "SD27：破坏魔陷改为不取对象",
+          "descCn": "【2014-06-21 勘误后】①：这张卡召唤·特殊召唤时，可以从以下效果选择1个发动。\r\n●把最多有自己场上的其他的「英雄」怪兽数量的场上的魔法·陷阱卡破坏。\r\n●从卡组把1只「英雄」怪兽加入手卡。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 29762407,
+      "nameCn": "王家的神殿",
+      "nameJp": "王家の神殿",
+      "nameEn": "Temple of the Kings",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-09-20",
+          "sourceLabel": "2001-09-20 勘误前初版",
+          "summary": "WJ 初版无次数限制",
+          "descCn": "【2001-09-20 勘误前初版】WJ 初版无次数限制（参考现行版区别：2015.01.01 禁止解除勘误（盖放当回合发动陷阱限1回合1次））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-01-01",
+          "sourceLabel": "2015-01-01 OCG 官方勘误版",
+          "summary": "2015.01.01 禁止解除勘误（盖放当回合发动陷阱限1回合1次）",
+          "descCn": "【2015-01-01 勘误后】这个卡名的①②的效果1回合各能使用1次。\r\n①：自己可以把1张陷阱卡在盖放的回合发动。\r\n②：把自己场上的表侧表示的1只「圣兽 塞勒凯特」和这张卡送去墓地才能发动。手卡·卡组1只怪兽或者额外卡组1只融合怪兽特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 82301904,
+      "nameCn": "混沌帝龙 -终焉的使者-",
+      "nameJp": "混沌帝龍 －終焉の使者－",
+      "nameEn": "Chaos Emperor Dragon - Envoy of the End",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2003-04-24",
+          "sourceLabel": "2003-04-24 勘误前初版",
+          "summary": "306 初版",
+          "descCn": "【2003-04-24 勘误前初版】306 初版（参考现行版区别：2015.01.01 禁止解除勘误（发动回合不可发动其他效果，且仅烧对方送墓卡））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-01-01",
+          "sourceLabel": "2015-01-01 OCG 官方勘误版",
+          "summary": "2015.01.01 禁止解除勘误（发动回合不可发动其他效果，且仅烧对方送墓卡）",
+          "descCn": "【2015-01-01 勘误后】这张卡不能通常召唤。从自己墓地把光·暗属性怪兽各1只除外的场合才能特殊召唤。这张卡的效果发动的回合，自己不能把其他的效果发动。\r\n①：1回合1次，支付1000基本分才能发动。双方的手卡·场上的卡全部送去墓地。那之后，给与对方这个效果送去对方墓地的卡数量×300伤害。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 8131171,
+      "nameCn": "杀人蛇",
+      "nameJp": "キラー・スネーク",
+      "nameEn": "Sinister Serpent",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-07",
+          "sourceLabel": "2000-07-07 勘误前初版",
+          "summary": "GB3 初版无限回收",
+          "descCn": "【2000-07-07 勘误前初版】GB3 初版无限回收（参考现行版区别：2015.01.01 禁止解除勘误（1回合1次且下次对方结束阶段除外墓地1只杀人蛇））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-01-01",
+          "sourceLabel": "2015-01-01 OCG 官方勘误版",
+          "summary": "2015.01.01 禁止解除勘误（1回合1次且下次对方结束阶段除外墓地1只杀人蛇）",
+          "descCn": "【2015-01-01 勘误后】「杀人蛇」的效果1回合只能使用1次。\r\n①：这张卡在墓地存在的场合，自己准备阶段才能发动。这张卡回到手卡。下次的对方结束阶段选自己墓地1只「杀人蛇」除外。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 17484499,
+      "nameCn": "现世与冥界的逆转",
+      "nameJp": "現世と冥界の逆転",
+      "nameEn": "Exchange of the Spirit",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-12-07",
+          "sourceLabel": "2000-12-07 勘误前初版",
+          "summary": "GB4 初版仅要求自己墓地15张",
+          "descCn": "【2000-12-07 勘误前初版】GB4 初版仅要求自己墓地15张（参考现行版区别：2015.01.01 禁止解除勘误（要求双方墓地均15张以上））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-01-01",
+          "sourceLabel": "2015-01-01 OCG 官方勘误版",
+          "summary": "2015.01.01 禁止解除勘误（要求双方墓地均15张以上）",
+          "descCn": "【2015-01-01 勘误后】这个卡名的卡在决斗中只能发动1张。\r\n①：双方墓地的卡各自是15张以上的场合支付1000基本分才能发动。双方玩家各自把自身的卡组和墓地的卡全部交换，那之后卡组洗切。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 83555666,
+      "nameCn": "破坏轮",
+      "nameJp": "破壊輪",
+      "nameEn": "Ring of Destruction",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-12-07",
+          "sourceLabel": "2000-12-07 勘误前初版",
+          "summary": "GB4 初版双方同时扣血可平局",
+          "descCn": "【2000-12-07 勘误前初版】GB4 初版双方同时扣血可平局（参考现行版区别：2015.01.01 禁止解除勘误（仅对方回合、对象ATK≤对方LP、自己先受伤再给对方伤害、1回合1张））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-01-01",
+          "sourceLabel": "2015-01-01 OCG 官方勘误版",
+          "summary": "2015.01.01 禁止解除勘误（仅对方回合、对象ATK≤对方LP、自己先受伤再给对方伤害、1回合1张）",
+          "descCn": "【2015-01-01 勘误后】这个卡名的卡在1回合只能发动1张。\r\n①：对方回合，以持有对方基本分数值以下的攻击力的对方场上1只表侧表示怪兽为对象才能发动。那只表侧表示怪兽破坏，自己受到那只怪兽的原本攻击力数值的伤害。那之后，给与对方为和自己受到的伤害相同数值的伤害。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 48948935,
+      "nameCn": "假面魔兽 死亡护法师",
+      "nameJp": "仮面魔獣デス・ガーディウス",
+      "nameEn": "Masked Beast Des Gardius",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-08-09",
+          "sourceLabel": "2001-08-09 勘误前初版",
+          "summary": "G5 初版",
+          "descCn": "【2001-08-09 勘误前初版】G5 初版（参考现行版区别：MB01：遗言装备效果不入连锁/条件调整）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-01-10",
+          "sourceLabel": "2015-01-10 OCG 官方勘误版",
+          "summary": "MB01：遗言装备效果不入连锁/条件调整",
+          "descCn": "【2015-01-10 勘误后】这张卡不能通常召唤。把包含「假面咒术师 诅咒之喉」「梅尔基多四面兽」之内任意种的自己场上2只怪兽解放的场合可以特殊召唤。\r\n①：这张卡从场上送去墓地的场合，以对方场上1只表侧表示怪兽为对象发动。从卡组把1张「遗言之假面」当作装备卡使用给作为对象的怪兽装备。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 40737112,
+      "nameCn": "混沌之黑魔术师",
+      "nameJp": "混沌の黒魔術師",
+      "nameEn": "Dark Magician of Chaos",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2003-04-24",
+          "sourceLabel": "2003-04-24 勘误前初版",
+          "summary": "306 初版召唤即刻回收魔法",
+          "descCn": "【2003-04-24 勘误前初版】306 初版召唤即刻回收魔法（参考现行版区别：2015.04.01 禁止解除勘误（改为结束阶段回收且1回合1次））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-04-01",
+          "sourceLabel": "2015-04-01 OCG 官方勘误版",
+          "summary": "2015.04.01 禁止解除勘误（改为结束阶段回收且1回合1次）",
+          "descCn": "【2015-04-01 勘误后】这个卡名的①的效果1回合只能使用1次。\r\n①：这张卡召唤·特殊召唤的回合的结束阶段，以自己墓地1张魔法卡为对象才能发动。那张卡加入手卡。\r\n②：这张卡战斗破坏对方怪兽的伤害计算后发动。那只对方怪兽除外。\r\n③：表侧表示的这张卡从场上离开的场合除外。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 31829185,
+      "nameCn": "暗黑人偶 妮可罗菲娅",
+      "nameJp": "ダーク・ネクロフィア",
+      "nameEn": "Dark Necrofear",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-07-12",
+          "sourceLabel": "2001-07-12 勘误前初版",
+          "summary": "LN 初版",
+          "descCn": "【2001-07-12 勘误前初版】LN 初版（参考现行版区别：DP16：送墓发动条件调整）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-01-10",
+          "sourceLabel": "2015-01-10 OCG 官方勘误版",
+          "summary": "DP16：送墓发动条件调整",
+          "descCn": "【2015-01-10 勘误后】这张卡不能通常召唤。从自己墓地把3只恶魔族怪兽除外的场合可以特殊召唤。\r\n①：怪兽区域的这张卡被对方破坏送去墓地的回合的结束阶段，以对方场上1只表侧表示怪兽为对象发动。墓地的这张卡当作装备卡使用给那只对方怪兽装备。\r\n②：这张卡的效果让这张卡装备中的场合，得到装备怪兽的控制权。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 53183600,
+      "nameCn": "青眼卡通龙",
+      "nameJp": "ブルーアイズ・トゥーン・ドラゴン",
+      "nameEn": "Blue-Eyes Toon Dragon",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版（参考现行版区别：CPD1：不再需要支付500LP攻击，允许直接攻击规则统一）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-05-16",
+          "sourceLabel": "2015-05-16 OCG 官方勘误版",
+          "summary": "CPD1：不再需要支付500LP攻击，允许直接攻击规则统一",
+          "descCn": "【2015-05-16 勘误后】这张卡不能通常召唤。自己场上有「卡通世界」存在的状态，把自己场上2只怪兽解放的场合可以特殊召唤。\r\n①：这张卡在特殊召唤的回合不能攻击。\r\n②：这张卡的攻击宣言之际，自己必须支付500基本分。\r\n③：这张卡在对方场上没有卡通怪兽存在的场合，可以直接攻击。存在的场合，只能选择卡通怪兽作为攻击对象。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 91842653,
+      "nameCn": "卡通恶魔",
+      "nameJp": "トゥーン・デーモン",
+      "nameEn": "Toon Summoned Skull",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版（参考现行版区别：CPD1：卡通怪兽攻击与维持规则统一）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-05-16",
+          "sourceLabel": "2015-05-16 OCG 官方勘误版",
+          "summary": "CPD1：卡通怪兽攻击与维持规则统一",
+          "descCn": "【2015-05-16 勘误后】这张卡不能通常召唤。自己场上有「卡通世界」存在的状态，把自己场上1只怪兽解放的场合可以特殊召唤。\r\n①：这张卡在特殊召唤的回合不能攻击。\r\n②：这张卡的攻击宣言之际，自己必须支付500基本分。\r\n③：这张卡在对方场上没有卡通怪兽存在的场合，可以直接攻击。存在的场合，只能选择卡通怪兽作为攻击对象。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 38369349,
+      "nameCn": "卡通蛋龙",
+      "nameJp": "トゥーン・ドラゴン・エッガー",
+      "nameEn": "Manga Ryu-Ran",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版（参考现行版区别：CPD1：卡通怪兽攻击与维持规则统一）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-05-16",
+          "sourceLabel": "2015-05-16 OCG 官方勘误版",
+          "summary": "CPD1：卡通怪兽攻击与维持规则统一",
+          "descCn": "【2015-05-16 勘误后】这张卡不能通常召唤。自己场上有「卡通世界」存在，把自己场上2只怪兽解放的场合可以特殊召唤。\r\n①：这张卡在特殊召唤的回合不能攻击。\r\n②：这张卡的攻击宣言之际，自己必须支付500基本分。\r\n③：对方场上没有卡通怪兽存在的场合，这张卡可以直接攻击。存在的场合，必须把卡通怪兽作为攻击对象。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 65458948,
+      "nameCn": "卡通人鱼",
+      "nameJp": "トゥーン・マーメイド",
+      "nameEn": "Toon Mermaid",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版（参考现行版区别：CPD1：卡通怪兽攻击与维持规则统一）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-05-16",
+          "sourceLabel": "2015-05-16 OCG 官方勘误版",
+          "summary": "CPD1：卡通怪兽攻击与维持规则统一",
+          "descCn": "【2015-05-16 勘误后】这张卡不能通常召唤。自己场上有「卡通世界」存在的场合可以特殊召唤。\r\n①：这张卡在特殊召唤的回合不能攻击。\r\n②：这张卡的攻击宣言之际，自己必须支付500基本分。\r\n③：这张卡在对方场上没有卡通怪兽存在的场合，可以直接攻击。存在的场合，只能选择卡通怪兽作为攻击对象。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 42386471,
+      "nameCn": "卡通双生精灵",
+      "nameJp": "トゥーン・ヂェミナイ・エルフ",
+      "nameEn": "Toon Gemini Elf",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2002-07-04",
+          "sourceLabel": "2002-07-04 勘误前初版",
+          "summary": "PE 初版",
+          "descCn": "【2002-07-04 勘误前初版】PE 初版（参考现行版区别：CPD1：卡通双生精灵效果调整）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2015-05-16",
+          "sourceLabel": "2015-05-16 OCG 官方勘误版",
+          "summary": "CPD1：卡通双生精灵效果调整",
+          "descCn": "【2015-05-16 勘误后】①：这张卡在召唤·反转召唤·特殊召唤的回合不能攻击。\r\n②：自己场上有「卡通世界」存在，对方场上没有卡通怪兽存在的场合，这张卡可以直接攻击。\r\n③：这张卡给与对方战斗伤害时才能发动。对方手卡随机1张丢弃。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 92001300,
+      "nameCn": "古代的机械城",
+      "nameJp": "古代の機械城",
+      "nameEn": "Ancient Gear Castle",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2005-11-17",
+          "sourceLabel": "2005-11-17 勘误前初版",
+          "summary": "SOI 初版",
+          "descCn": "【2005-11-17 勘误前初版】SOI 初版（参考现行版区别：SR03：指示物放置触发条件修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2016-09-24",
+          "sourceLabel": "2016-09-24 OCG 官方勘误版",
+          "summary": "SR03：指示物放置触发条件修正",
+          "descCn": "【2016-09-24 勘误后】①：场上的「古代的机械」怪兽的攻击力上升300。\r\n②：只要这张卡在魔法与陷阱区域存在，每次怪兽通常召唤，给这张卡放置1个指示物。\r\n③：自己把「古代的机械」怪兽表侧表示上级召唤的场合，可以把有需要的解放数量以上的指示物放置的这张卡作为代替而解放来上级召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 10248389,
+      "nameCn": "电子化冰刀手",
+      "nameJp": "サイバー・ブレイダー",
+      "nameEn": "Cyber Blader",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2005-08-11",
+          "sourceLabel": "2005-08-11 勘误前初版",
+          "summary": "EEN 初版",
+          "descCn": "【2005-08-11 勘误前初版】EEN 初版（参考现行版区别：CPF1：3只以上效果改为无效对方发动的效果）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2016-05-14",
+          "sourceLabel": "2016-05-14 OCG 官方勘误版",
+          "summary": "CPF1：3只以上效果改为无效对方发动的效果",
+          "descCn": "【2016-05-14 勘误后】「电子化明星」＋「利刃滑冰者」\r\n这张卡的融合召唤不用上记的卡不能进行。\r\n①：对方场上的怪兽数量让这张卡得到以下效果。\r\n●1只：这张卡不会被战斗破坏。\r\n●2只：这张卡的攻击力变成2倍。\r\n●3只：对方发动的魔法·陷阱·怪兽的效果无效化。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 87910978,
+      "nameCn": "洗脑",
+      "nameJp": "洗脳－ブレインコントロール",
+      "nameEn": "Brain Control",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2005-02-24",
+          "sourceLabel": "2005-02-24 勘误前初版",
+          "summary": "TLM 初版可抢任意表侧怪兽",
+          "descCn": "【2005-02-24 勘误前初版】TLM 初版可抢任意表侧怪兽（参考现行版区别：2017.01.01 禁止解除勘误（仅可抢能通常召唤的怪兽））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-01-01",
+          "sourceLabel": "2017-01-01 OCG 官方勘误版",
+          "summary": "2017.01.01 禁止解除勘误（仅可抢能通常召唤的怪兽）",
+          "descCn": "【2017-01-01 勘误后】①：支付800基本分，以对方场上1只可以通常召唤的表侧表示怪兽为对象才能发动。那只表侧表示怪兽的控制权直到结束阶段得到。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 61740673,
+      "nameCn": "王宫的敕命",
+      "nameJp": "王宮の勅命",
+      "nameEn": "Imperial Order",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版自己准备阶段可选付700",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版自己准备阶段可选付700（参考现行版区别：2017.01.01 禁止解除勘误（双方准备阶段强制支付700））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-01-01",
+          "sourceLabel": "2017-01-01 OCG 官方勘误版",
+          "summary": "2017.01.01 禁止解除勘误（双方准备阶段强制支付700）",
+          "descCn": "【2017-01-01 勘误后】这张卡的控制者在每次双方的准备阶段支付700基本分。不能支付700基本分的场合这张卡破坏。\r\n①：只要这张卡在魔法与陷阱区域存在，场上的全部魔法卡的效果无效化。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 77565204,
+      "nameCn": "未来融合",
+      "nameJp": "未来融合－フューチャー・フュージョン",
+      "nameEn": "Future Fusion",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2006-05-18",
+          "sourceLabel": "2006-05-18 勘误前初版",
+          "summary": "POTD 初版发动即堆融合素材",
+          "descCn": "【2006-05-18 勘误前初版】POTD 初版发动即堆融合素材（参考现行版区别：2017.01.01 禁止解除勘误（改为下个自己准备阶段才堆素材））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-01-01",
+          "sourceLabel": "2017-01-01 OCG 官方勘误版",
+          "summary": "2017.01.01 禁止解除勘误（改为下个自己准备阶段才堆素材）",
+          "descCn": "【2017-01-01 勘误后】①：这张卡的发动后第1次的自己准备阶段发动。额外卡组1只融合怪兽给对方观看，那只怪兽决定的融合素材怪兽从卡组送去墓地。\r\n②：这张卡的发动后第2次的自己准备阶段发动。把1只和这张卡的①的效果给人观看的怪兽同名的融合怪兽融合召唤。这张卡从场上离开时那只怪兽破坏。那只怪兽破坏时这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 14878871,
+      "nameCn": "救援猫",
+      "nameJp": "レスキューキャット",
+      "nameEn": "Rescue Cat",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2004-11-25",
+          "sourceLabel": "2004-11-25 勘误前初版",
+          "summary": "FET 初版无次数限制且特召不无效",
+          "descCn": "【2004-11-25 勘误前初版】FET 初版无次数限制且特召不无效（参考现行版区别：2017.01.01 禁止解除勘误（1回合1次，特召怪兽效果无效））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-01-01",
+          "sourceLabel": "2017-01-01 OCG 官方勘误版",
+          "summary": "2017.01.01 禁止解除勘误（1回合1次，特召怪兽效果无效）",
+          "descCn": "【2017-01-01 勘误后】这个卡名的效果1回合只能使用1次。\r\n①：把场上的这张卡送去墓地才能发动。从卡组把2只3星以下的兽族怪兽特殊召唤。这个效果特殊召唤的怪兽的效果无效化，结束阶段破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 7391448,
+      "nameCn": "御用守护者",
+      "nameJp": "ゴヨウ・ガーディアン",
+      "nameEn": "Goyo Guardian",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2008-04-19",
+          "sourceLabel": "2008-04-19 勘误前初版",
+          "summary": "TDGS 初版泛用素材",
+          "descCn": "【2008-04-19 勘误前初版】TDGS 初版泛用素材（参考现行版区别：2017.01.01 禁止解除勘误（限定地属性调整））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-01-01",
+          "sourceLabel": "2017-01-01 OCG 官方勘误版",
+          "summary": "2017.01.01 禁止解除勘误（限定地属性调整）",
+          "descCn": "【2017-01-01 勘误后】地属性调整＋调整以外的怪兽1只以上\r\n①：这张卡战斗破坏对方怪兽送去墓地时才能发动。那只怪兽在自己场上守备表示特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 50321796,
+      "nameCn": "冰结界之龙 光枪龙",
+      "nameJp": "氷結界の龍 ブリューナク",
+      "nameEn": "Brionac, Dragon of the Ice Barrier",
+      "era": "第９期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2008-03-01",
+          "sourceLabel": "2008-03-01 勘误前初版",
+          "summary": "DT01 初版无限弹双方全场",
+          "descCn": "【2008-03-01 勘误前初版】DT01 初版无限弹双方全场（参考现行版区别：2017.01.01 禁止解除勘误（1回合1次且仅弹对方场上））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-01-01",
+          "sourceLabel": "2017-01-01 OCG 官方勘误版",
+          "summary": "2017.01.01 禁止解除勘误（1回合1次且仅弹对方场上）",
+          "descCn": "【2017-01-01 勘误后】调整＋调整以外的怪兽1只以上\r\n这个卡名的效果1回合只能使用1次。\r\n①：把手卡任意数量丢弃去墓地，以丢弃数量的对方场上的卡为对象才能发动。那些卡回到手卡。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 18605135,
+      "nameCn": "龙卷海流壁",
+      "nameJp": "竜巻海流壁",
+      "nameEn": "Tornado Wall",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版（参考现行版区别：ATP17：有海时免战伤条件整理）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-01-01",
+          "sourceLabel": "2017-01-01 OCG 官方勘误版",
+          "summary": "ATP17：有海时免战伤条件整理",
+          "descCn": "【2017-01-01 勘误后】场上有「海」存在的场合才能把这张卡发动。\r\n①：只要场上有「海」存在，自己受到的战斗伤害变成0。\r\n②：场上没有「海」存在的场合这张卡破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 15894048,
+      "nameCn": "究极恐兽",
+      "nameJp": "究極恐獣",
+      "nameEn": "Ultimate Tyranno",
+      "era": "第９期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2006-05-18",
+          "sourceLabel": "2006-05-18 勘误前初版",
+          "summary": "POTD 初版",
+          "descCn": "【2006-05-18 勘误前初版】POTD 初版（参考现行版区别：SR04：战斗阶段必须最先攻击表述修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-02-25",
+          "sourceLabel": "2017-02-25 OCG 官方勘误版",
+          "summary": "SR04：战斗阶段必须最先攻击表述修正",
+          "descCn": "【2017-02-25 勘误后】①：自己战斗阶段有可以攻击的「究极恐兽」存在的场合，「究极恐兽」以外的怪兽不能攻击。\r\n②：这张卡可以向对方怪兽全部各作1次攻击。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 99788587,
+      "nameCn": "爆导索",
+      "nameJp": "爆導索",
+      "nameEn": "Blasting Fuse",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2006-08-10",
+          "sourceLabel": "2006-08-10 勘误前初版",
+          "summary": "CDIP 初版",
+          "descCn": "【2006-08-10 勘误前初版】CDIP 初版（参考现行版区别：MR4 勘误：因额外怪兽区调整列破坏判定）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-03-25",
+          "sourceLabel": "2017-03-25 OCG 官方勘误版",
+          "summary": "MR4 勘误：因额外怪兽区调整列破坏判定",
+          "descCn": "【2017-03-25 勘误后】①：和这张卡相同纵列全部有卡存在的场合才能把盖放的这张卡发动。那个纵列的卡全部破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 80168720,
+      "nameCn": "暗之拜访",
+      "nameJp": "闇の訪れ",
+      "nameEn": "Darkness Approaches",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-07-12",
+          "sourceLabel": "2001-07-12 勘误前初版",
+          "summary": "LN 初版",
+          "descCn": "【2001-07-12 勘误前初版】LN 初版（参考现行版区别：MR4 勘误：改为变里侧守备（不可变里侧攻击表示））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-03-25",
+          "sourceLabel": "2017-03-25 OCG 官方勘误版",
+          "summary": "MR4 勘误：改为变里侧守备（不可变里侧攻击表示）",
+          "descCn": "【2017-03-25 勘误后】丢弃2张手卡。选择表侧表示的1只怪兽，变成里侧守备表示。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 21502796,
+      "nameCn": "光道猎犬 雷光",
+      "nameJp": "ライトロード・ハンター ライコウ",
+      "nameEn": "Ryko, Lightsworn Hunter",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2008-02-23",
+          "sourceLabel": "2008-02-23 勘误前初版",
+          "summary": "LODT 初版取对象",
+          "descCn": "【2008-02-23 勘误前初版】LODT 初版取对象（参考现行版区别：ST17 勘误：破坏变为不取对象且与堆墓同时处理）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-03-25",
+          "sourceLabel": "2017-03-25 OCG 官方勘误版",
+          "summary": "ST17 勘误：破坏变为不取对象且与堆墓同时处理",
+          "descCn": "【2017-03-25 勘误后】①：这张卡反转的场合发动。可以选场上1张卡破坏。从自己卡组上面把3张卡送去墓地。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 7409792,
+      "nameCn": "骏足之河马 马力巨犀",
+      "nameJp": "俊足なカバ バリキテリウム",
+      "nameEn": "Dynatherium",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2013-07-20",
+          "sourceLabel": "2013-07-20 勘误前初版",
+          "summary": "SHSP 初版",
+          "descCn": "【2013-07-20 勘误前初版】SHSP 初版（参考现行版区别：TP17：规则特召增加1回合1次限制）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-04-01",
+          "sourceLabel": "2017-04-01 OCG 官方勘误版",
+          "summary": "TP17：规则特召增加1回合1次限制",
+          "descCn": "【2017-04-01 勘误后】这个卡名的①的方法的特殊召唤1回合只能有1次。\r\n①：这张卡可以从手卡特殊召唤。\r\n②：这张卡的①的方法特殊召唤成功的场合发动。对方可以从自己或者对方的墓地选1只4星怪兽在自身场上特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 5645210,
+      "nameCn": "华丽金星",
+      "nameJp": "The splendid VENUS",
+      "nameEn": "Splendid Venus",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2007-07-21",
+          "sourceLabel": "2007-07-21 勘误前初版",
+          "summary": "LE10 初版",
+          "descCn": "【2007-07-21 勘误前初版】LE10 初版（参考现行版区别：SR05：效果适用范围细化）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-09-23",
+          "sourceLabel": "2017-09-23 OCG 官方勘误版",
+          "summary": "SR05：效果适用范围细化",
+          "descCn": "【2017-09-23 勘误后】①：只要这张卡在怪兽区域存在，天使族以外的场上的怪兽的攻击力·守备力下降500，自己场上的魔法·陷阱卡的效果的发动以及那些发动的效果不会被无效化。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 37580756,
+      "nameCn": "同路人",
+      "nameJp": "道連れ",
+      "nameEn": "Michizure",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-09-21",
+          "sourceLabel": "2000-09-21 勘误前初版",
+          "summary": "MR 初版",
+          "descCn": "【2000-09-21 勘误前初版】MR 初版（参考现行版区别：TP17：发动条件整理）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-10-01",
+          "sourceLabel": "2017-10-01 OCG 官方勘误版",
+          "summary": "TP17：发动条件整理",
+          "descCn": "【2017-10-01 勘误后】①：怪兽被战斗破坏送去自己墓地时或者场上的怪兽被送去自己墓地时，以场上1只怪兽为对象才能发动。那只怪兽破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 22446869,
+      "nameCn": "水精鳞-邓氏深渊鱼",
+      "nameJp": "水精鱗－ディニクアビス",
+      "nameEn": "Mermail Abyssteus",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2012-11-17",
+          "sourceLabel": "2012-11-17 勘误前初版",
+          "summary": "CBLZ 初版",
+          "descCn": "【2012-11-17 勘误前初版】CBLZ 初版（参考现行版区别：LVP1：检索时机条件调整）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2017-11-25",
+          "sourceLabel": "2017-11-25 OCG 官方勘误版",
+          "summary": "LVP1：检索时机条件调整",
+          "descCn": "【2017-11-25 勘误后】这个卡名的②的效果1回合只能使用1次。\r\n①：从手卡把这张卡以外的1只水属性怪兽丢弃去墓地才能发动。这张卡从手卡特殊召唤。\r\n②：这张卡的①的效果特殊召唤成功时才能发动。从卡组把1只4星以下的「水精鳞」怪兽加入手卡。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 61468779,
+      "nameCn": "地灵神 格兰索尔",
+      "nameJp": "地霊神グランソイル",
+      "nameEn": "Grandsoil the Elemental Lord",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2012-04-14",
+          "sourceLabel": "2012-04-14 勘误前初版",
+          "summary": "REDU 初版无1回合1次",
+          "descCn": "【2012-04-14 勘误前初版】REDU 初版无1回合1次（参考现行版区别：2018.01 勘误增加1回合1次）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2018-01-01",
+          "sourceLabel": "2018-01-01 OCG 官方勘误版",
+          "summary": "2018.01 勘误增加1回合1次",
+          "descCn": "【2018-01-01 勘误后】这张卡不能通常召唤。自己墓地的地属性怪兽是5只的场合才能特殊召唤。这个卡名的①的效果1回合只能使用1次。\r\n①：这张卡特殊召唤成功时，以自己或者对方的墓地1只怪兽为对象才能发动。那只怪兽在自己场上特殊召唤。\r\n②：表侧表示的这张卡从场上离开的场合，下次的自己回合的战斗阶段跳过。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 43711255,
+      "nameCn": "禁止令",
+      "nameJp": "禁止令",
+      "nameEn": "Prohibition",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2000-07-13",
+          "sourceLabel": "2000-07-13 勘误前初版",
+          "summary": "PS 初版",
+          "descCn": "【2000-07-13 勘误前初版】PS 初版（参考现行版区别：SR06：禁止令已存在卡的适用范围重写）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2018-03-10",
+          "sourceLabel": "2018-03-10 OCG 官方勘误版",
+          "summary": "SR06：禁止令已存在卡的适用范围重写",
+          "descCn": "【2018-03-10 勘误后】宣言1个卡名才能把这张卡发动。\r\n①：只要这张卡在魔法与陷阱区域存在，宣言的卡名为原本卡名的双方的卡受以下所适用（对从这个效果的适用前开始在场上存在的卡不适用）。\r\n●不能在场上出现。\r\n●不能作卡的发动以及效果的发动和适用。\r\n●不能通常召唤·反转召唤·特殊召唤。\r\n●不能作攻击以及表示形式的变更。\r\n●不能作为要为需要素材的特殊召唤而用的素材。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 56570271,
+      "nameCn": "命运英雄 圆盘人",
+      "nameJp": "D-HERO ディスクガイ",
+      "nameEn": "Destiny HERO - Disk Commander",
+      "era": "第10期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2006-11-30",
+          "sourceLabel": "2006-11-30 勘误前初版",
+          "summary": "WC07 初版无次数限制",
+          "descCn": "【2006-11-30 勘误前初版】WC07 初版无次数限制（参考现行版区别：2018.04.01 禁止解除勘误（决斗中1次且送墓当回合不可苏生））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2018-04-01",
+          "sourceLabel": "2018-04-01 OCG 官方勘误版",
+          "summary": "2018.04.01 禁止解除勘误（决斗中1次且送墓当回合不可苏生）",
+          "descCn": "【2018-04-01 勘误后】这个卡名的效果在决斗中只能使用1次。这张卡在送去墓地的回合不能从墓地特殊召唤。\r\n①：这张卡从墓地特殊召唤的场合才能发动。自己抽2张。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 45247637,
+      "nameCn": "蔷薇刻印",
+      "nameJp": "薔薇の刻印",
+      "nameEn": "Mark of the Rose",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2008-09-13",
+          "sourceLabel": "2008-09-13 勘误前初版",
+          "summary": "CSOC 初版",
+          "descCn": "【2008-09-13 勘误前初版】CSOC 初版（参考现行版区别：DP21：归还与破坏时机修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2018-11-10",
+          "sourceLabel": "2018-11-10 OCG 官方勘误版",
+          "summary": "DP21：归还与破坏时机修正",
+          "descCn": "【2018-11-10 勘误后】从自己墓地把1只植物族怪兽除外，以对方场上1只表侧表示怪兽为对象才能把这张卡发动。\r\n①：得到装备怪兽的控制权。\r\n②：自己结束阶段发动。这张卡的①的效果直到下次的自己准备阶段无效。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 71645242,
+      "nameCn": "黑色花园",
+      "nameJp": "ブラック・ガーデン",
+      "nameEn": "Black Garden",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2008-09-13",
+          "sourceLabel": "2008-09-13 勘误前初版",
+          "summary": "CSOC 初版",
+          "descCn": "【2008-09-13 勘误前初版】CSOC 初版（参考现行版区别：DP21：指示物/特召判定文本统一）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2018-11-10",
+          "sourceLabel": "2018-11-10 OCG 官方勘误版",
+          "summary": "DP21：指示物/特召判定文本统一",
+          "descCn": "【2018-11-10 勘误后】①：每次「黑色花园」的效果以外让怪兽表侧表示召唤·特殊召唤发动。那些怪兽的攻击力变成一半。那之后，那控制者在对方场上把1只「蔷薇衍生物」（植物族·暗·2星·攻/守800）攻击表示特殊召唤。\r\n②：以持有和场上的全部植物族怪兽的攻击力合计相同攻击力的自己墓地1只怪兽为对象才能发动。这张卡以及场上的植物族怪兽全部破坏。全部破坏的场合，再把作为对象的怪兽特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 93130021,
+      "nameCn": "胜利蛇XX03",
+      "nameJp": "ビクトリー・バイパー XX０３",
+      "nameEn": "Victory Viper XX03",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2006-02-16",
+          "sourceLabel": "2006-02-16 勘误前初版",
+          "summary": "EOJ 初版",
+          "descCn": "【2006-02-16 勘误前初版】EOJ 初版（参考现行版区别：TP19：衍生物复制数值判定调整）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2019-04-01",
+          "sourceLabel": "2019-04-01 OCG 官方勘误版",
+          "summary": "TP19：衍生物复制数值判定调整",
+          "descCn": "【2019-04-01 勘误后】①：这张卡战斗破坏对方怪兽的场合，从以下效果选择1个发动。\r\n●这张卡的攻击力上升400。\r\n●以场上1张表侧表示的魔法·陷阱卡为对象发动。那张表侧表示卡破坏。\r\n●把持有一直和这张卡相同种族·属性·等级·攻击力·守备力的1只「子机衍生物」在自己场上特殊召唤。这张卡变成不在怪兽区域表侧表示存在时这衍生物破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 41209827,
+      "nameCn": "凶饿毒融合龙",
+      "nameJp": "スターヴ・ヴェノム・フュージョン・ドラゴン",
+      "nameEn": "Starving Venom Fusion Dragon",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2016-07-09",
+          "sourceLabel": "2016-07-09 勘误前初版",
+          "summary": "INOV 初版",
+          "descCn": "【2016-07-09 勘误前初版】INOV 初版（参考现行版区别：DP22：复制效果对象细化）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2019-06-08",
+          "sourceLabel": "2019-06-08 OCG 官方勘误版",
+          "summary": "DP22：复制效果对象细化",
+          "descCn": "【2019-06-08 勘误后】衍生物以外的场上的暗属性怪兽×2\r\n①：这张卡融合召唤的场合才能发动。这张卡的攻击力直到回合结束时上升对方场上1只特殊召唤的怪兽的攻击力数值。\r\n②：1回合1次，以对方场上1只5星以上的怪兽为对象才能发动。这张卡直到结束阶段得到和那只怪兽的原本的卡名·效果相同的卡名·效果。\r\n③：融合召唤的这张卡被破坏的场合才能发动。对方场上的特殊召唤的怪兽全部破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 25924653,
+      "nameCn": "剑斗兽 马斗",
+      "nameJp": "剣闘獣ダリウス",
+      "nameEn": "Gladiator Beast Darius",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2007-11-23",
+          "sourceLabel": "2007-11-23 勘误前初版",
+          "summary": "PTDN 初版",
+          "descCn": "【2007-11-23 勘误前初版】PTDN 初版（参考现行版区别：TP19：离场回卡组处理修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2019-07-01",
+          "sourceLabel": "2019-07-01 OCG 官方勘误版",
+          "summary": "TP19：离场回卡组处理修正",
+          "descCn": "【2019-07-01 勘误后】①：这张卡用「剑斗兽」怪兽的效果特殊召唤成功时，以自己墓地1只「剑斗兽」怪兽为对象才能发动。那只怪兽效果无效特殊召唤。这张卡从场上离开时那只怪兽回到持有者卡组。\r\n②：这张卡进行战斗的战斗阶段结束时让这张卡回到持有者卡组才能发动。从卡组把「剑斗兽 马斗」以外的1只「剑斗兽」怪兽特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 9995766,
+      "nameCn": "宫廷的规矩",
+      "nameJp": "宮廷のしきたり",
+      "nameEn": "Imperial Custom",
+      "era": "第10期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2009-07-18",
+          "sourceLabel": "2009-07-18 勘误前初版",
+          "summary": "ANPR 初版",
+          "descCn": "【2009-07-18 勘误前初版】ANPR 初版（参考现行版区别：SD38：破坏耐性适用范围修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2020-03-20",
+          "sourceLabel": "2020-03-20 OCG 官方勘误版",
+          "summary": "SD38：破坏耐性适用范围修正",
+          "descCn": "【2020-03-20 勘误后】①：「宫廷的规矩」在自己场上只能有1张表侧表示存在。\r\n②：只要这张卡在魔法与陷阱区域存在，「宫廷的规矩」以外的双方场上的表侧表示的永续陷阱卡不会被战斗·效果破坏。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 88264978,
+      "nameCn": "真红眼暗钢龙",
+      "nameJp": "レッドアイズ・ダークネスメタルドラゴン",
+      "nameEn": "Red-Eyes Darkness Metal Dragon",
+      "era": "第10期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2007-10-21",
+          "sourceLabel": "2007-10-21 勘误前初版",
+          "summary": "LE11 初版软1回合1次",
+          "descCn": "【2007-10-21 勘误前初版】LE11 初版软1回合1次（参考现行版区别：2020.04.01 禁止解除勘误（特召与效果均卡名硬1回合1次））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2020-04-01",
+          "sourceLabel": "2020-04-01 OCG 官方勘误版",
+          "summary": "2020.04.01 禁止解除勘误（特召与效果均卡名硬1回合1次）",
+          "descCn": "【2020-04-01 勘误后】这个卡名的①的方法的特殊召唤1回合只能有1次，②的效果1回合只能使用1次。\r\n①：这张卡可以把自己场上1只表侧表示的龙族怪兽除外，从手卡特殊召唤。\r\n②：自己主要阶段才能发动。从自己的手卡·墓地把「真红眼暗钢龙」以外的1只龙族怪兽特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 21593977,
+      "nameCn": "处刑人-摩休罗",
+      "nameJp": "処刑人－マキュラ",
+      "nameEn": "Makyura the Destructor",
+      "era": "第11期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2001-09-20",
+          "sourceLabel": "2001-09-20 勘误前初版",
+          "summary": "WJ 初版送墓当回合手牌无限发陷阱",
+          "descCn": "【2001-09-20 勘误前初版】WJ 初版送墓当回合手牌无限发陷阱（参考现行版区别：2020.04.01 禁止解除勘误（仅从怪兽区送墓、仅1张且卡名1回合1次））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2020-04-01",
+          "sourceLabel": "2020-04-01 OCG 官方勘误版",
+          "summary": "2020.04.01 禁止解除勘误（仅从怪兽区送墓、仅1张且卡名1回合1次）",
+          "descCn": "【2020-04-01 勘误后】这个卡名的效果1回合只能使用1次。\r\n①：这张卡从怪兽区域送去墓地的场合才能发动。这个回合只有1次，自己可以把陷阱卡从手卡发动。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 70583986,
+      "nameCn": "冰结界的虎王 雪虎",
+      "nameJp": "氷結界の虎王 ドゥローレン",
+      "nameEn": "Dewloren, Tiger King of the Ice Barrier",
+      "era": "第11期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2009-04-14",
+          "sourceLabel": "2009-04-14 勘误前初版",
+          "summary": "DT05 初版软1回合1次",
+          "descCn": "【2009-04-14 勘误前初版】DT05 初版软1回合1次（参考现行版区别：SD40 勘误为卡名硬1回合1次）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2020-11-21",
+          "sourceLabel": "2020-11-21 OCG 官方勘误版",
+          "summary": "SD40 勘误为卡名硬1回合1次",
+          "descCn": "【2020-11-21 勘误后】调整＋调整以外的水属性怪兽1只以上\r\n这个卡名的效果1回合只能使用1次。\r\n①：以自己场上的其他的表侧表示卡任意数量为对象才能发动。那些自己的表侧表示卡回到手卡。这张卡的攻击力直到回合结束时上升这个效果回到手卡的卡数量×500。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 5043010,
+      "nameCn": "防火龙",
+      "nameJp": "ファイアウォール・ドラゴン",
+      "nameEn": "Firewall Dragon",
+      "era": "第11期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2017-04-15",
+          "sourceLabel": "2017-04-15 勘误前初版",
+          "summary": "COTD 初版②效果无卡名1回合1次且不限电子界",
+          "descCn": "【2017-04-15 勘误前初版】COTD 初版②效果无卡名1回合1次且不限电子界（参考现行版区别：2021.01.01 禁止解除勘误（两效果均硬1回合1次且②限电子界族））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2021-01-01",
+          "sourceLabel": "2021-01-01 OCG 官方勘误版",
+          "summary": "2021.01.01 禁止解除勘误（两效果均硬1回合1次且②限电子界族）",
+          "descCn": "【2021-01-01 勘误后】怪兽2只以上\r\n这个卡名的①②的效果1回合各能使用1次。\r\n①：只在这张卡在场上表侧表示存在才有1次，自己·对方回合，以最多有这张卡所互相连接区的怪兽数量的自己·对方的场上·墓地的怪兽为对象才能发动。那些怪兽回到手卡。\r\n②：这张卡所连接区的怪兽被战斗破坏的场合或者被送去墓地的场合才能发动。从手卡把1只电子界族怪兽特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 91345518,
+      "nameCn": "裁决之代行者 萨图恩",
+      "nameJp": "裁きの代行者 サターン",
+      "nameEn": "The Agent of Judgment - Saturn",
+      "era": "第11期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2004-01-15",
+          "sourceLabel": "2004-01-15 勘误前初版",
+          "summary": "308 初版",
+          "descCn": "【2004-01-15 勘误前初版】308 初版（参考现行版区别：SR12：条件文本整理）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2021-08-07",
+          "sourceLabel": "2021-08-07 OCG 官方勘误版",
+          "summary": "SR12：条件文本整理",
+          "descCn": "【2021-08-07 勘误后】①：把这张卡解放才能发动。自己基本分比对方多的场合，给与对方那个相差数值的伤害。这个效果在自己场上有「天空的圣域」存在的场合才能发动和处理。这个效果发动的回合，自己不能进行战斗阶段。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 30604579,
+      "nameCn": "极神皇 托尔",
+      "nameJp": "極神皇トール",
+      "nameEn": "Thor, Lord of the Aesir",
+      "era": "第11期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2010-11-13",
+          "sourceLabel": "2010-11-13 勘误前初版",
+          "summary": "STOR 初版",
+          "descCn": "【2010-11-13 勘误前初版】STOR 初版（参考现行版区别：TP21：无效与复活触发条件修正）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2021-10-01",
+          "sourceLabel": "2021-10-01 OCG 官方勘误版",
+          "summary": "TP21：无效与复活触发条件修正",
+          "descCn": "【2021-10-01 勘误后】「极星兽」调整＋调整以外的怪兽2只以上\r\n①：1回合1次，自己主要阶段才能发动。对方场上的全部表侧表示怪兽的效果直到回合结束时无效化。\r\n②：场上的表侧表示的这张卡被对方破坏送去墓地的回合的结束阶段，从自己墓地把1只「极星兽」调整除外才能发动。这张卡从墓地特殊召唤。\r\n③：这张卡的②的效果特殊召唤成功时才能发动。给与对方800伤害。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 41578483,
+      "nameCn": "千年眼纳祭神",
+      "nameJp": "ミレニアム・アイズ・サクリファイス",
+      "nameEn": "Millennium-Eyes Restrict",
+      "era": "第11期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2017-11-11",
+          "sourceLabel": "2017-11-11 勘误前初版",
+          "summary": "DP19 初版",
+          "descCn": "【2017-11-11 勘误前初版】DP19 初版（参考现行版区别：SSB1：同名无效范围调整）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2021-12-25",
+          "sourceLabel": "2021-12-25 OCG 官方勘误版",
+          "summary": "SSB1：同名无效范围调整",
+          "descCn": "【2021-12-25 勘误后】「纳祭之魔」＋效果怪兽\r\n①：1回合1次，对方怪兽的效果发动时，以对方的场上·墓地1只效果怪兽为对象才能发动。那只对方的效果怪兽当作装备卡使用给这张卡装备。\r\n②：这张卡的攻击力·守备力上升这张卡的效果装备的怪兽的各自数值。\r\n③：原本卡名和这张卡的效果装备的怪兽相同的怪兽不能攻击，那个效果无效化。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 16226786,
+      "nameCn": "深渊的暗杀者",
+      "nameJp": "深淵の暗殺者",
+      "nameEn": "Night Assailant",
+      "era": "第11期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2004-04-20",
+          "sourceLabel": "2004-04-20 勘误前初版",
+          "summary": "308 初版可回收自身",
+          "descCn": "【2004-04-20 勘误前初版】308 初版可回收自身（参考现行版区别：2022.04.01 勘误明确仅可回收自身以外反转怪兽）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2022-04-01",
+          "sourceLabel": "2022-04-01 OCG 官方勘误版",
+          "summary": "2022.04.01 勘误明确仅可回收自身以外反转怪兽",
+          "descCn": "【2022-04-01 勘误后】①：这张卡反转的场合，以对方场上1只怪兽为对象发动。那只对方怪兽破坏。\r\n②：这张卡从手卡送去墓地的场合，以「深渊的暗杀者」以外的自己墓地1只反转怪兽为对象发动。那只怪兽加入手卡。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 29417188,
+      "nameCn": "念动力防卫者",
+      "nameJp": "サイキック・ブロッカー",
+      "nameEn": "Psi-Blocker",
+      "era": "第11期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2010-07-17",
+          "sourceLabel": "2010-07-17 勘误前初版",
+          "summary": "DREV 初版",
+          "descCn": "【2010-07-17 勘误前初版】DREV 初版（参考现行版区别：TP22：宣言禁止范围与禁止令对齐）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2022-07-01",
+          "sourceLabel": "2022-07-01 OCG 官方勘误版",
+          "summary": "TP22：宣言禁止范围与禁止令对齐",
+          "descCn": "【2022-07-01 勘误后】①：1回合1次，宣言1个卡名才能发动。直到对方回合结束时为止的期间，宣言的卡名为原本卡名的双方的卡受以下所适用。\r\n●不能在场上出现。\r\n●不能作卡的发动以及效果的发动和适用。\r\n●不能通常召唤·反转召唤·特殊召唤。\r\n●不能作攻击以及表示形式的变更。\r\n●不能作为要为需要素材的特殊召唤而用的素材。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 25862681,
+      "nameCn": "古代妖精龙",
+      "nameJp": "エンシェント・フェアリー・ドラゴン",
+      "nameEn": "Ancient Fairy Dragon",
+      "era": "第11期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2009-04-18",
+          "sourceLabel": "2009-04-18 勘误前初版",
+          "summary": "ANPR 初版软1回合1次且可检索同名场地",
+          "descCn": "【2009-04-18 勘误前初版】ANPR 初版软1回合1次且可检索同名场地（参考现行版区别：2023.01.01 禁止解除勘误（双效果硬1回合1次且不可检索同名场地））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2023-01-01",
+          "sourceLabel": "2023-01-01 OCG 官方勘误版",
+          "summary": "2023.01.01 禁止解除勘误（双效果硬1回合1次且不可检索同名场地）",
+          "descCn": "【2023-01-01 勘误后】调整＋调整以外的怪兽1只以上\r\n这个卡名的①②的效果1回合各能使用1次。\r\n①：自己主要阶段才能发动。从手卡把1只4星以下的怪兽特殊召唤。这个效果发动的回合，自己不能进行战斗阶段。\r\n②：自己主要阶段才能发动。场地区域的卡全部破坏，自己回复1000基本分。那之后，可以把和破坏的卡卡名不同的1张场地魔法卡从卡组加入手卡。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 71525232,
+      "nameCn": "破灭龙 甘多拉·交错",
+      "nameJp": "破滅竜ガンドラX",
+      "nameEn": "Gandora-X the Dragon of Demolition",
+      "era": "第12期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2016-04-23",
+          "sourceLabel": "2016-04-23 勘误前初版",
+          "summary": "MVP1 初版按最高攻击力烧血",
+          "descCn": "【2016-04-23 勘误前初版】MVP1 初版按最高攻击力烧血（参考现行版区别：2024.01.01 禁止解除勘误（改为按原本攻击力烧血且硬1回合1次））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2024-01-01",
+          "sourceLabel": "2024-01-01 OCG 官方勘误版",
+          "summary": "2024.01.01 禁止解除勘误（改为按原本攻击力烧血且硬1回合1次）",
+          "descCn": "【2024-01-01 勘误后】①：这张卡从手卡召唤·特殊召唤时才能发动。场上的其他怪兽全部破坏，给与对方破坏的怪兽之内原本攻击力最高的怪兽的那个数值的伤害。这张卡的攻击力变成和这个效果给与对方的伤害相同数值。\r\n②：自己结束阶段发动。自己基本分变成一半。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 61665245,
+      "nameCn": "召唤女巫",
+      "nameJp": "サモン・ソーサレス",
+      "nameEn": "Summon Sorceress",
+      "era": "第12期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2017-11-21",
+          "sourceLabel": "2017-11-21 勘误前初版",
+          "summary": "VJ 初版从卡组直接给己方拉怪",
+          "descCn": "【2017-11-21 勘误前初版】VJ 初版从卡组直接给己方拉怪（参考现行版区别：2024.04.01 禁止解除勘误（改为先从手卡给对方特召再拉怪，且本回合限同种族特召））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2024-04-01",
+          "sourceLabel": "2024-04-01 OCG 官方勘误版",
+          "summary": "2024.04.01 禁止解除勘误（改为先从手卡给对方特召再拉怪，且本回合限同种族特召）",
+          "descCn": "【2024-04-01 勘误后】衍生物以外的相同种族的怪兽2只以上\r\n这个卡名的效果1回合只能使用1次。\r\n①：这张卡连接召唤的场合才能发动。从手卡把1只怪兽效果无效在作为这张卡所连接区的对方场上守备表示特殊召唤。那之后，可以把和这个效果特殊召唤的怪兽相同种族的1只怪兽从卡组效果无效守备表示特殊召唤。这个效果从卡组特殊召唤过的回合，自己不是原本种族和从卡组特殊召唤的那只怪兽相同的怪兽不能特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 33900648,
+      "nameCn": "清透世界",
+      "nameJp": "クリアー・ワールド",
+      "nameEn": "Clear World",
+      "era": "第12期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2009-08-21",
+          "sourceLabel": "2009-08-21 勘误前初版",
+          "summary": "LE15 初版",
+          "descCn": "【2009-08-21 勘误前初版】LE15 初版（参考现行版区别：AC04：属性负面效果处理文本整理）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2024-06-22",
+          "sourceLabel": "2024-06-22 OCG 官方勘误版",
+          "summary": "AC04：属性负面效果处理文本整理",
+          "descCn": "【2024-06-22 勘误后】这张卡的控制者在每次自己结束阶段支付500基本分或把这张卡破坏。\r\n①：双方让自身场上的怪兽属性的以下效果对自身适用。\r\n●光：手卡全部持续公开。\r\n●暗：自己场上的怪兽是2只以上的场合，不能攻击宣言。\r\n●地：自己准备阶段把自己1只表侧守备表示怪兽破坏。\r\n●水：自己结束阶段选1张手卡丢弃。\r\n●炎：自己结束阶段受到1000伤害。\r\n●风：若不支付500基本分则不能把魔法卡发动。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 7563579,
+      "nameCn": "娱乐法师 火布偶",
+      "nameJp": "Emヒグルミ",
+      "nameEn": "Performage Plushfire",
+      "era": "第12期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2015-04-25",
+          "sourceLabel": "2015-04-25 勘误前初版",
+          "summary": "CORE 初版无卡名1回合1次",
+          "descCn": "【2015-04-25 勘误前初版】CORE 初版无卡名1回合1次（参考现行版区别：2024.07.01 禁止解除勘误（怪兽效果硬1回合1次且仅限自己场上破坏））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2024-07-01",
+          "sourceLabel": "2024-07-01 OCG 官方勘误版",
+          "summary": "2024.07.01 禁止解除勘误（怪兽效果硬1回合1次且仅限自己场上破坏）",
+          "descCn": "【2024-07-01 勘误后】这个卡名的怪兽效果1回合只能使用1次。\n①：场上的这张卡被战斗·效果破坏的场合才能发动。从手卡·卡组把「娱乐法师 火布偶」以外的1只「娱乐法师」怪兽特殊召唤。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 95308449,
+      "nameCn": "终焉的倒计时",
+      "nameJp": "終焉のカウントダウン",
+      "nameEn": "Final Countdown",
+      "era": "第12期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2002-09-19",
+          "sourceLabel": "2002-09-19 勘误前初版",
+          "summary": "303 初版",
+          "descCn": "【2002-09-19 勘误前初版】303 初版（参考现行版区别：TP24：回合计数表述规范化）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2024-07-01",
+          "sourceLabel": "2024-07-01 OCG 官方勘误版",
+          "summary": "TP24：回合计数表述规范化",
+          "descCn": "【2024-07-01 勘误后】①：支付2000基本分才能发动。以发动的回合为第1回合来计算的第20回合的回合结束时自己决斗胜利。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 17412721,
+      "nameCn": "旧神 诺登",
+      "nameJp": "旧神ノーデン",
+      "nameEn": "Elder Entity Norden",
+      "era": "第13期",
+      "category": "UNBAN_ERRATA",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2015-09-19",
+          "sourceLabel": "2015-09-19 勘误前初版",
+          "summary": "EP15 初版无卡名1回合1次",
+          "descCn": "【2015-09-19 勘误前初版】EP15 初版无卡名1回合1次（参考现行版区别：2026.07.01 禁止解除勘误（苏生效果硬1回合1次等限制））",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2026-07-01",
+          "sourceLabel": "2026-07-01 OCG 官方勘误版",
+          "summary": "2026.07.01 禁止解除勘误（苏生效果硬1回合1次等限制）",
+          "descCn": "【2026-07-01 勘误后】同调·超量怪兽＋同调·超量怪兽\r\n这个卡名的效果1回合只能使用1次。\r\n①：这张卡从额外卡组特殊召唤时，以自己墓地1只4星以下的怪兽为对象才能发动。那只怪兽效果无效特殊召唤。这张卡从场上离开时那只怪兽除外。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    },
+    {
+      "cardId": 6387204,
+      "nameCn": "混沌No.6 先史遗产 混沌大西洲巨人",
+      "nameJp": "CNo.6 先史遺産カオス・アトランタル",
+      "nameEn": "Number C6: Chronomaly Chaos Atlandis",
+      "era": "第13期",
+      "category": "EFFECT_CHANGE",
+      "in1999Catalog": false,
+      "revisions": [
+        {
+          "versionIndex": 1,
+          "effectiveDate": "2013-02-16",
+          "sourceLabel": "2013-02-16 勘误前初版",
+          "summary": "LTGY 初版",
+          "descCn": "【2013-02-16 勘误前初版】LTGY 初版（参考现行版区别：DBGV 勘误：发动效果回合对方受到的全部伤害变为0）",
+          "flags": [
+            "PRE_ERRATA"
+          ]
+        },
+        {
+          "versionIndex": 2,
+          "effectiveDate": "2025-10-01",
+          "sourceLabel": "2025-10-01 OCG 官方勘误版",
+          "summary": "DBGV 勘误：发动效果回合对方受到的全部伤害变为0",
+          "descCn": "【2025-10-01 勘误后】7星怪兽×3\r\n这个卡名的①②的效果发动过的回合，对方受到的全部伤害变成0。\r\n①：1回合1次，以对方场上1只怪兽为对象才能发动。那只对方怪兽当作攻击力上升1000的装备魔法卡使用给这张卡装备。\r\n②：这张卡有「No.6 先史遗产 大西洲巨人」在作为超量素材的场合，把这张卡3个超量素材取除，把这张卡的效果装备的自己场上的表侧表示的「No.」怪兽卡全部送去墓地才能发动。对方基本分变成100。",
+          "flags": [
+            "POST_ERRATA"
+          ]
+        }
+      ]
+    }
+  ]
+}

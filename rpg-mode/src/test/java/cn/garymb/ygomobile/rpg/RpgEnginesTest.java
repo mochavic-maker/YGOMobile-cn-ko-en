@@ -18,6 +18,7 @@ import java.util.Random;
 import cn.garymb.ygomobile.rpg.data.RpgCatalogLoader;
 import cn.garymb.ygomobile.rpg.data.RpgRepository;
 import cn.garymb.ygomobile.rpg.engine.AiDeckGenerator;
+import cn.garymb.ygomobile.rpg.engine.CardErrataEngine;
 import cn.garymb.ygomobile.rpg.engine.CraftingEngine;
 import cn.garymb.ygomobile.rpg.engine.DeckValidator;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
@@ -27,6 +28,7 @@ import cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgCardErrata;
 import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
@@ -38,6 +40,7 @@ public class RpgEnginesTest {
     private static final int DARK_MAGICIAN = 46986414;  // Vol.1 UR
     private static final int DARK_HOLE = 53129443;      // Vol.1 SR
     private static final int TRAP_HOLE = 4206964;       // Vol.1 SR
+    private static final int FISSURE = 66788016;        // Vol.1 R
     private static final int BLUE_EYES = 89631139;      // Starter Box UR
     private static final int RAIGEKI = 12580477;        // Starter Box SR
     private static final int MONSTER_REBORN = 83764718; // Vol.2 SR
@@ -46,14 +49,23 @@ public class RpgEnginesTest {
     private static final int EXODIA_HEAD = 33396948;    // Premium Pack UR
     private static final int BLACK_LUSTER = 5405694;    // Premium Pack 2 UR
     private static final int DE_SPELL = 19159413;       // EX x6
+    private static final int SANGAN = 26202165;         // Vol.6 R
+    private static final int WITCH = 78010363;          // Vol.6 R
+    private static final int CCV = 57728570;            // DM2 Promo UR
+    private static final int TIME_WIZARD = 71625222;    // PP1 UR
+    private static final int GRACEFUL_CHARITY = 79571449;// Vol.5 SR
+    private static final int CHAOS_EMPEROR = 82301904;  // Series 3 Unban Errata
+    private static final int FIREWALL_DRAGON = 5043010; // Series 10 Unban Errata
 
     private RpgCatalog catalog;
 
     @Before
     public void setUp() throws Exception {
         File assetFile = new File("src/main/assets/rpg/ocg_demo_catalog.json");
-        try (FileInputStream fis = new FileInputStream(assetFile)) {
-            catalog = RpgCatalogLoader.loadFromStream(fis);
+        File errataFile = new File("src/main/assets/rpg/ocg_errata_history.json");
+        try (FileInputStream fis = new FileInputStream(assetFile);
+             FileInputStream efis = new FileInputStream(errataFile)) {
+            catalog = RpgCatalogLoader.loadFromStreams(fis, efis);
         }
     }
 
@@ -356,5 +368,119 @@ public class RpgEnginesTest {
         assertFalse(report.logs.isEmpty());
         assertTrue(report.turns >= 1);
         assertNotNull(catalog.findCard(EXODIA_HEAD));
+    }
+
+    @Test
+    public void errataDatabaseCoversSeries1To13AndTimelineMilestones() {
+        assertTrue("Full OCG errata DB should contain 100+ cards",
+                catalog.getErrataRecords().size() >= 100);
+
+        int count1999 = 0;
+        for (OcgCardErrata rec : catalog.getErrataRecords()) {
+            if (rec.in1999Catalog) count1999++;
+        }
+        assertTrue("1999 catalog should have 25+ cards with official errata records", count1999 >= 25);
+
+        // 1999-12-20 (Sangan's first errata) must appear in timeline milestones
+        List<String> milestones = TimelineEngine.getTimelineMilestones(catalog);
+        assertTrue("1999-12-20 Sangan errata milestone must be included",
+                milestones.contains("1999-12-20"));
+
+        // Series 3 & Series 10 major errata cards present and resolve by date
+        OcgCardErrata.Revision cedV1 = CardErrataEngine.getActiveRevision(catalog, CHAOS_EMPEROR, "2003-04-24");
+        OcgCardErrata.Revision cedV2 = CardErrataEngine.getActiveRevision(catalog, CHAOS_EMPEROR, "2015-01-01");
+        assertNotNull(cedV1);
+        assertNotNull(cedV2);
+        assertEquals(1, cedV1.versionIndex);
+        assertTrue(cedV2.versionIndex >= 2);
+
+        OcgCardErrata.Revision fwdV1 = CardErrataEngine.getActiveRevision(catalog, FIREWALL_DRAGON, "2017-04-15");
+        OcgCardErrata.Revision fwdV2 = CardErrataEngine.getActiveRevision(catalog, FIREWALL_DRAGON, "2021-01-01");
+        assertNotNull(fwdV1);
+        assertNotNull(fwdV2);
+        assertEquals(1, fwdV1.versionIndex);
+        assertTrue(fwdV2.versionIndex >= 2);
+    }
+
+    @Test
+    public void sanganWitchCcvTimeWizardAnd1999CardsAutoSwitchByTimeline() {
+        // Sangan: 1999-11-18 (any GY) -> 1999-12-20 (field only) -> 2016-04-01 (HOPT + search lock)
+        assertTrue(CardErrataEngine.hasFlag(catalog, SANGAN, "1999-11-18", "SANGAN_ANY_GY"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, SANGAN, "1999-12-19", "SANGAN_ANY_GY"));
+        assertFalse(CardErrataEngine.hasFlag(catalog, SANGAN, "1999-12-20", "SANGAN_ANY_GY"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, SANGAN, "1999-12-20", "SANGAN_FIELD_ONLY"));
+        assertFalse(CardErrataEngine.hasFlag(catalog, SANGAN, "1999-12-20", "HOPT"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, SANGAN, "2016-04-01", "HOPT"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, SANGAN, "2016-04-01", "SEARCH_LOCK"));
+
+        // Witch of the Black Forest: 1999-11-18 (any GY, remains any GY through 1999-12-31!) -> 2000-04-20 -> 2017-04-01
+        assertTrue(CardErrataEngine.hasFlag(catalog, WITCH, "1999-11-18", "WITCH_ANY_GY"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, WITCH, "1999-12-31", "WITCH_ANY_GY"));
+        assertFalse(CardErrataEngine.hasFlag(catalog, WITCH, "2000-04-20", "WITCH_ANY_GY"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, WITCH, "2000-04-20", "WITCH_FIELD_ONLY"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, WITCH, "2017-04-01", "HOPT"));
+
+        // Crush Card Virus: 1999-07-08 3-turn draw destroy -> 2015-01-01 nerfed
+        assertTrue(CardErrataEngine.hasFlag(catalog, CCV, "1999-07-08", "CCV_ORIGINAL_3TURN_DRAW"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, CCV, "1999-12-31", "CCV_ORIGINAL_3TURN_DRAW"));
+        assertFalse(CardErrataEngine.hasFlag(catalog, CCV, "2015-01-01", "CCV_ORIGINAL_3TURN_DRAW"));
+        assertTrue(CardErrataEngine.hasFlag(catalog, CCV, "2015-01-01", "CCV_2015_NERFED"));
+
+        // Time Wizard: 1999-08-26 no OPT -> 2000-09-21 OPT
+        assertTrue(CardErrataEngine.hasFlag(catalog, TIME_WIZARD, "1999-08-26", "TIME_WIZARD_NO_OPT"));
+        assertFalse(CardErrataEngine.hasFlag(catalog, TIME_WIZARD, "2000-09-21", "TIME_WIZARD_NO_OPT"));
+
+        // Early 1999 text revisions: Fissure & Trap Hole change on 1999-05-05
+        assertEquals(1, CardErrataEngine.getActiveRevision(catalog, FISSURE, "1999-02-04").versionIndex);
+        assertEquals(2, CardErrataEngine.getActiveRevision(catalog, FISSURE, "1999-05-05").versionIndex);
+        assertEquals(1, CardErrataEngine.getActiveRevision(catalog, TRAP_HOLE, "1999-02-04").versionIndex);
+        assertEquals(2, CardErrataEngine.getActiveRevision(catalog, TRAP_HOLE, "1999-05-05").versionIndex);
+
+        // Pre-errata script IDs required on 1999-12-31 include Sangan, Witch, CCV, Time Wizard
+        List<Integer> preIds = CardErrataEngine.getRequiredPreErrataScriptIds(catalog, "1999-12-31");
+        assertTrue(preIds.contains(SANGAN));
+        assertTrue(preIds.contains(WITCH));
+        assertTrue(preIds.contains(CCV));
+        assertTrue(preIds.contains(TIME_WIZARD));
+    }
+
+    @Test
+    public void quickDuelExecutesSangan1999PreErrataDiscardVsDec20FieldOnly() {
+        // Construct a test deck rich in Graceful Charity + Sangan + low-ATK monsters
+        List<Integer> comboDeck = new ArrayList<>();
+        for (int i = 0; i < 15; i++) comboDeck.add(GRACEFUL_CHARITY);
+        for (int i = 0; i < 15; i++) comboDeck.add(SANGAN);
+        for (int i = 0; i < 10; i++) comboDeck.add(CELTIC_GUARDIAN);
+
+        List<Integer> dummyAiDeck = new ArrayList<>();
+        for (int i = 0; i < 40; i++) dummyAiDeck.add(DE_SPELL);
+
+        AiOpponent opp = AiDeckGenerator.getDemoOpponents().get(5);
+
+        // On 1999-12-19: Sangan v1 (any GY) MUST trigger when discarded by Graceful Charity!
+        QuickDuelSimulator.QuickDuelReport beforeErrata = QuickDuelSimulator.simulate(
+                catalog, comboDeck, dummyAiDeck, opp, "1999-12-19", new Random(42L));
+        boolean triggeredFromHandBefore = false;
+        for (String line : beforeErrata.logs) {
+            if (line.contains("三眼怪") && line.contains("手卡/非场上送墓")) {
+                triggeredFromHandBefore = true;
+                break;
+            }
+        }
+        assertTrue("On 1999-12-19 Sangan MUST trigger search when discarded from hand by Graceful Charity",
+                triggeredFromHandBefore);
+
+        // On 1999-12-20: Sangan v2 (field only) MUST NOT trigger when discarded from hand!
+        QuickDuelSimulator.QuickDuelReport afterErrata = QuickDuelSimulator.simulate(
+                catalog, comboDeck, dummyAiDeck, opp, "1999-12-20", new Random(42L));
+        boolean triggeredFromHandAfter = false;
+        for (String line : afterErrata.logs) {
+            if (line.contains("三眼怪") && line.contains("手卡/非场上送墓")) {
+                triggeredFromHandAfter = true;
+                break;
+            }
+        }
+        assertFalse("On 1999-12-20 Sangan MUST NOT trigger search when discarded from hand",
+                triggeredFromHandAfter);
     }
 }
