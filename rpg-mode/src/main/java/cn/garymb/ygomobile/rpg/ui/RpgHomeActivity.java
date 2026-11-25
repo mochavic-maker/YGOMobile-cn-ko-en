@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -567,6 +568,8 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "已按当前时间轴与卡库自动构筑 " + built + " 张主卡组", Toast.LENGTH_SHORT).show();
             refreshAll();
         });
+        Button saveDeckBtn = makeActionButton("💾 保存卡组", "#0284C7");
+        saveDeckBtn.setOnClickListener(v -> showSaveDeckDialog());
         Button clearBtn = makeActionButton("清空卡组", "#475569");
         clearBtn.setOnClickListener(v -> {
             profile.activeDeckMain.clear();
@@ -575,12 +578,15 @@ public class RpgHomeActivity extends AppCompatActivity {
             refreshAll();
         });
         layoutTabActions.addView(autoBtn);
+        layoutTabActions.addView(saveDeckBtn);
         layoutTabActions.addView(clearBtn);
 
         DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
         LinearLayout statusCard = makeCardContainer();
+        RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
         TextView statusTitle = makeTitleText(
-                "当前 RPG 卡组：主卡组 " + profile.activeDeckMain.size()
+                "当前 RPG 卡组" + (activeSaved != null ? " [" + activeSaved.name + "]" : "")
+                        + "：主卡组 " + profile.activeDeckMain.size()
                         + " 张 / 额外 " + profile.activeDeckExtra.size() + " 张 · "
                         + (val.valid ? "✔ 合规可出战" : "✘ 未通过校验"));
         statusTitle.setTextColor(Color.parseColor(val.valid ? "#34D399" : "#F87171"));
@@ -593,6 +599,70 @@ public class RpgHomeActivity extends AppCompatActivity {
             statusCard.addView(makeSubtleText(errs.toString().trim()));
         }
         layoutContent.addView(statusCard);
+
+        // Multi-deck saved slots section
+        LinearLayout savedSection = makeCardContainer();
+        int savedCount = profile.savedDecks != null ? profile.savedDecks.size() : 0;
+        TextView savedHeader = makeTitleText("📚 多卡组槽位管理（已保存 " + savedCount + " 套）");
+        savedHeader.setTextColor(Color.parseColor("#38BDF8"));
+        savedSection.addView(savedHeader);
+        if (savedCount == 0) {
+            savedSection.addView(makeSubtleText("暂无已保存卡组。点击上方「💾 保存卡组」可命名保存当前构筑，随时读取、覆盖或删除。"));
+        } else {
+            for (final RpgProfile.SavedDeck sd : profile.savedDecks) {
+                if (sd == null) continue;
+                boolean isCur = sd.id != null && sd.id.equals(profile.activeDeckId);
+                int mSize = sd.main != null ? sd.main.size() : 0;
+                int eSize = sd.extra != null ? sd.extra.size() : 0;
+                TextView nameTv = makeSubtleText((isCur ? "▶ [当前] " : "• ") + sd.name
+                        + "（主 " + mSize + " / 额外 " + eSize
+                        + (sd.savedAtDate != null ? " · 存自 " + sd.savedAtDate : "") + "）");
+                nameTv.setTextColor(Color.parseColor(isCur ? "#34D399" : "#E2E8F0"));
+                savedSection.addView(nameTv);
+
+                LinearLayout dRow = new LinearLayout(this);
+                dRow.setOrientation(LinearLayout.HORIZONTAL);
+                dRow.setPadding(0, dp(4), 0, dp(8));
+
+                Button loadBtn = makeActionButton("📂 读取", "#059669");
+                loadBtn.setOnClickListener(v -> {
+                    if (profile.loadSavedDeck(sd.id)) {
+                        saveProfileSafe();
+                        Toast.makeText(this, "已读取卡组「" + sd.name + "」", Toast.LENGTH_SHORT).show();
+                        refreshAll();
+                    }
+                });
+                dRow.addView(loadBtn);
+
+                Button overwriteBtn = makeActionButton("💾 覆盖", "#0284C7");
+                overwriteBtn.setOnClickListener(v -> {
+                    if (profile.overwriteSavedDeck(sd.id)) {
+                        saveProfileSafe();
+                        Toast.makeText(this, "已用当前构筑覆盖「" + sd.name + "」", Toast.LENGTH_SHORT).show();
+                        refreshAll();
+                    }
+                });
+                dRow.addView(overwriteBtn);
+
+                Button delBtn = makeActionButton("🗑 删除", "#B91C1C");
+                delBtn.setOnClickListener(v -> new AlertDialog.Builder(this)
+                        .setTitle("删除卡组")
+                        .setMessage("确认删除已保存卡组「" + sd.name + "」？（不会清空当前编辑中的卡组）")
+                        .setPositiveButton("删除", (dlg, which) -> {
+                            if (profile.deleteSavedDeck(sd.id)) {
+                                saveProfileSafe();
+                                Toast.makeText(this, "已删除卡组「" + sd.name + "」", Toast.LENGTH_SHORT).show();
+                                refreshAll();
+                            }
+                        })
+                        .setNegativeButton("取消", null)
+                        .show());
+                dRow.addView(delBtn);
+
+                savedSection.addView(dRow);
+            }
+        }
+        layoutContent.addView(savedSection);
 
         Map<Integer, Integer> inDeckCounts = countDeckCards();
         OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
@@ -654,6 +724,33 @@ public class RpgHomeActivity extends AppCompatActivity {
             box.addView(row);
             layoutContent.addView(box);
         }
+    }
+
+    private void showSaveDeckDialog() {
+        final EditText input = new EditText(this);
+        RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
+        int nextIdx = (profile.savedDecks != null ? profile.savedDecks.size() : 0) + 1;
+        input.setHint("例如：青眼强攻 / 封印大法师（同名将覆盖）");
+        input.setText(activeSaved != null ? activeSaved.name : ("我的卡组 " + nextIdx));
+        input.setSelection(input.getText().length());
+        int pad = dp(16);
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(pad, dp(8), pad, 0);
+        container.addView(input);
+
+        new AlertDialog.Builder(this)
+                .setTitle("💾 保存当前卡组（主 " + profile.activeDeckMain.size() + " / 额外 " + profile.activeDeckExtra.size() + "）")
+                .setView(container)
+                .setPositiveButton("保存", (dialog, which) -> {
+                    String name = input.getText().toString().trim();
+                    RpgProfile.SavedDeck saved = profile.saveCurrentDeck(name);
+                    saveProfileSafe();
+                    Toast.makeText(this, "已保存卡组「" + saved.name + "」", Toast.LENGTH_SHORT).show();
+                    refreshAll();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     // ==================== TAB 4: AI DUEL ====================

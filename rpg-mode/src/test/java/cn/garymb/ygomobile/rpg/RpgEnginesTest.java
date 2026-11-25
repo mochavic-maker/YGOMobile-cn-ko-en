@@ -3,6 +3,7 @@ package cn.garymb.ygomobile.rpg;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
@@ -666,6 +667,83 @@ public class RpgEnginesTest {
             assertEquals(1, febReloaded.draws);
             assertEquals(90.0, febReloaded.winRatePercent, 0.001);
             assertEquals(50.0, reloaded.getRecentStats("1999-05-25", opp0.id).winRatePercent, 0.001);
+        } finally {
+            for (java.io.File f : tempDir.listFiles() != null ? tempDir.listFiles() : new java.io.File[0]) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
+
+    @Test
+    public void multiDeckSaveLoadOverwriteDeleteAndPersistence() throws Exception {
+        RpgProfile profile = new RpgProfile();
+        profile.currentTimelineDate = "1999-03-27";
+        profile.activeDeckMain = new ArrayList<>(java.util.Arrays.asList(89631139, 46986414, 53129443));
+        profile.activeDeckExtra = new ArrayList<>(java.util.Arrays.asList(23995346));
+
+        // 1. Save deck A
+        RpgProfile.SavedDeck deckA = profile.saveCurrentDeck("青眼强攻");
+        assertNotNull(deckA);
+        assertEquals("青眼强攻", deckA.name);
+        assertEquals(3, deckA.main.size());
+        assertEquals(1, deckA.extra.size());
+        assertEquals("1999-03-27", deckA.savedAtDate);
+        assertEquals(deckA.id, profile.activeDeckId);
+        assertEquals(1, profile.savedDecks.size());
+
+        // 2. Edit active deck -> must NOT mutate saved deck A (defensive copy)
+        profile.activeDeckMain.clear();
+        profile.activeDeckMain.add(33396948);
+        profile.activeDeckExtra.clear();
+        assertEquals(3, profile.findSavedDeck(deckA.id).main.size());
+
+        // 3. Save deck B under a different name
+        profile.currentTimelineDate = "1999-05-25";
+        RpgProfile.SavedDeck deckB = profile.saveCurrentDeck("封印大法师");
+        assertEquals(2, profile.savedDecks.size());
+        assertEquals(deckB.id, profile.activeDeckId);
+        assertEquals(1, deckB.main.size());
+        assertEquals(0, deckB.extra.size());
+
+        // 4. Load deck A -> restores A's cards into active editor
+        assertTrue(profile.loadSavedDeck(deckA.id));
+        assertEquals(deckA.id, profile.activeDeckId);
+        assertEquals(3, profile.activeDeckMain.size());
+        assertEquals(1, profile.activeDeckExtra.size());
+        assertEquals(Integer.valueOf(89631139), profile.activeDeckMain.get(0));
+
+        // 5. Overwrite deck B with current active deck (or save with same name)
+        profile.activeDeckMain.add(55144522);
+        assertTrue(profile.overwriteSavedDeck(deckB.id));
+        assertEquals(4, profile.findSavedDeck(deckB.id).main.size());
+        assertEquals(deckB.id, profile.activeDeckId);
+
+        // Saving with an existing name updates in-place instead of creating a duplicate
+        RpgProfile.SavedDeck updatedA = profile.saveCurrentDeck("  青眼强攻  ");
+        assertEquals(deckA.id, updatedA.id);
+        assertEquals(2, profile.savedDecks.size());
+        assertEquals(4, updatedA.main.size());
+
+        // 6. Verify RpgRepository persistence round-trip
+        java.io.File tempDir = java.nio.file.Files.createTempDirectory("rpg_saved_decks_test").toFile();
+        try {
+            cn.garymb.ygomobile.rpg.data.RpgRepository repo = new cn.garymb.ygomobile.rpg.data.RpgRepository(tempDir);
+            repo.saveProfile(profile);
+            RpgProfile reloaded = repo.loadProfile();
+            assertEquals(2, reloaded.savedDecks.size());
+            assertEquals(deckA.id, reloaded.activeDeckId);
+            assertEquals("青眼强攻", reloaded.findSavedDeck(deckA.id).name);
+            assertEquals(4, reloaded.findSavedDeck(deckA.id).main.size());
+            assertEquals("封印大法师", reloaded.findSavedDeck(deckB.id).name);
+
+            // 7. Delete deck A -> removes slot & clears activeDeckId, keeps editing buffer intact
+            assertTrue(reloaded.deleteSavedDeck(deckA.id));
+            assertEquals(1, reloaded.savedDecks.size());
+            assertNull(reloaded.activeDeckId);
+            assertNull(reloaded.findSavedDeck(deckA.id));
+            assertEquals(4, reloaded.activeDeckMain.size());
+            assertFalse(reloaded.deleteSavedDeck("non_existent_id"));
         } finally {
             for (java.io.File f : tempDir.listFiles() != null ? tempDir.listFiles() : new java.io.File[0]) {
                 f.delete();
