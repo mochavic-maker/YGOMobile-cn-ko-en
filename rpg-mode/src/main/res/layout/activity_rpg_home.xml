@@ -78,14 +78,25 @@
                 android:textSize="13sp" />
 
             <Button
+                android:id="@+id/btn_timeline_digest"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginEnd="6dp"
+                android:backgroundTint="#0284C7"
+                android:paddingHorizontal="10dp"
+                android:text="📰 当期动态"
+                android:textColor="#F8FAFC"
+                android:textSize="11.5sp" />
+
+            <Button
                 android:id="@+id/btn_pick_date"
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
                 android:backgroundTint="#334155"
-                android:paddingHorizontal="12dp"
+                android:paddingHorizontal="10dp"
                 android:text="移动时间点"
                 android:textColor="#F8FAFC"
-                android:textSize="12sp" />
+                android:textSize="11.5sp" />
         </LinearLayout>
 
         <HorizontalScrollView
@@ -100,6 +111,19 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal" />
         </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/tv_timeline_digest_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="#0F172A"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="6dp"
+            android:text="📰 1999-02-04：点击查看当前时间点大事件详情"
+            android:textColor="#FDE68A"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tv_active_banlist"

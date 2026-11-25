@@ -85,6 +85,8 @@ public class RpgHomeActivity extends AppCompatActivity {
     private TextView tvTokens;
     private TextView tvDust;
     private TextView tvTimelineDate;
+    private TextView tvTimelineDigestBanner;
+    private Button btnTimelineDigest;
     private TextView tvActiveBanlist;
     private TextView tvActiveRule;
     private LinearLayout layoutMilestones;
@@ -98,6 +100,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     private String showdownKeyA = "current";
     private String showdownKeyB = null;
     private QuickDuelSimulator.BatchShowdownReport lastShowdownReport = null;
+    private TimelineEngine.TimelineDigest currentTimelineDigest = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,6 +126,8 @@ public class RpgHomeActivity extends AppCompatActivity {
         tvTokens = findViewById(R.id.tv_rpg_tokens);
         tvDust = findViewById(R.id.tv_rpg_dust);
         tvTimelineDate = findViewById(R.id.tv_timeline_date);
+        tvTimelineDigestBanner = findViewById(R.id.tv_timeline_digest_banner);
+        btnTimelineDigest = findViewById(R.id.btn_timeline_digest);
         tvActiveBanlist = findViewById(R.id.tv_active_banlist);
         tvActiveRule = findViewById(R.id.tv_active_rule);
         layoutMilestones = findViewById(R.id.layout_milestones);
@@ -132,6 +137,8 @@ public class RpgHomeActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_rpg_back).setOnClickListener(v -> finish());
         findViewById(R.id.btn_pick_date).setOnClickListener(v -> openDatePicker());
+        btnTimelineDigest.setOnClickListener(v -> openTimelineDigestDialog());
+        tvTimelineDigestBanner.setOnClickListener(v -> openTimelineDigestDialog());
 
         tabLayout.setTabMode(TabLayout.MODE_SCROLLABLE);
         tabLayout.addTab(tabLayout.newTab().setText("卡包商店"));
@@ -158,6 +165,8 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
         });
 
+        currentTimelineDigest = TimelineEngine.buildDigestAtDate(
+                catalog, AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
         applyInitialTabFromIntent(getIntent());
         renderMilestones();
         refreshAll();
@@ -346,7 +355,58 @@ public class RpgHomeActivity extends AppCompatActivity {
         tvActiveBanlist.setText("当前禁限表: " + banlist.name + " — " + banlist.description);
         OcgRuleSet ruleSet = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
         tvActiveRule.setText("当前规则（随时间轴自动锁定）: " + ruleSet.name + " — " + ruleSet.description);
+        updateTimelineDigestBanner();
+        highlightActiveMilestone();
         renderCurrentTab();
+    }
+
+    private void updateTimelineDigestBanner() {
+        if (currentTimelineDigest == null
+                || !profile.currentTimelineDate.equals(currentTimelineDigest.toDate)) {
+            currentTimelineDigest = TimelineEngine.buildDigestAtDate(
+                    catalog, AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
+        }
+        int total = currentTimelineDigest.getTotalChangeCount();
+        if (tvTimelineDigestBanner != null) {
+            tvTimelineDigestBanner.setText(currentTimelineDigest.buildShortSummary()
+                    + (total > 0 ? "  ▸ 点击看详情" : ""));
+            tvTimelineDigestBanner.setTextColor(Color.parseColor(total > 0 ? "#FDE68A" : "#94A3B8"));
+        }
+        if (btnTimelineDigest != null) {
+            btnTimelineDigest.setText(total > 0 ? ("📰 当期动态(" + total + ")") : "📰 当期动态");
+            btnTimelineDigest.setBackgroundColor(Color.parseColor(total > 0 ? "#D97706" : "#334155"));
+        }
+    }
+
+    private void openTimelineDigestDialog() {
+        if (catalog == null) return;
+        if (currentTimelineDigest == null
+                || !profile.currentTimelineDate.equals(currentTimelineDigest.toDate)) {
+            currentTimelineDigest = TimelineEngine.buildDigestAtDate(
+                    catalog, AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
+        }
+        RpgTimelineDigestDialog.show(this, catalog, profile, currentTimelineDigest);
+    }
+
+    private void selectTimelineDate(String targetDate) {
+        String prevDate = profile.currentTimelineDate;
+        String clamped = TimelineEngine.clampDate(catalog, targetDate);
+        profile.currentTimelineDate = clamped;
+        currentTimelineDigest = TimelineEngine.buildDigestForTransition(
+                catalog, AiDeckGenerator.getDemoOpponents(), prevDate, clamped);
+        saveProfileSafe();
+        refreshAll();
+    }
+
+    private void highlightActiveMilestone() {
+        if (layoutMilestones == null) return;
+        for (int i = 0; i < layoutMilestones.getChildCount(); i++) {
+            View child = layoutMilestones.getChildAt(i);
+            if (child instanceof Button) {
+                boolean active = profile.currentTimelineDate.equals(child.getTag());
+                child.setBackgroundColor(Color.parseColor(active ? "#D97706" : "#334155"));
+            }
+        }
     }
 
     private void renderMilestones() {
@@ -354,21 +414,19 @@ public class RpgHomeActivity extends AppCompatActivity {
         List<String> milestones = TimelineEngine.getTimelineMilestones(catalog);
         for (final String date : milestones) {
             Button btn = new Button(this);
+            btn.setTag(date);
             btn.setText(date);
             btn.setTextSize(11f);
             btn.setTextColor(Color.WHITE);
             btn.setAllCaps(false);
-            btn.setBackgroundColor(Color.parseColor("#334155"));
+            btn.setBackgroundColor(Color.parseColor(
+                    date.equals(profile.currentTimelineDate) ? "#D97706" : "#334155"));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, dp(30));
             lp.setMarginEnd(dp(6));
             btn.setLayoutParams(lp);
             btn.setPadding(dp(10), 0, dp(10), 0);
-            btn.setOnClickListener(v -> {
-                profile.currentTimelineDate = TimelineEngine.clampDate(catalog, date);
-                saveProfileSafe();
-                refreshAll();
-            });
+            btn.setOnClickListener(v -> selectTimelineDate(date));
             layoutMilestones.addView(btn);
         }
     }
@@ -384,9 +442,7 @@ public class RpgHomeActivity extends AppCompatActivity {
 
         DatePickerDialog dlg = new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
             String picked = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth);
-            profile.currentTimelineDate = TimelineEngine.clampDate(catalog, picked);
-            saveProfileSafe();
-            refreshAll();
+            selectTimelineDate(picked);
         }, y, m, d);
         Calendar minCal = Calendar.getInstance();
         minCal.set(1999, Calendar.FEBRUARY, 4, 0, 0, 0);

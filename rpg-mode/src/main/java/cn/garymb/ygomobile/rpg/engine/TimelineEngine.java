@@ -198,4 +198,200 @@ public final class TimelineEngine {
         }
         return Collections.unmodifiableList(out);
     }
+
+    public static class ErrataChange {
+        public final cn.garymb.ygomobile.rpg.model.OcgCardErrata errata;
+        public final cn.garymb.ygomobile.rpg.model.OcgCardErrata.Revision revision;
+        public final cn.garymb.ygomobile.rpg.model.OcgCardErrata.Revision previousRevision;
+
+        public ErrataChange(cn.garymb.ygomobile.rpg.model.OcgCardErrata errata,
+                            cn.garymb.ygomobile.rpg.model.OcgCardErrata.Revision revision,
+                            cn.garymb.ygomobile.rpg.model.OcgCardErrata.Revision previousRevision) {
+            this.errata = errata;
+            this.revision = revision;
+            this.previousRevision = previousRevision;
+        }
+    }
+
+    public static class AiChange {
+        public final AiOpponent opponent;
+        public final AiOpponent.EraDeckProfile newProfile;
+        public final AiOpponent.EraDeckProfile previousProfile;
+        public final boolean newlyUnlocked;
+
+        public AiChange(AiOpponent opponent,
+                        AiOpponent.EraDeckProfile newProfile,
+                        AiOpponent.EraDeckProfile previousProfile,
+                        boolean newlyUnlocked) {
+            this.opponent = opponent;
+            this.newProfile = newProfile;
+            this.previousProfile = previousProfile;
+            this.newlyUnlocked = newlyUnlocked;
+        }
+    }
+
+    public static class TimelineDigest {
+        public final String fromDate;
+        public final String toDate;
+        public final boolean isRange;
+        public final List<OcgPack> newPacks = new ArrayList<>();
+        public final List<OcgEvent> newEvents = new ArrayList<>();
+        public final List<OcgRuleSet> ruleChanges = new ArrayList<>();
+        public final List<OcgBanlist> banlistChanges = new ArrayList<>();
+        public final List<ErrataChange> errataChanges = new ArrayList<>();
+        public final List<AiChange> aiChanges = new ArrayList<>();
+
+        public TimelineDigest(String fromDate, String toDate, boolean isRange) {
+            this.fromDate = fromDate;
+            this.toDate = toDate;
+            this.isRange = isRange;
+        }
+
+        public int getTotalChangeCount() {
+            return newPacks.size() + newEvents.size() + ruleChanges.size()
+                    + banlistChanges.size() + errataChanges.size() + aiChanges.size();
+        }
+
+        public String getPeriodTitle() {
+            if (isRange && fromDate != null && !fromDate.equals(toDate)) {
+                return fromDate + " → " + toDate + " 区间历史变化";
+            }
+            return toDate + " 当日历史大事件";
+        }
+
+        public String buildShortSummary() {
+            if (getTotalChangeCount() == 0) {
+                return "📰 " + toDate + " 当日无新发售或规则变动（点击「当期动态」查看详情）";
+            }
+            List<String> parts = new ArrayList<>();
+            if (!newPacks.isEmpty()) {
+                String first = newPacks.get(0).name;
+                parts.add("新商品×" + newPacks.size() + "(" + first + (newPacks.size() > 1 ? "等" : "") + ")");
+            }
+            if (!newEvents.isEmpty()) {
+                parts.add("特典活动×" + newEvents.size());
+            }
+            if (!ruleChanges.isEmpty()) {
+                parts.add("规则变更×" + ruleChanges.size());
+            }
+            if (!banlistChanges.isEmpty()) {
+                parts.add("禁限表×" + banlistChanges.size());
+            }
+            if (!errataChanges.isEmpty()) {
+                parts.add("效果勘误×" + errataChanges.size());
+            }
+            if (!aiChanges.isEmpty()) {
+                parts.add("AI调整×" + aiChanges.size());
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("📰 ");
+            if (isRange && fromDate != null && !fromDate.equals(toDate)) {
+                sb.append(fromDate).append("→").append(toDate).append("：");
+            } else {
+                sb.append(toDate).append("：");
+            }
+            for (int i = 0; i < parts.size(); i++) {
+                if (i > 0) sb.append(" · ");
+                sb.append(parts.get(i));
+            }
+            return sb.toString();
+        }
+    }
+
+    /** Builds a digest of all historical events occurring exactly on {@code date}. */
+    public static TimelineDigest buildDigestAtDate(RpgCatalog catalog, List<AiOpponent> opponents, String date) {
+        return collectDigest(catalog, opponents, null, date, false);
+    }
+
+    /**
+     * Builds a digest when moving the timeline from {@code fromDate} to {@code toDate}.
+     * Moving forward aggregates all changes in (fromDate, toDate]; jumping backward or viewing
+     * the same date shows all events occurring exactly on {@code toDate}.
+     */
+    public static TimelineDigest buildDigestForTransition(RpgCatalog catalog,
+                                                          List<AiOpponent> opponents,
+                                                          String fromDate,
+                                                          String toDate) {
+        if (fromDate != null && toDate != null && toDate.compareTo(fromDate) > 0) {
+            return collectDigest(catalog, opponents, fromDate, toDate, true);
+        }
+        return collectDigest(catalog, opponents, null, toDate, false);
+    }
+
+    private static boolean dateMatches(String eventDate, String fromDate, String toDate, boolean isRange) {
+        if (eventDate == null || eventDate.isEmpty() || toDate == null) return false;
+        if (isRange && fromDate != null) {
+            return eventDate.compareTo(fromDate) > 0 && eventDate.compareTo(toDate) <= 0;
+        }
+        return eventDate.equals(toDate);
+    }
+
+    private static TimelineDigest collectDigest(RpgCatalog catalog,
+                                                List<AiOpponent> opponents,
+                                                String fromDate,
+                                                String toDate,
+                                                boolean isRange) {
+        TimelineDigest digest = new TimelineDigest(fromDate, toDate, isRange);
+        if (catalog == null || toDate == null) return digest;
+
+        if (catalog.packs != null) {
+            for (OcgPack p : catalog.packs) {
+                if (dateMatches(p.releaseDate, fromDate, toDate, isRange)) {
+                    digest.newPacks.add(p);
+                }
+            }
+        }
+        if (catalog.events != null) {
+            for (OcgEvent ev : catalog.events) {
+                if (dateMatches(ev.releaseDate, fromDate, toDate, isRange)) {
+                    digest.newEvents.add(ev);
+                }
+            }
+        }
+        if (catalog.rules != null) {
+            for (OcgRuleSet r : catalog.rules) {
+                if (dateMatches(r.effectiveDate, fromDate, toDate, isRange)) {
+                    digest.ruleChanges.add(r);
+                }
+            }
+        }
+        if (catalog.banlists != null) {
+            for (OcgBanlist b : catalog.banlists) {
+                if (dateMatches(b.effectiveDate, fromDate, toDate, isRange)) {
+                    digest.banlistChanges.add(b);
+                }
+            }
+        }
+        for (cn.garymb.ygomobile.rpg.model.OcgCardErrata err : catalog.getErrataRecords()) {
+            if (!err.in1999Catalog || err.revisions == null) continue;
+            for (int i = 1; i < err.revisions.size(); i++) {
+                cn.garymb.ygomobile.rpg.model.OcgCardErrata.Revision rev = err.revisions.get(i);
+                if (dateMatches(rev.effectiveDate, fromDate, toDate, isRange)) {
+                    digest.errataChanges.add(new ErrataChange(err, rev, err.revisions.get(i - 1)));
+                }
+            }
+        }
+        if (opponents != null) {
+            for (AiOpponent opp : opponents) {
+                boolean newlyUnlocked = dateMatches(opp.unlockDate, fromDate, toDate, isRange);
+                AiOpponent.EraDeckProfile matchedEvo = null;
+                AiOpponent.EraDeckProfile prevEvo = null;
+                if (opp.deckEvolutions != null) {
+                    for (int i = 0; i < opp.deckEvolutions.size(); i++) {
+                        AiOpponent.EraDeckProfile evo = opp.deckEvolutions.get(i);
+                        if (dateMatches(evo.effectiveDate, fromDate, toDate, isRange)) {
+                            matchedEvo = evo;
+                            if (i > 0) prevEvo = opp.deckEvolutions.get(i - 1);
+                        }
+                    }
+                }
+                if (newlyUnlocked || matchedEvo != null) {
+                    AiOpponent.EraDeckProfile effective = matchedEvo != null
+                            ? matchedEvo : opp.getActiveDeckProfile(toDate);
+                    digest.aiChanges.add(new AiChange(opp, effective, prevEvo, newlyUnlocked));
+                }
+            }
+        }
+        return digest;
+    }
 }

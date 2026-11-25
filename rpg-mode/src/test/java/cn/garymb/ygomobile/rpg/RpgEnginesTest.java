@@ -808,4 +808,44 @@ public class RpgEnginesTest {
         assertEquals(0, profile.getRecentStats(profile.currentTimelineDate, oppA.id).total);
         assertEquals(0, profile.getRecentStats(profile.currentTimelineDate, oppB.id).total);
     }
+
+    @Test
+    public void timelineDigestTracksAllHistoricalChanges() {
+        List<AiOpponent> opps = AiDeckGenerator.getDemoOpponents();
+
+        // 1999-02-04: Vol.1, official rule, initial AI opponents
+        TimelineEngine.TimelineDigest d1 = TimelineEngine.buildDigestAtDate(catalog, opps, "1999-02-04");
+        assertEquals(1, d1.newPacks.size());
+        assertEquals("ocg_vol1", d1.newPacks.get(0).id);
+        assertEquals(1, d1.ruleChanges.size());
+        assertFalse(d1.aiChanges.isEmpty());
+
+        // 1999-08-26: Tokyo Dome PP1 + Booster 4 + promo events + 1999 first banlist + AI evolutions
+        TimelineEngine.TimelineDigest dDome = TimelineEngine.buildDigestAtDate(catalog, opps, "1999-08-26");
+        assertTrue(dDome.newPacks.size() >= 2);
+        assertFalse(dDome.newEvents.isEmpty());
+        assertFalse(dDome.banlistChanges.isEmpty());
+        assertFalse(dDome.aiChanges.isEmpty());
+
+        // 1999-12-20: Sangan official errata revision
+        TimelineEngine.TimelineDigest dErrata = TimelineEngine.buildDigestAtDate(catalog, opps, "1999-12-20");
+        assertFalse("1999-12-20 must surface Sangan errata", dErrata.errataChanges.isEmpty());
+        assertEquals(26202165, dErrata.errataChanges.get(0).errata.cardId);
+
+        // Forward multi-month transition 1999-03-27 -> 1999-05-27 aggregates Expert Rule + Booster 2 + Vol.3 + AI changes
+        TimelineEngine.TimelineDigest range = TimelineEngine.buildDigestForTransition(
+                catalog, opps, "1999-03-27", "1999-05-27");
+        assertTrue(range.isRange);
+        assertEquals(1, range.ruleChanges.size());
+        assertEquals("ocg_expert_1999", range.ruleChanges.get(0).id);
+        assertTrue(range.newPacks.size() >= 2);
+        assertFalse(range.aiChanges.isEmpty());
+        assertTrue(range.buildShortSummary().contains("规则变更"));
+
+        // Backward transition 1999-08-26 -> 1999-05-05 shows exact events at 1999-05-05
+        TimelineEngine.TimelineDigest back = TimelineEngine.buildDigestForTransition(
+                catalog, opps, "1999-08-26", "1999-05-05");
+        assertFalse(back.isRange);
+        assertEquals(1, back.ruleChanges.size());
+    }
 }
