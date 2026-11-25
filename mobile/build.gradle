@@ -184,3 +184,5 @@ dependencies {
     // zstd decompression for incremental pre-release card package updates
     implementation 'com.github.luben:zstd-jni:1.5.7-12@aar'
 }
+
+apply from: '../rpg-custom.gradle'

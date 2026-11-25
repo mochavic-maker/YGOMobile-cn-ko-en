@@ -510,6 +510,7 @@ class EngineCallbackDelegate implements GameEngine.EngineListener {
 
             // BGM 切至胜负场景（对齐 Game::playBGM 的 dInfo.isFinished && showcardcode==1/2/3）；平局（winner==2）不改场景，仍按决斗处理；观战不设胜负覆盖：观战者无「我方胜/负」语义，BGM 继续按 LP 差切优势/劣势/决斗曲（是否随场景切歌由 chkSwitchBGM 在 SoundManager 层控制）
             if (winner != 2 && !activity.engine.isSpectator()) activity.setBgmDuelResult(selfWon);
+            cn.garymb.ygomobile.rpg.RpgIntegration.onDuelResult(activity, winner, selfWon);
         });
     }
 

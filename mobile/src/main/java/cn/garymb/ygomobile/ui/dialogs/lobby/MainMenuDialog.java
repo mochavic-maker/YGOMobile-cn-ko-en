@@ -138,6 +138,7 @@ public class MainMenuDialog {
             activity.getSoundManager().stopBGM();
             activity.finish();
         });
+        cn.garymb.ygomobile.rpg.RpgIntegration.attachMainMenuButton(activity, root);
     }
 
     private void setSysText(View root, int viewId, int sysIdx, String def) {

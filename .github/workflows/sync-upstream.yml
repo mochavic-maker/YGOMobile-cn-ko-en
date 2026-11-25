@@ -1,0 +1,56 @@
+name: Sync Upstream YGOMobile
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly Monday 03:00 UTC check for upstream updates
+    - cron: '0 3 * * 1'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream master
+        run: |
+          git remote add upstream https://github.com/fallenstardust/YGOMobile-cn-ko-en.git || true
+          git fetch upstream master
+
+      - name: Check for new commits and test merge
+        id: merge_check
+        run: |
+          AHEAD=$(git rev-list --count HEAD..upstream/master)
+          echo "ahead=$AHEAD" >> $GITHUB_OUTPUT
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "Already up to date with upstream/master."
+            exit 0
+          fi
+          BRANCH="sync/upstream-$(date +%Y%m%d)"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git merge --no-edit upstream/master
+          git push origin "$BRANCH"
+
+      - name: Run :rpg-mode unit tests
+        if: steps.merge_check.outputs.ahead != '0'
+        run: ./gradlew :rpg-mode:testDebugUnitTest --configure-on-demand --no-daemon
+
+      - name: Open Sync Pull Request
+        if: steps.merge_check.outputs.ahead != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "chore: sync upstream YGOMobile ($(date +%Y-%m-%d))" \
+            --body "Automated merge of \`fallenstardust/YGOMobile-cn-ko-en:master\` with \`:rpg-mode\` unit tests passing." \
+            --head "${{ steps.merge_check.outputs.branch }}" \
+            --base "feature/rpg-mode"

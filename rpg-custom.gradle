@@ -1,0 +1,5 @@
+// Isolated Gradle extension for RPG mode & custom branding.
+// Kept outside mobile/build.gradle so upstream merges stay conflict-free.
+dependencies {
+    implementation project(':rpg-mode')
+}

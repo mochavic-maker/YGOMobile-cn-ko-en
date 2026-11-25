@@ -1,0 +1,1 @@
+-keep class cn.garymb.ygomobile.rpg.model.** { *; }
