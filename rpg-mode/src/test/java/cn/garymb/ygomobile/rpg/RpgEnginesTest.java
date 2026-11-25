@@ -330,21 +330,27 @@ public class RpgEnginesTest {
     public void timelineRuleVersionAutoSelects1999OfficialAndExpertRules() {
         OcgRuleSet rFeb = TimelineEngine.getActiveRuleSet(catalog, "1999-02-04");
         assertEquals("ocg_official_1999", rFeb.id);
+        assertEquals(8000, rFeb.startLp);
         assertFalse(rFeb.tributeSummonEnabled);
         assertTrue(rFeb.spellTrapOncePerTurnLimit);
         assertFalse(rFeb.firstTurnDrawEnabled);
+        assertTrue(rFeb.deckOutCompareLp);
         assertEquals(0, rFeb.requiredTributes(8));
 
         OcgRuleSet rMay = TimelineEngine.getActiveRuleSet(catalog, "1999-05-05");
         assertEquals("ocg_expert_1999", rMay.id);
+        assertEquals(8000, rMay.startLp);
         assertTrue(rMay.tributeSummonEnabled);
         assertFalse(rMay.spellTrapOncePerTurnLimit);
-        assertTrue(rMay.firstTurnDrawEnabled);
+        // Series 1 Expert Rule (1999.05 ~ 2000.04) still had no Turn 1 draw and compared LP on deck-out
+        assertFalse(rMay.firstTurnDrawEnabled);
+        assertTrue(rMay.deckOutCompareLp);
         assertEquals(1, rMay.requiredTributes(5));
         assertEquals(2, rMay.requiredTributes(8));
 
         OcgRuleSet rDec = TimelineEngine.getActiveRuleSet(catalog, "1999-12-31");
         assertEquals("ocg_expert_1999", rDec.id);
+        assertFalse(rDec.firstTurnDrawEnabled);
     }
 
     @Test
