@@ -75,6 +75,50 @@ public final class RpgCardArtLoader {
         });
     }
 
+    private static final LruCache<String, Bitmap> sPackCoverCache = new LruCache<String, Bitmap>(4 * 1024) {
+        @Override
+        protected int sizeOf(String key, Bitmap bitmap) {
+            return bitmap == null ? 0 : (bitmap.getByteCount() / 1024);
+        }
+    };
+
+    /**
+     * Loads the authentic 1999 OCG pack/box/vending cover image from assets/rpg/packs/<packId>.webp.
+     */
+    public static void loadPackCoverInto(final android.content.Context context,
+                                         final ImageView target,
+                                         final String packId) {
+        if (context == null || target == null || packId == null || packId.isEmpty()) return;
+        target.setTag("pack:" + packId);
+
+        Bitmap cached = sPackCoverCache.get(packId);
+        if (cached != null && !cached.isRecycled()) {
+            target.setImageBitmap(cached);
+            return;
+        }
+
+        target.setImageDrawable(createCardBackDrawable());
+        final android.content.Context appCtx = context.getApplicationContext();
+
+        sExecutor.execute(() -> {
+            Bitmap bmp = null;
+            try (java.io.InputStream is = appCtx.getAssets().open("rpg/packs/" + packId + ".webp")) {
+                bmp = BitmapFactory.decodeStream(is);
+            } catch (Throwable ignored) {
+            }
+            if (bmp == null) return;
+
+            sPackCoverCache.put(packId, bmp);
+            final Bitmap finalBmp = bmp;
+            sMainHandler.post(() -> {
+                Object tag = target.getTag();
+                if (("pack:" + packId).equals(tag)) {
+                    target.setImageBitmap(finalBmp);
+                }
+            });
+        });
+    }
+
     /**
      * Creates a stylized Yu-Gi-Oh! card-back drawable for unflipped / loading cards.
      */

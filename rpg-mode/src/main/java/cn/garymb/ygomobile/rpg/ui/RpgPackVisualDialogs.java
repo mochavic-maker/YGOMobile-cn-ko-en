@@ -64,8 +64,8 @@ public final class RpgPackVisualDialogs {
                                                 final PackOpeningEngine.PackOpenResult result,
                                                 final OnOpenAgainListener openAgainListener) {
         final Dialog dialog = createFullWidthDialog(activity);
-        final int cols = isLandscape(activity) ? 5 : 3;
-        final int cardWidthPx = computeCardWidthPx(activity, cols, 48);
+        final int cols = 5; // Fixed 5 cards (1 booster pack) per row
+        final int cardWidthPx = computeCardWidthPx(activity, cols, 36);
         final int cardHeightPx = Math.round(cardWidthPx * 1.45f);
 
         LinearLayout root = new LinearLayout(activity);
@@ -75,16 +75,33 @@ public final class RpgPackVisualDialogs {
         rootBg.setCornerRadius(dp(activity, 14));
         rootBg.setStroke(dp(activity, 1), Color.parseColor("#334155"));
         root.setBackground(rootBg);
-        root.setPadding(dp(activity, 12), dp(activity, 12), dp(activity, 12), dp(activity, 12));
+        root.setPadding(dp(activity, 10), dp(activity, 10), dp(activity, 10), dp(activity, 10));
 
-        // Header
+        // Header row with authentic pack cover thumbnail + title + rarity pull summary
+        LinearLayout headerRow = new LinearLayout(activity);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setPadding(0, 0, 0, dp(activity, 8));
+
+        ImageView ivCover = new ImageView(activity);
+        LinearLayout.LayoutParams coverLp = new LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 64));
+        coverLp.setMarginEnd(dp(activity, 10));
+        ivCover.setLayoutParams(coverLp);
+        ivCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        RpgCardArtLoader.loadPackCoverInto(activity, ivCover, pack.id);
+        headerRow.addView(ivCover);
+
+        LinearLayout headerText = new LinearLayout(activity);
+        headerText.setOrientation(LinearLayout.VERTICAL);
+        headerText.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
         TextView tvTitle = new TextView(activity);
         String actionWord = pack.fixedContents ? "整套开箱" : "模拟抽卡";
         tvTitle.setText("✨ " + actionWord + " · " + pack.name + " ×" + count);
         tvTitle.setTextColor(Color.parseColor("#F8FAFC"));
-        tvTitle.setTextSize(16f);
+        tvTitle.setTextSize(15f);
         tvTitle.setTypeface(null, Typeface.BOLD);
-        root.addView(tvTitle);
+        headerText.addView(tvTitle);
 
         // Rarity pull summary
         Map<String, Integer> rarityCounts = new LinkedHashMap<>();
@@ -109,9 +126,12 @@ public final class RpgPackVisualDialogs {
         TextView tvSummary = new TextView(activity);
         tvSummary.setText(sumSb.toString());
         tvSummary.setTextColor(Color.parseColor("#94A3B8"));
-        tvSummary.setTextSize(12f);
-        tvSummary.setPadding(0, dp(activity, 4), 0, dp(activity, 8));
-        root.addView(tvSummary);
+        tvSummary.setTextSize(11.5f);
+        tvSummary.setPadding(0, dp(activity, 3), 0, 0);
+        headerText.addView(tvSummary);
+
+        headerRow.addView(headerText);
+        root.addView(headerRow);
 
         // Single non-fixed pack (<= 10 cards) starts face-down for flip-to-reveal excitement!
         final boolean flipMode = !pack.fixedContents && count == 1 && result.pulledCards.size() <= 10;
@@ -122,143 +142,181 @@ public final class RpgPackVisualDialogs {
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         scroll.setLayoutParams(scrollLp);
 
-        GridLayout grid = new GridLayout(activity);
-        grid.setColumnCount(cols);
-        grid.setUseDefaultMargins(false);
-        grid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);
-        scroll.addView(grid);
+        final LinearLayout rowsContainer = new LinearLayout(activity);
+        rowsContainer.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(rowsContainer);
         root.addView(scroll);
 
-        for (int i = 0; i < result.pulledCards.size(); i++) {
-            final PackOpeningEngine.PulledCard pc = result.pulledCards.get(i);
-            final RpgCard card = pc.card;
-            final Rarity rarity = card.getRarityEnum();
-            final int rarityColor = parseRarityColor(rarity);
+        // Group into 1 pack per row (5 cards per row for standard 5-card boosters and fixed sets;
+        // for 3-card vending machine multi-pulls, each pull also gets its own clean row).
+        int perRow = (!pack.fixedContents && count > 1 && pack.cardsPerPack > 0 && pack.cardsPerPack <= 5)
+                ? pack.cardsPerPack
+                : cols;
+        int totalCards = result.pulledCards.size();
+        int packIdx = 0;
+        for (int start = 0; start < totalCards; start += perRow) {
+            packIdx++;
+            int end = Math.min(start + perRow, totalCards);
 
-            LinearLayout tile = new LinearLayout(activity);
-            tile.setOrientation(LinearLayout.VERTICAL);
-            tile.setGravity(Gravity.CENTER_HORIZONTAL);
-            GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
-            glp.width = cardWidthPx;
-            glp.setMargins(dp(activity, 4), dp(activity, 4), dp(activity, 4), dp(activity, 8));
-            tile.setLayoutParams(glp);
-
-            final FrameLayout cardFrame = new FrameLayout(activity);
-            cardFrame.setLayoutParams(new LinearLayout.LayoutParams(cardWidthPx, cardHeightPx));
-            cardFrame.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
-
-            final GradientDrawable frameBg = new GradientDrawable();
-            frameBg.setCornerRadius(dp(activity, 6));
-            final boolean highRarity = rarity == Rarity.UR || rarity == Rarity.SR || rarity == Rarity.SCR;
-            frameBg.setColor(Color.parseColor("#1E293B"));
-            frameBg.setStroke(dp(activity, highRarity ? 2 : 1),
-                    flipMode ? (highRarity ? rarityColor : Color.parseColor("#64748B")) : rarityColor);
-            cardFrame.setBackground(frameBg);
-
-            final ImageView ivArt = new ImageView(activity);
-            ivArt.setLayoutParams(new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            ivArt.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            cardFrame.addView(ivArt);
-
-            // Top-left rarity badge
-            final TextView tvRarity = makeBadge(activity, rarity.code, rarityColor, Color.parseColor("#0F172A"));
-            FrameLayout.LayoutParams rarLp = new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.TOP | Gravity.START);
-            rarLp.setMargins(dp(activity, 3), dp(activity, 3), 0, 0);
-            tvRarity.setLayoutParams(rarLp);
-            cardFrame.addView(tvRarity);
-
-            // Top-right NEW or owned count badge
-            final TextView tvStatus = pc.isNew
-                    ? makeBadge(activity, "★NEW", Color.parseColor("#F59E0B"), Color.parseColor("#0F172A"))
-                    : makeBadge(activity, "×" + pc.ownedAfter, Color.parseColor("#CC0F172A"), Color.parseColor("#E2E8F0"));
-            FrameLayout.LayoutParams stLp = new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.TOP | Gravity.END);
-            stLp.setMargins(0, dp(activity, 3), dp(activity, 3), 0);
-            tvStatus.setLayoutParams(stLp);
-            cardFrame.addView(tvStatus);
-
-            // Tap-to-flip hint overlay when face down
-            final TextView tvFlipHint = new TextView(activity);
-            tvFlipHint.setText(highRarity ? "✨\n点击翻开" : "点击翻开");
-            tvFlipHint.setGravity(Gravity.CENTER);
-            tvFlipHint.setTextColor(highRarity ? rarityColor : Color.parseColor("#FDE68A"));
-            tvFlipHint.setTextSize(11f);
-            tvFlipHint.setTypeface(null, Typeface.BOLD);
-            tvFlipHint.setLayoutParams(new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
-            cardFrame.addView(tvFlipHint);
-
-            final TextView tvName = new TextView(activity);
-            tvName.setTextColor(Color.parseColor("#E2E8F0"));
-            tvName.setTextSize(10.5f);
-            tvName.setMaxLines(2);
-            tvName.setEllipsize(TextUtils.TruncateAt.END);
-            tvName.setGravity(Gravity.CENTER_HORIZONTAL);
-            tvName.setPadding(dp(activity, 2), dp(activity, 3), dp(activity, 2), 0);
-
-            final boolean[] revealed = new boolean[]{!flipMode};
-            final Runnable revealAction = () -> {
-                if (revealed[0]) return;
-                revealed[0] = true;
-                cardFrame.animate()
-                        .rotationY(90f)
-                        .setDuration(120L)
-                        .withEndAction(() -> {
-                            tvFlipHint.setVisibility(View.GONE);
-                            tvRarity.setVisibility(View.VISIBLE);
-                            tvStatus.setVisibility(View.VISIBLE);
-                            tvName.setText(card.getDisplayName());
-                            frameBg.setStroke(dp(activity, highRarity ? 3 : 1), rarityColor);
-                            RpgCardArtLoader.loadInto(ivArt, card.id, cardWidthPx);
-                            cardFrame.setRotationY(-90f);
-                            cardFrame.animate().rotationY(0f).setDuration(140L).start();
-                        })
-                        .start();
-            };
-
-            if (flipMode) {
-                ivArt.setImageDrawable(RpgCardArtLoader.createCardBackDrawable());
-                tvRarity.setVisibility(View.INVISIBLE);
-                tvStatus.setVisibility(View.INVISIBLE);
-                tvFlipHint.setVisibility(View.VISIBLE);
-                tvName.setText("???");
-                pendingFlips.add(revealAction);
-            } else {
-                tvFlipHint.setVisibility(View.GONE);
-                tvName.setText(card.getDisplayName());
-                frameBg.setStroke(dp(activity, highRarity ? 2 : 1), rarityColor);
-                RpgCardArtLoader.loadInto(ivArt, card.id, cardWidthPx);
+            if (!pack.fixedContents && count > 1) {
+                String unitLabel = "VENDING_MACHINE".equals(pack.productType) ? "次" : "包";
+                TextView packHeader = new TextView(activity);
+                packHeader.setText("第 " + packIdx + " " + unitLabel);
+                packHeader.setTextColor(Color.parseColor("#38BDF8"));
+                packHeader.setTextSize(11f);
+                packHeader.setTypeface(null, Typeface.BOLD);
+                packHeader.setPadding(dp(activity, 2), packIdx == 1 ? 0 : dp(activity, 6), 0, dp(activity, 2));
+                rowsContainer.addView(packHeader);
             }
 
-            tile.setOnClickListener(v -> {
-                if (!revealed[0]) {
-                    revealAction.run();
-                } else {
-                    showCardDetailDialog(activity, catalog, profile, card);
-                }
-            });
+            LinearLayout rowLayout = new LinearLayout(activity);
+            rowLayout.setOrientation(LinearLayout.HORIZONTAL);
+            rowLayout.setWeightSum(cols);
+            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rowLp.bottomMargin = dp(activity, 6);
+            rowLayout.setLayoutParams(rowLp);
 
-            tile.addView(cardFrame);
-            tile.addView(tvName);
-            grid.addView(tile);
+            for (int i = start; i < end; i++) {
+                final PackOpeningEngine.PulledCard pc = result.pulledCards.get(i);
+                final RpgCard card = pc.card;
+                final Rarity rarity = card.getRarityEnum();
+                final int rarityColor = parseRarityColor(rarity);
+
+                LinearLayout tile = new LinearLayout(activity);
+                tile.setOrientation(LinearLayout.VERTICAL);
+                tile.setGravity(Gravity.CENTER_HORIZONTAL);
+                LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                tlp.setMargins(dp(activity, 2), 0, dp(activity, 2), 0);
+                tile.setLayoutParams(tlp);
+
+                final FrameLayout cardFrame = new FrameLayout(activity);
+                cardFrame.setLayoutParams(new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, cardHeightPx));
+                cardFrame.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
+
+                final GradientDrawable frameBg = new GradientDrawable();
+                frameBg.setCornerRadius(dp(activity, 5));
+                final boolean highRarity = rarity == Rarity.UR || rarity == Rarity.SR || rarity == Rarity.SCR;
+                frameBg.setColor(Color.parseColor("#1E293B"));
+                frameBg.setStroke(dp(activity, highRarity ? 2 : 1),
+                        flipMode ? (highRarity ? rarityColor : Color.parseColor("#64748B")) : rarityColor);
+                cardFrame.setBackground(frameBg);
+
+                final ImageView ivArt = new ImageView(activity);
+                ivArt.setLayoutParams(new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                ivArt.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                cardFrame.addView(ivArt);
+
+                // Top-left rarity badge
+                final TextView tvRarity = makeBadge(activity, rarity.code, rarityColor, Color.parseColor("#0F172A"));
+                FrameLayout.LayoutParams rarLp = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.TOP | Gravity.START);
+                rarLp.setMargins(dp(activity, 2), dp(activity, 2), 0, 0);
+                tvRarity.setLayoutParams(rarLp);
+                cardFrame.addView(tvRarity);
+
+                // Top-right NEW or owned count badge
+                final TextView tvStatus = pc.isNew
+                        ? makeBadge(activity, "NEW", Color.parseColor("#F59E0B"), Color.parseColor("#0F172A"))
+                        : makeBadge(activity, "×" + pc.ownedAfter, Color.parseColor("#CC0F172A"), Color.parseColor("#E2E8F0"));
+                FrameLayout.LayoutParams stLp = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.TOP | Gravity.END);
+                stLp.setMargins(0, dp(activity, 2), dp(activity, 2), 0);
+                tvStatus.setLayoutParams(stLp);
+                cardFrame.addView(tvStatus);
+
+                // Tap-to-flip hint overlay when face down
+                final TextView tvFlipHint = new TextView(activity);
+                tvFlipHint.setText(highRarity ? "✨\n翻开" : "翻开");
+                tvFlipHint.setGravity(Gravity.CENTER);
+                tvFlipHint.setTextColor(highRarity ? rarityColor : Color.parseColor("#FDE68A"));
+                tvFlipHint.setTextSize(10f);
+                tvFlipHint.setTypeface(null, Typeface.BOLD);
+                tvFlipHint.setLayoutParams(new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+                cardFrame.addView(tvFlipHint);
+
+                final TextView tvName = new TextView(activity);
+                tvName.setTextColor(Color.parseColor("#E2E8F0"));
+                tvName.setTextSize(9.5f);
+                tvName.setMaxLines(2);
+                tvName.setEllipsize(TextUtils.TruncateAt.END);
+                tvName.setGravity(Gravity.CENTER_HORIZONTAL);
+                tvName.setPadding(dp(activity, 1), dp(activity, 2), dp(activity, 1), 0);
+
+                final boolean[] revealed = new boolean[]{!flipMode};
+                final Runnable revealAction = () -> {
+                    if (revealed[0]) return;
+                    revealed[0] = true;
+                    cardFrame.animate()
+                            .rotationY(90f)
+                            .setDuration(120L)
+                            .withEndAction(() -> {
+                                tvFlipHint.setVisibility(View.GONE);
+                                tvRarity.setVisibility(View.VISIBLE);
+                                tvStatus.setVisibility(View.VISIBLE);
+                                tvName.setText(card.getDisplayName());
+                                frameBg.setStroke(dp(activity, highRarity ? 3 : 1), rarityColor);
+                                RpgCardArtLoader.loadInto(ivArt, card.id, cardWidthPx);
+                                cardFrame.setRotationY(-90f);
+                                cardFrame.animate().rotationY(0f).setDuration(140L).start();
+                            })
+                            .start();
+                };
+
+                if (flipMode) {
+                    ivArt.setImageDrawable(RpgCardArtLoader.createCardBackDrawable());
+                    tvRarity.setVisibility(View.INVISIBLE);
+                    tvStatus.setVisibility(View.INVISIBLE);
+                    tvFlipHint.setVisibility(View.VISIBLE);
+                    tvName.setText("???");
+                    pendingFlips.add(revealAction);
+                } else {
+                    tvFlipHint.setVisibility(View.GONE);
+                    tvName.setText(card.getDisplayName());
+                    frameBg.setStroke(dp(activity, highRarity ? 2 : 1), rarityColor);
+                    RpgCardArtLoader.loadInto(ivArt, card.id, cardWidthPx);
+                }
+
+                tile.setOnClickListener(v -> {
+                    if (!revealed[0]) {
+                        revealAction.run();
+                    } else {
+                        showCardDetailDialog(activity, catalog, profile, card);
+                    }
+                });
+
+                tile.addView(cardFrame);
+                tile.addView(tvName);
+                rowLayout.addView(tile);
+            }
+
+            // Pad remaining slots in row so every card keeps uniform 1/5 width
+            for (int pad = end - start; pad < cols; pad++) {
+                View spacer = new View(activity);
+                spacer.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1f));
+                rowLayout.addView(spacer);
+            }
+            rowsContainer.addView(rowLayout);
         }
 
         // Bottom action bar
         LinearLayout bottomRow = new LinearLayout(activity);
         bottomRow.setOrientation(LinearLayout.HORIZONTAL);
         bottomRow.setGravity(Gravity.END);
-        bottomRow.setPadding(0, dp(activity, 10), 0, 0);
+        bottomRow.setPadding(0, dp(activity, 8), 0, 0);
 
         if (flipMode && !pendingFlips.isEmpty()) {
             Button btnFlipAll = makeDialogButton(activity, "✨ 全部翻开", "#7C3AED");
             btnFlipAll.setOnClickListener(v -> {
                 for (int i = 0; i < pendingFlips.size(); i++) {
                     final Runnable r = pendingFlips.get(i);
-                    grid.postDelayed(r, i * 90L);
+                    rowsContainer.postDelayed(r, i * 90L);
                 }
                 btnFlipAll.setEnabled(false);
                 btnFlipAll.setAlpha(0.5f);
@@ -322,20 +380,40 @@ public final class RpgPackVisualDialogs {
             }
         }
 
+        LinearLayout poolHeader = new LinearLayout(activity);
+        poolHeader.setOrientation(LinearLayout.HORIZONTAL);
+        poolHeader.setGravity(Gravity.CENTER_VERTICAL);
+        poolHeader.setPadding(0, 0, 0, dp(activity, 8));
+
+        ImageView ivPoolCover = new ImageView(activity);
+        LinearLayout.LayoutParams pCoverLp = new LinearLayout.LayoutParams(dp(activity, 42), dp(activity, 62));
+        pCoverLp.setMarginEnd(dp(activity, 10));
+        ivPoolCover.setLayoutParams(pCoverLp);
+        ivPoolCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        RpgCardArtLoader.loadPackCoverInto(activity, ivPoolCover, pack.id);
+        poolHeader.addView(ivPoolCover);
+
+        LinearLayout pHeaderText = new LinearLayout(activity);
+        pHeaderText.setOrientation(LinearLayout.VERTICAL);
+        pHeaderText.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
         TextView tvTitle = new TextView(activity);
         tvTitle.setText("🃏 卡池一览 · " + pack.name);
         tvTitle.setTextColor(Color.parseColor("#F8FAFC"));
-        tvTitle.setTextSize(16f);
+        tvTitle.setTextSize(15f);
         tvTitle.setTypeface(null, Typeface.BOLD);
-        root.addView(tvTitle);
+        pHeaderText.addView(tvTitle);
 
         TextView tvSub = new TextView(activity);
         tvSub.setText("共 " + uniqueCards.size() + " 种 · 已解锁 " + unlockedCount + "/" + uniqueCards.size()
                 + " · 已满3张 " + playset3Count + "/" + uniqueCards.size() + "（点击卡图查看详情）");
         tvSub.setTextColor(Color.parseColor("#38BDF8"));
-        tvSub.setTextSize(12f);
-        tvSub.setPadding(0, dp(activity, 4), 0, dp(activity, 8));
-        root.addView(tvSub);
+        tvSub.setTextSize(11.5f);
+        tvSub.setPadding(0, dp(activity, 3), 0, 0);
+        pHeaderText.addView(tvSub);
+
+        poolHeader.addView(pHeaderText);
+        root.addView(poolHeader);
 
         // Filter bar
         HorizontalScrollView filterScroll = new HorizontalScrollView(activity);
@@ -563,8 +641,8 @@ public final class RpgPackVisualDialogs {
     private static int computeCardWidthPx(Activity activity, int cols, int horizontalPaddingDp) {
         DisplayMetrics dm = activity.getResources().getDisplayMetrics();
         int dialogW = Math.round(dm.widthPixels * 0.96f);
-        int usable = dialogW - dp(activity, horizontalPaddingDp) - (cols * dp(activity, 8));
-        return Math.max(dp(activity, 82), usable / cols);
+        int usable = dialogW - dp(activity, horizontalPaddingDp) - (cols * dp(activity, 4));
+        return Math.max(dp(activity, 52), usable / cols);
     }
 
     private static TextView makeBadge(Activity activity, String text, int bgColor, int textColor) {

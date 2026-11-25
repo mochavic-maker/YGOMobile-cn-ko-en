@@ -444,6 +444,31 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
             int totalInPack = seenIds.size();
 
+            // Top row: authentic pack/box cover art on left + product info on right
+            LinearLayout topRow = new LinearLayout(this);
+            topRow.setOrientation(LinearLayout.HORIZONTAL);
+            topRow.setGravity(Gravity.CENTER_VERTICAL);
+
+            ImageView ivCover = new ImageView(this);
+            LinearLayout.LayoutParams coverLp = new LinearLayout.LayoutParams(dp(78), dp(116));
+            coverLp.setMarginEnd(dp(12));
+            ivCover.setLayoutParams(coverLp);
+            ivCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            GradientDrawable coverBg = new GradientDrawable();
+            coverBg.setColor(Color.parseColor("#0F172A"));
+            coverBg.setCornerRadius(dp(6));
+            coverBg.setStroke(dp(1), Color.parseColor("#334155"));
+            ivCover.setBackground(coverBg);
+            ivCover.setPadding(dp(3), dp(3), dp(3), dp(3));
+            RpgCardArtLoader.loadPackCoverInto(this, ivCover, pack.id);
+            ivCover.setOnClickListener(v -> showPackPoolDialog(pack));
+            topRow.addView(ivCover);
+
+            LinearLayout infoCol = new LinearLayout(this);
+            infoCol.setOrientation(LinearLayout.VERTICAL);
+            infoCol.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
             TextView title = makeTitleText("[" + pack.getProductTypeLabelCn() + "] " + pack.name);
             String unit = pack.fixedContents ? "盒/套" : ("VENDING_MACHINE".equals(pack.productType) ? "次" : "包");
             TextView meta = makeSubtleText("发售日: " + pack.releaseDate
@@ -455,10 +480,12 @@ public class RpgHomeActivity extends AppCompatActivity {
             progress.setTextColor(Color.parseColor("#38BDF8"));
             TextView odds = makeSubtleText(pack.description != null ? pack.description : pack.slotRules.description);
 
-            card.addView(title);
-            card.addView(meta);
-            card.addView(progress);
-            card.addView(odds);
+            infoCol.addView(title);
+            infoCol.addView(meta);
+            infoCol.addView(progress);
+            infoCol.addView(odds);
+            topRow.addView(infoCol);
+            card.addView(topRow);
 
             LinearLayout btnRow = new LinearLayout(this);
             btnRow.setOrientation(LinearLayout.HORIZONTAL);
