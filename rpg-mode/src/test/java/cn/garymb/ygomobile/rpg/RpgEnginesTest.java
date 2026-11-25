@@ -588,5 +588,15 @@ public class RpgEnginesTest {
         assertEquals(120, cn.garymb.ygomobile.rpg.engine.TournamentEngine.claimRewardIfFinished(profile, b8));
         assertEquals(1, profile.tournamentWins);
         assertEquals(2, profile.tournamentsPlayed);
+
+        // Verify AI-vs-AI tournament matches recorded step-by-step replay frames
+        for (cn.garymb.ygomobile.rpg.engine.TournamentEngine.Match m : b8.rounds.get(0)) {
+            if (!m.involvesPlayer()) {
+                assertNotNull("AI match should have replayReport", m.replayReport);
+                assertTrue("AI match replayReport should have >= 2 frames", m.replayReport.replayFrames.size() >= 2);
+                assertEquals(8000, m.replayReport.replayFrames.get(0).sideALp);
+                assertEquals(8000, m.replayReport.replayFrames.get(0).sideBLp);
+            }
+        }
     }
 }

@@ -50,6 +50,7 @@ public final class TournamentEngine {
         public Participant winner;
         public String summary = "";
         public List<String> logs = new ArrayList<>();
+        public QuickDuelSimulator.QuickDuelReport replayReport;
         public boolean finished = false;
 
         public Match(int roundIndex, int matchIndex, Participant p1, Participant p2) {
@@ -220,6 +221,7 @@ public final class TournamentEngine {
         match.winner = p1Wins ? match.p1 : match.p2;
         match.finished = true;
         match.logs = rep.logs;
+        match.replayReport = rep;
         match.summary = match.winner.displayName + " 胜 · T" + rep.turns
                 + " · LP " + rep.playerLp + ":" + rep.aiLp + tieNote;
     }
@@ -234,6 +236,16 @@ public final class TournamentEngine {
                                                String summary,
                                                List<String> logs,
                                                Random rng) {
+        recordPlayerMatchResult(catalog, bracket, playerWon, summary, logs, null, rng);
+    }
+
+    public static void recordPlayerMatchResult(RpgCatalog catalog,
+                                               TournamentBracket bracket,
+                                               boolean playerWon,
+                                               String summary,
+                                               List<String> logs,
+                                               QuickDuelSimulator.QuickDuelReport replayReport,
+                                               Random rng) {
         if (bracket == null || bracket.finished) return;
         Match pm = bracket.findPendingPlayerMatch();
         if (pm == null) return;
@@ -244,6 +256,7 @@ public final class TournamentEngine {
         pm.finished = true;
         pm.summary = summary != null ? summary : (playerWon ? "你获胜晋级！" : oppPart.displayName + " 获胜");
         pm.logs = logs != null ? new ArrayList<>(logs) : new ArrayList<String>();
+        pm.replayReport = replayReport;
 
         if (!playerWon) {
             bracket.playerEliminated = true;

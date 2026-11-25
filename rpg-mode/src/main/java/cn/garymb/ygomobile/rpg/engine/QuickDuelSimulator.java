@@ -24,6 +24,43 @@ public final class QuickDuelSimulator {
 
     private QuickDuelSimulator() {}
 
+    public static class ReplayFrame {
+        public final int stepIndex;
+        public final int turn;
+        public final String phase;
+        public final String activeName;
+        public final int sideALp;
+        public final int sideBLp;
+        public final int sideAHandCount;
+        public final int sideBHandCount;
+        public final int sideADeckCount;
+        public final int sideBDeckCount;
+        public final List<String> sideAMonsters;
+        public final List<String> sideBMonsters;
+        public final List<String> newLogs;
+
+        public ReplayFrame(int stepIndex, int turn, String phase, String activeName,
+                           int sideALp, int sideBLp,
+                           int sideAHandCount, int sideBHandCount,
+                           int sideADeckCount, int sideBDeckCount,
+                           List<String> sideAMonsters, List<String> sideBMonsters,
+                           List<String> newLogs) {
+            this.stepIndex = stepIndex;
+            this.turn = turn;
+            this.phase = phase;
+            this.activeName = activeName;
+            this.sideALp = sideALp;
+            this.sideBLp = sideBLp;
+            this.sideAHandCount = sideAHandCount;
+            this.sideBHandCount = sideBHandCount;
+            this.sideADeckCount = sideADeckCount;
+            this.sideBDeckCount = sideBDeckCount;
+            this.sideAMonsters = sideAMonsters;
+            this.sideBMonsters = sideBMonsters;
+            this.newLogs = newLogs;
+        }
+    }
+
     public static class QuickDuelReport {
         public final boolean playerWon;
         public final boolean isDraw;
@@ -32,9 +69,18 @@ public final class QuickDuelSimulator {
         public final int turns;
         public final OcgRuleSet appliedRule;
         public final List<String> logs;
+        public final String sideAName;
+        public final String sideBName;
+        public final List<ReplayFrame> replayFrames;
 
         public QuickDuelReport(boolean playerWon, boolean isDraw, int playerLp, int aiLp,
                                int turns, OcgRuleSet appliedRule, List<String> logs) {
+            this(playerWon, isDraw, playerLp, aiLp, turns, appliedRule, logs, "你", "对手", new ArrayList<ReplayFrame>());
+        }
+
+        public QuickDuelReport(boolean playerWon, boolean isDraw, int playerLp, int aiLp,
+                               int turns, OcgRuleSet appliedRule, List<String> logs,
+                               String sideAName, String sideBName, List<ReplayFrame> replayFrames) {
             this.playerWon = playerWon;
             this.isDraw = isDraw;
             this.playerLp = playerLp;
@@ -42,7 +88,36 @@ public final class QuickDuelSimulator {
             this.turns = turns;
             this.appliedRule = appliedRule;
             this.logs = logs;
+            this.sideAName = sideAName;
+            this.sideBName = sideBName;
+            this.replayFrames = replayFrames != null ? replayFrames : new ArrayList<ReplayFrame>();
         }
+    }
+
+    private static List<String> describeMonsters(Side s) {
+        List<String> out = new ArrayList<>();
+        for (MonsterSlot ms : s.monsters) {
+            out.add(ms.card.getDisplayName() + "(" + ms.atk() + ")");
+        }
+        return out;
+    }
+
+    private static int captureFrame(List<ReplayFrame> frames, List<String> logs, int lastLogCursor,
+                                    int turn, String phase, String activeName, Side p, Side a, boolean force) {
+        if (!force && logs.size() <= lastLogCursor) return lastLogCursor;
+        List<String> delta = new ArrayList<>();
+        for (int i = lastLogCursor; i < logs.size(); i++) {
+            delta.add(logs.get(i));
+        }
+        frames.add(new ReplayFrame(
+                frames.size(), turn, phase, activeName,
+                p.lp, a.lp,
+                p.hand.size(), a.hand.size(),
+                p.deck.size(), a.deck.size(),
+                describeMonsters(p), describeMonsters(a),
+                delta
+        ));
+        return logs.size();
     }
 
     private static class MonsterSlot {
@@ -93,6 +168,8 @@ public final class QuickDuelSimulator {
         Side p = new Side(rule.startLp, deckAIds, rng);
         Side a = new Side(rule.startLp, deckBIds, rng);
         List<String> logs = new ArrayList<>();
+        List<ReplayFrame> frames = new ArrayList<>();
+        int logCursor = 0;
         logs.add("快速决斗开始：" + sideAName + " vs " + sideBName + "（时间轴：" + currentDate + " · 规则：" + rule.name + "）");
 
         for (int i = 0; i < rule.startHand; i++) {
@@ -103,6 +180,7 @@ public final class QuickDuelSimulator {
         int turn = 1;
         boolean playerTurn = rng.nextBoolean();
         logs.add("🪙 抛硬币决定先手：" + (playerTurn ? sideAName + "先攻" : sideBName + "先攻"));
+        logCursor = captureFrame(frames, logs, logCursor, 1, "开局", playerTurn ? sideAName : sideBName, p, a, true);
         int maxTurns = 40;
 
         while (turn <= maxTurns && p.lp > 0 && a.lp > 0) {
@@ -119,12 +197,13 @@ public final class QuickDuelSimulator {
                 RpgCard drawn = draw(catalog, cur);
                 if (drawn == null) {
                     logs.add("T" + turn + " " + curName + " 卡组抽干！");
+                    captureFrame(frames, logs, logCursor, turn, "决胜", curName, p, a, true);
                     if (rule.deckOutCompareLp) {
                         boolean pWin = p.lp > a.lp;
                         boolean draw = p.lp == a.lp;
-                        return new QuickDuelReport(pWin, draw, p.lp, a.lp, turn, rule, logs);
+                        return new QuickDuelReport(pWin, draw, p.lp, a.lp, turn, rule, logs, sideAName, sideBName, frames);
                     }
-                    return new QuickDuelReport(!playerTurn, false, p.lp, a.lp, turn, rule, logs);
+                    return new QuickDuelReport(!playerTurn, false, p.lp, a.lp, turn, rule, logs, sideAName, sideBName, frames);
                 }
                 // 1999 pre-errata Crush Card Virus 3-turn draw destruction
                 if (cur.ccvInfectedTurns > 0) {
@@ -139,7 +218,8 @@ public final class QuickDuelSimulator {
 
             if (hasExodia(cur)) {
                 logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
-                return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
+                captureFrame(frames, logs, logCursor, turn, "特殊胜利", curName, p, a, true);
+                return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs, sideAName, sideBName, frames);
             }
 
             int spellsPlayed = 0;
@@ -160,7 +240,8 @@ public final class QuickDuelSimulator {
                     logs.add("T" + turn + " " + curName + " 发动「强欲之壶」抽 2 张卡！");
                     if (hasExodia(cur)) {
                         logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
-                        return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
+                        captureFrame(frames, logs, logCursor, turn, "特殊胜利", curName, p, a, true);
+                        return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs, sideAName, sideBName, frames);
                     }
                 } else if (c.id == 79571449) { // Graceful Charity (synergizes with 1999 pre-errata Sangan / Witch!)
                     cur.hand.remove(i);
@@ -177,7 +258,8 @@ public final class QuickDuelSimulator {
                     }
                     if (hasExodia(cur)) {
                         logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
-                        return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
+                        captureFrame(frames, logs, logCursor, turn, "特殊胜利", curName, p, a, true);
+                        return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs, sideAName, sideBName, frames);
                     }
                 } else if (c.id == CARD_LAST_WILL) { // Last Will (EX 1999-12-16)
                     cur.hand.remove(i);
@@ -265,6 +347,7 @@ public final class QuickDuelSimulator {
                     spellsPlayed++;
                 }
             }
+            logCursor = captureFrame(frames, logs, logCursor, turn, "MP1 魔法", curName, p, a, false);
             if (p.lp <= 0 || a.lp <= 0) break;
 
             // Trigger set Crush Card Virus if cur has a DARK monster ATK <= 1000 on field
@@ -298,6 +381,7 @@ public final class QuickDuelSimulator {
                         cur.oppNoDamageThisTurn = true;
                         logs.add("T" + turn + " " + curName + " 发动「死之卡组破坏病毒」[2015改版] 破坏对手 " + destroyedCnt + " 只怪兽（本回合对手不受伤害）");
                     }
+                    logCursor = captureFrame(frames, logs, logCursor, turn, "MP1 陷阱", curName, p, a, false);
                 }
             }
 
@@ -335,6 +419,7 @@ public final class QuickDuelSimulator {
                     cur.monsters.add(ms);
                     logs.add("T" + turn + " " + curName + " 召唤「" + summoned.getDisplayName() + "」(ATK " + summoned.atk + ")");
                 }
+                logCursor = captureFrame(frames, logs, logCursor, turn, "MP1 召唤", curName, p, a, false);
             }
 
             // Set Trap Hole or Crush Card Virus if allowed
@@ -357,7 +442,8 @@ public final class QuickDuelSimulator {
 
             if (hasExodia(cur)) {
                 logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
-                return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
+                captureFrame(frames, logs, logCursor, turn, "特殊胜利", curName, p, a, true);
+                return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs, sideAName, sideBName, frames);
             }
 
             // Battle Phase (turn > 1 and not blocked by Swords)
@@ -369,6 +455,7 @@ public final class QuickDuelSimulator {
                             opp.lp = Math.max(0, opp.lp - attacker.atk());
                         }
                         logs.add("T" + turn + " 「" + attacker.card.getDisplayName() + "」直击 -" + attacker.atk() + " LP");
+                        logCursor = captureFrame(frames, logs, logCursor, turn, "BP 战斗", curName, p, a, false);
                     } else {
                         MonsterSlot target = null;
                         for (MonsterSlot om : opp.monsters) {
@@ -384,6 +471,7 @@ public final class QuickDuelSimulator {
                             opp.monsters.remove(target);
                             sendToGy(catalog, opp, target.card, true, currentDate, turn, oppName, logs);
                             logs.add("T" + turn + " 「" + attacker.card.getDisplayName() + "」击破「" + target.card.getDisplayName() + "」-" + dmg + " LP");
+                            logCursor = captureFrame(frames, logs, logCursor, turn, "BP 战斗", curName, p, a, false);
                         }
                     }
                 }
@@ -396,7 +484,10 @@ public final class QuickDuelSimulator {
 
         boolean isDraw = p.lp == a.lp;
         boolean pWin = p.lp > a.lp;
-        return new QuickDuelReport(pWin, isDraw, p.lp, a.lp, turn - 1, rule, logs);
+        logs.add("🏁 决斗结束：" + (isDraw ? "平局" : (pWin ? sideAName + " 获胜！" : sideBName + " 获胜！"))
+                + "（LP " + p.lp + " : " + a.lp + "）");
+        captureFrame(frames, logs, logCursor, Math.max(1, turn - 1), "终局", isDraw ? "平局" : (pWin ? sideAName : sideBName), p, a, true);
+        return new QuickDuelReport(pWin, isDraw, p.lp, a.lp, turn - 1, rule, logs, sideAName, sideBName, frames);
     }
 
     /**
