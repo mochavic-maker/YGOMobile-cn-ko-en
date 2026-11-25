@@ -91,7 +91,8 @@ public final class QuickDuelSimulator {
         }
 
         int turn = 1;
-        boolean playerTurn = true;
+        boolean playerTurn = rng.nextBoolean();
+        logs.add("🪙 抛硬币决定先手：" + (playerTurn ? "你先攻" : opponent.name + "先攻"));
         int maxTurns = 40;
 
         while (turn <= maxTurns && p.lp > 0 && a.lp > 0) {

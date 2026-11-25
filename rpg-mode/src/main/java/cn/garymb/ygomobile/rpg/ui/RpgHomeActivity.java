@@ -168,10 +168,21 @@ public class RpgHomeActivity extends AppCompatActivity {
         profile.currentTimelineDate = TimelineEngine.clampDate(catalog, profile.currentTimelineDate);
         tvTokens.setText("代币: " + profile.tokens);
         tvDust.setText("尘埃: " + profile.dust);
+        List<OcgPack> availPacks = TimelineEngine.getAvailablePacks(catalog, profile.currentTimelineDate);
+        List<RpgCard> relCards = TimelineEngine.getReleasedCards(catalog, profile.currentTimelineDate);
+        int ownedRelCards = 0;
+        for (RpgCard c : relCards) {
+            if (profile.getOwnedCount(c.id) > 0) ownedRelCards++;
+        }
+        int openedAvailPacks = 0;
+        for (OcgPack p : availPacks) {
+            if (profile.packsOpened.getOrDefault(p.id, 0) > 0) openedAvailPacks++;
+        }
         int preErrataCnt = CardErrataEngine.getRequiredPreErrataScriptIds(catalog, profile.currentTimelineDate).size();
         tvTimelineDate.setText("当前时间轴: " + profile.currentTimelineDate
-                + "（已收集 " + profile.collection.size()
-                + " 种 / " + profile.getTotalOwnedCards() + " 张 · 当前生效旧版勘误卡 " + preErrataCnt + " 张）");
+                + "（已收集卡片 " + ownedRelCards + "/" + relCards.size()
+                + " 种 · 已购商品 " + openedAvailPacks + "/" + availPacks.size()
+                + " 款 · 旧版勘误卡 " + preErrataCnt + " 张）");
 
         OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
         tvActiveBanlist.setText("当前禁限表: " + banlist.name + " — " + banlist.description);
@@ -255,54 +266,88 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     // ==================== TAB 0: SHOP & PACK OPENING ====================
     private void renderShopTab() {
-        TextView hint = makeSubtleText("仅可购买发售日 ≤ " + profile.currentTimelineDate
-                + " 的 1999 OCG 商品（代币价 1:1 还原当年日元定价）");
+        List<OcgPack> availPacks = TimelineEngine.getAvailablePacks(catalog, profile.currentTimelineDate);
+        TextView hint = makeSubtleText("仅显示 " + profile.currentTimelineDate
+                + " 已解锁的 " + availPacks.size() + " 款商品（代币价 1:1 还原当年日元定价）");
         layoutTabActions.addView(hint);
 
-        for (final OcgPack pack : catalog.packs) {
-            boolean unlocked = TimelineEngine.isReleasedOnOrBefore(pack.releaseDate, profile.currentTimelineDate);
+        for (final OcgPack pack : availPacks) {
             LinearLayout card = makeCardContainer();
+
+            java.util.Set<Integer> seenIds = new java.util.LinkedHashSet<>();
+            int unlockedInPack = 0;
+            int playset3InPack = 0;
+            for (RpgCard c : pack.cards) {
+                if (!seenIds.add(c.id)) continue;
+                int own = profile.getOwnedCount(c.id);
+                if (own >= 1) unlockedInPack++;
+                if (own >= 3) playset3InPack++;
+            }
+            int totalInPack = seenIds.size();
 
             TextView title = makeTitleText("[" + pack.getProductTypeLabelCn() + "] " + pack.name);
             String unit = pack.fixedContents ? "盒/套" : ("VENDING_MACHINE".equals(pack.productType) ? "次" : "包");
             TextView meta = makeSubtleText("发售日: " + pack.releaseDate
-                    + " · 收录 " + pack.cards.size() + " 种 · " + pack.cardsPerPack + " 张/" + unit
+                    + " · " + pack.cardsPerPack + " 张/" + unit
                     + " · 定价 " + pack.priceTokens + " 代币（原价 ¥" + pack.priceTokens + "）"
                     + " · 已购 " + profile.packsOpened.getOrDefault(pack.id, 0) + " " + unit);
+            TextView progress = makeSubtleText("收集进度：已解锁 " + unlockedInPack + " / " + totalInPack
+                    + " 种 · 已拥有 ≥3 张：" + playset3InPack + " / " + totalInPack + " 种");
+            progress.setTextColor(Color.parseColor("#38BDF8"));
             TextView odds = makeSubtleText(pack.description != null ? pack.description : pack.slotRules.description);
 
             card.addView(title);
             card.addView(meta);
+            card.addView(progress);
             card.addView(odds);
 
             LinearLayout btnRow = new LinearLayout(this);
             btnRow.setOrientation(LinearLayout.HORIZONTAL);
             btnRow.setPadding(0, dp(8), 0, 0);
 
-            if (unlocked) {
-                if (pack.fixedContents) {
-                    Button buyBox = makeActionButton("购买整套 (" + pack.priceTokens + " 代币)", "#059669");
-                    buyBox.setOnClickListener(v -> doOpenPack(pack, 1));
-                    btnRow.addView(buyBox);
-                } else {
-                    Button b1 = makeActionButton("买 1 " + unit + " (" + pack.priceTokens + ")", "#D97706");
-                    b1.setOnClickListener(v -> doOpenPack(pack, 1));
-                    Button b5 = makeActionButton("买 5 " + unit + " (" + (pack.priceTokens * 5) + ")", "#0284C7");
-                    b5.setOnClickListener(v -> doOpenPack(pack, 5));
-                    btnRow.addView(b1);
-                    btnRow.addView(b5);
-                }
+            if (pack.fixedContents) {
+                Button buyBox = makeActionButton("购买整套 (" + pack.priceTokens + " 代币)", "#059669");
+                buyBox.setOnClickListener(v -> doOpenPack(pack, 1));
+                btnRow.addView(buyBox);
             } else {
-                TextView locked = new TextView(this);
-                locked.setText("未到发售日（请将时间轴移动至 " + pack.releaseDate + " 或之后）");
-                locked.setTextColor(Color.parseColor("#F87171"));
-                locked.setTextSize(12f);
-                btnRow.addView(locked);
+                Button b1 = makeActionButton("买 1 " + unit + " (" + pack.priceTokens + ")", "#D97706");
+                b1.setOnClickListener(v -> doOpenPack(pack, 1));
+                Button b5 = makeActionButton("买 5 " + unit + " (" + (pack.priceTokens * 5) + ")", "#0284C7");
+                b5.setOnClickListener(v -> doOpenPack(pack, 5));
+                btnRow.addView(b1);
+                btnRow.addView(b5);
             }
+            Button poolBtn = makeActionButton("查看卡池", "#475569");
+            poolBtn.setOnClickListener(v -> showPackPoolDialog(pack));
+            btnRow.addView(poolBtn);
 
             card.addView(btnRow);
             layoutContent.addView(card);
         }
+    }
+
+    private void showPackPoolDialog(OcgPack pack) {
+        java.util.Set<Integer> seenIds = new java.util.LinkedHashSet<>();
+        int unlockedInPack = 0, playset3InPack = 0;
+        StringBuilder sb = new StringBuilder();
+        for (RpgCard c : pack.cards) {
+            int own = profile.getOwnedCount(c.id);
+            if (seenIds.add(c.id)) {
+                if (own >= 1) unlockedInPack++;
+                if (own >= 3) playset3InPack++;
+            }
+            sb.append("[").append(c.rarity).append("] ").append(c.getDisplayName())
+                    .append("  —  已有 x").append(own)
+                    .append(own >= 3 ? " (满3)" : "")
+                    .append("\n");
+        }
+        String header = "已解锁 " + unlockedInPack + "/" + seenIds.size()
+                + " 种 · 已拥有 ≥3 张：" + playset3InPack + "/" + seenIds.size() + " 种\n\n";
+        new AlertDialog.Builder(this)
+                .setTitle("卡池明细 · " + pack.name)
+                .setMessage(header + sb.toString().trim())
+                .setPositiveButton("关闭", null)
+                .show();
     }
 
     private void doOpenPack(OcgPack pack, int count) {
@@ -584,11 +629,12 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     // ==================== TAB 4: AI DUEL ====================
     private void renderAiDuelTab() {
-        layoutTabActions.addView(makeSubtleText("战绩：" + profile.wins + " 胜 " + profile.losses + " 负 " + profile.draws + " 平 · AI 卡组严格遵守当前时间轴与禁限表"));
+        List<AiOpponent> opponents = TimelineEngine.getAvailableOpponents(
+                AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
+        layoutTabActions.addView(makeSubtleText("战绩：" + profile.wins + " 胜 " + profile.losses + " 负 " + profile.draws
+                + " 平 · 当前时间轴已解锁 " + opponents.size() + " 位对手（AI 卡组严格遵守当前时间轴与禁限表）"));
 
-        List<AiOpponent> opponents = AiDeckGenerator.getDemoOpponents();
         for (final AiOpponent opp : opponents) {
-            boolean unlocked = TimelineEngine.isReleasedOnOrBefore(opp.unlockDate, profile.currentTimelineDate);
             LinearLayout box = makeCardContainer();
             box.addView(makeTitleText(opp.name + "  (" + opp.title + ")"));
             box.addView(makeSubtleText(opp.strategyHint));
@@ -598,21 +644,14 @@ public class RpgHomeActivity extends AppCompatActivity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setPadding(0, dp(8), 0, 0);
 
-            if (unlocked) {
-                Button fightBtn = makeActionButton("亲自对战 (WindBot)", "#DC2626");
-                fightBtn.setOnClickListener(v -> launchAiDuel(opp));
-                row.addView(fightBtn);
+            Button fightBtn = makeActionButton("🪙 亲自对战 (WindBot)", "#DC2626");
+            fightBtn.setOnClickListener(v -> launchAiDuel(opp));
+            row.addView(fightBtn);
 
-                Button quickBtn = makeActionButton("⚡ 快速决斗", "#D97706");
-                quickBtn.setOnClickListener(v -> runQuickDuel(opp));
-                row.addView(quickBtn);
-            } else {
-                TextView locked = new TextView(this);
-                locked.setText("未解锁（需时间轴 ≥ " + opp.unlockDate + "）");
-                locked.setTextColor(Color.parseColor("#F87171"));
-                locked.setTextSize(12f);
-                row.addView(locked);
-            }
+            Button quickBtn = makeActionButton("⚡ 快速决斗", "#D97706");
+            quickBtn.setOnClickListener(v -> runQuickDuel(opp));
+            row.addView(quickBtn);
+
             box.addView(row);
             layoutContent.addView(box);
         }
