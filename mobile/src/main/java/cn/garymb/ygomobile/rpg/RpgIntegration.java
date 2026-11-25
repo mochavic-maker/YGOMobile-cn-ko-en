@@ -144,6 +144,99 @@ public final class RpgIntegration {
         return destFile;
     }
 
+    private static volatile java.util.Map<Integer, Integer> sRpgDeckAllowedCaps = null;
+    private static volatile java.util.Map<Integer, Integer> sRpgDeckCurrentCounts = null;
+
+    /**
+     * Hook called from CardSearcherManagerBase.executeFilterAsync():
+     * In RPG deck edit mode, hides cards the player does not own, cards unreleased on the current
+     * timeline date, forbidden cards, and cards that have already reached their owned/banlist cap in the deck.
+     */
+    public static boolean isCardAllowedInDeckSearch(int cardCode) {
+        java.util.Map<Integer, Integer> caps = sRpgDeckAllowedCaps;
+        if (caps == null) return true;
+        Integer cap = caps.get(cardCode);
+        if (cap == null || cap <= 0) return false;
+        java.util.Map<Integer, Integer> counts = sRpgDeckCurrentCounts;
+        int inDeck = counts != null ? counts.getOrDefault(cardCode, 0) : 0;
+        return inDeck < cap;
+    }
+
+    /**
+     * Hook called from DeckEditorManagerBase.checkLimit():
+     * Prevents adding unowned, unreleased, or over-owned/over-banlist copies in RPG deck edit mode.
+     */
+    public static boolean canAddCardInRpgDeckEditor(int cardCode, cn.garymb.ygomobile.bean.DeckInfo currentDeck) {
+        java.util.Map<Integer, Integer> caps = sRpgDeckAllowedCaps;
+        if (caps == null) return true;
+        Integer cap = caps.get(cardCode);
+        if (cap == null || cap <= 0) return false;
+        int count = 0;
+        if (currentDeck != null) {
+            if (currentDeck.mainCards != null) {
+                for (ocgcore.data.Card c : currentDeck.mainCards) if (c != null && c.Code == cardCode) count++;
+            }
+            if (currentDeck.extraCards != null) {
+                for (ocgcore.data.Card c : currentDeck.extraCards) if (c != null && c.Code == cardCode) count++;
+            }
+            if (currentDeck.sideCards != null) {
+                for (ocgcore.data.Card c : currentDeck.sideCards) if (c != null && c.Code == cardCode) count++;
+            }
+        }
+        return count < cap;
+    }
+
+    /**
+     * Hook called from DeckEditorManagerBase.notifyDeckChanged():
+     * Recomputes current in-deck copy counts and refreshes the search list so maxed-out cards
+     * vanish immediately and removed cards reappear immediately.
+     */
+    public static void onDeckEditorDeckChanged(cn.garymb.ygomobile.bean.DeckInfo currentDeck,
+                                               cn.garymb.ygomobile.game.deck.CardSearcherManagerBase searcher) {
+        if (sRpgDeckAllowedCaps == null) return;
+        java.util.Map<Integer, Integer> counts = new java.util.HashMap<>();
+        if (currentDeck != null) {
+            if (currentDeck.mainCards != null) {
+                for (ocgcore.data.Card c : currentDeck.mainCards) {
+                    if (c != null) counts.put(c.Code, counts.getOrDefault(c.Code, 0) + 1);
+                }
+            }
+            if (currentDeck.extraCards != null) {
+                for (ocgcore.data.Card c : currentDeck.extraCards) {
+                    if (c != null) counts.put(c.Code, counts.getOrDefault(c.Code, 0) + 1);
+                }
+            }
+            if (currentDeck.sideCards != null) {
+                for (ocgcore.data.Card c : currentDeck.sideCards) {
+                    if (c != null) counts.put(c.Code, counts.getOrDefault(c.Code, 0) + 1);
+                }
+            }
+        }
+        sRpgDeckCurrentCounts = counts;
+        if (searcher != null) {
+            searcher.refreshRpgSearch();
+        }
+    }
+
+    private static java.util.Map<Integer, Integer> countCardsInYdk(File ydkFile) {
+        java.util.Map<Integer, Integer> counts = new java.util.HashMap<>();
+        if (ydkFile == null || !ydkFile.exists()) return counts;
+        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(ydkFile))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("#") || line.startsWith("!")) continue;
+                try {
+                    int code = Integer.parseInt(line);
+                    counts.put(code, counts.getOrDefault(code, 0) + 1);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return counts;
+    }
+
     /**
      * Watches for YGOProActivity's MainMenuDialog to reappear (after duel end or native deck editor exit),
      * optionally parses the edited .ydk back into RpgSessionManager, and reopens RpgHomeActivity on targetTab.
@@ -155,13 +248,21 @@ public final class RpgIntegration {
         final View decor = activity.getWindow() != null ? activity.getWindow().getDecorView() : null;
         if (decor == null) return;
 
-        final long deadlineMs = System.currentTimeMillis() + 180_000L; // up to 3 min for editing / replay save
+        final long deadlineMs = System.currentTimeMillis() + 600_000L; // up to 10 min for deck editing / replay save
         final boolean[] sawMenuHidden = new boolean[]{!activity.getMainMenuDialog().isShowing()};
         final Runnable watcher = new Runnable() {
             @Override
             public void run() {
-                if (activity.isFinishing() || activity.isDestroyed()) return;
-                if (System.currentTimeMillis() > deadlineMs) return;
+                if (activity.isFinishing() || activity.isDestroyed()) {
+                    sRpgDeckAllowedCaps = null;
+                    sRpgDeckCurrentCounts = null;
+                    return;
+                }
+                if (System.currentTimeMillis() > deadlineMs) {
+                    sRpgDeckAllowedCaps = null;
+                    sRpgDeckCurrentCounts = null;
+                    return;
+                }
 
                 boolean menuShowing = activity.getMainMenuDialog() != null
                         && activity.getMainMenuDialog().isShowing();
@@ -176,8 +277,12 @@ public final class RpgIntegration {
                 }
 
                 // MainMenuDialog just reappeared after duel end or exiting native DeckEditor!
-                if (editedYdkToSyncBack != null && editedYdkToSyncBack.exists()) {
-                    parseAndPublishEditedDeck(editedYdkToSyncBack);
+                if (editedYdkToSyncBack != null) {
+                    sRpgDeckAllowedCaps = null;
+                    sRpgDeckCurrentCounts = null;
+                    if (editedYdkToSyncBack.exists()) {
+                        parseAndPublishEditedDeck(editedYdkToSyncBack);
+                    }
                 }
                 Intent intent = new Intent(activity, RpgHomeActivity.class);
                 intent.putExtra(RpgHomeActivity.EXTRA_INITIAL_TAB, targetTab);
@@ -275,12 +380,36 @@ public final class RpgIntegration {
             }
 
             @Override
-            public void openNativeDeckEditor(Context context, String playerDeckYdkPath) {
+            public void openNativeDeckEditor(Context context,
+                                             String playerDeckYdkPath,
+                                             java.util.Map<Integer, Integer> allowedCardCaps) {
                 activity.runOnUiThread(() -> {
                     File syncedFile = syncYdkToNativeDeckDir(playerDeckYdkPath);
+                    sRpgDeckAllowedCaps = allowedCardCaps != null
+                            ? new java.util.HashMap<>(allowedCardCaps)
+                            : new java.util.HashMap<>();
+                    sRpgDeckCurrentCounts = countCardsInYdk(syncedFile);
                     activity.showDeckEditorView();
+                    // Immediately filter the search panel to show only owned & still-available RPG cards
+                    View decor = activity.getWindow() != null ? activity.getWindow().getDecorView() : null;
+                    if (decor != null) {
+                        decor.postDelayed(() -> {
+                            try {
+                                java.lang.reflect.Field f = cn.garymb.ygomobile.YGOProActivityBase.class
+                                        .getDeclaredField("deckEditorManager");
+                                f.setAccessible(true);
+                                Object mgr = f.get(activity);
+                                if (mgr instanceof cn.garymb.ygomobile.game.deck.DeckEditorManager) {
+                                    cn.garymb.ygomobile.game.deck.CardSearcherManager searcher =
+                                            ((cn.garymb.ygomobile.game.deck.DeckEditorManager) mgr).getCardSearcherManager();
+                                    if (searcher != null) searcher.refreshRpgSearch();
+                                }
+                            } catch (Throwable ignored) {
+                            }
+                        }, 200L);
+                    }
                     Toast.makeText(activity,
-                            "已载入当前 RPG 卡组，编辑并点击「保存」后退出即可自动同步回 RPG 模式",
+                            "RPG 组卡限制已启用：仅显示已拥有且未达上限的卡片，保存并退出后自动同步",
                             Toast.LENGTH_LONG).show();
                     scheduleReturnToRpg(activity, RpgHomeActivity.TAB_DECK, syncedFile);
                 });

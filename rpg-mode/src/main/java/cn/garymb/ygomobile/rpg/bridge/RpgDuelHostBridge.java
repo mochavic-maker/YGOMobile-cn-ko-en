@@ -23,11 +23,14 @@ public interface RpgDuelHostBridge {
                         String currentTimelineDate);
 
     /**
-     * Opens YGOMobile's built-in visual Deck Editor loaded with the player's current RPG .ydk deck.
+     * Opens YGOMobile's built-in visual Deck Editor loaded with the player's current RPG .ydk deck,
+     * restricted to {@code allowedCardCaps} (cardId -> max legal copies = min(owned, banlistMax)).
      * When the user exits the native deck editor, the edited .ydk is parsed back into RpgSessionManager
      * and RpgHomeActivity is reopened on the Deck tab.
      */
-    default void openNativeDeckEditor(Context context, String playerDeckYdkPath) {
+    default void openNativeDeckEditor(Context context,
+                                      String playerDeckYdkPath,
+                                      java.util.Map<Integer, Integer> allowedCardCaps) {
     }
 
     /**

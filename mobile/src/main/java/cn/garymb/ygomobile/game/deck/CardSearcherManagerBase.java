@@ -237,6 +237,10 @@ public abstract class CardSearcherManagerBase {
         if (tvSearchResult != null) tvSearchResult.setText("…");
     }
 
+    public void refreshRpgSearch() {
+        executeFilterAsync();
+    }
+
     protected void executeFilterAsync() {
         showSearchResultSearching();
         int gen = searchGeneration.incrementAndGet();
@@ -248,6 +252,7 @@ public abstract class CardSearcherManagerBase {
                 if (searchGeneration.get() != gen) return;
                 Card card = allCards.valueAt(i);
                 if (card == null || Card.isType(card.Type, CardType.Token)) continue;
+                if (!cn.garymb.ygomobile.rpg.RpgIntegration.isCardAllowedInDeckSearch(card.Code)) continue;
                 if (!matchesAllFilters(card, keywordTerms)) continue;
                 results.add(card);
             }

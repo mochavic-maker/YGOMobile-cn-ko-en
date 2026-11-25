@@ -846,7 +846,17 @@ public class RpgHomeActivity extends AppCompatActivity {
         try {
             File playerYdk = DeckValidator.exportToYdk(
                     repository.getPlayerDeckYdkFile(), profile.activeDeckMain, profile.activeDeckExtra);
-            bridge.openNativeDeckEditor(this, playerYdk.getAbsolutePath());
+            OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+            Map<Integer, Integer> allowedCaps = new HashMap<>();
+            for (RpgCard c : TimelineEngine.getReleasedCards(catalog, profile.currentTimelineDate)) {
+                int owned = profile.getOwnedCount(c.id);
+                if (owned <= 0) continue;
+                int cap = Math.min(owned, banlist.getMaxCopies(c.id));
+                if (cap > 0) {
+                    allowedCaps.put(c.id, cap);
+                }
+            }
+            bridge.openNativeDeckEditor(this, playerYdk.getAbsolutePath(), allowedCaps);
             finish();
         } catch (IOException e) {
             Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();

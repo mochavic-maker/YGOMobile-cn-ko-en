@@ -359,6 +359,7 @@ abstract class DeckEditorManagerBase {
     // === 对应 deck_con.cpp: check_limit ===
     public boolean checkLimit(Card card) {
         if (card == null) return false;
+        if (!cn.garymb.ygomobile.rpg.RpgIntegration.canAddCardInRpgDeckEditor(card.Code, currentDeck)) return false;
         //禁限卡表未启用（关闭或选N/A）：跳过所有禁限数量与GeneSys点数校验
         if (mLimitList == null) return true;
         int gameCode = card.getGameCode();
@@ -651,6 +652,7 @@ abstract class DeckEditorManagerBase {
         // 卡组内容变化即记一次快照（与游标相同会被去重），供两个编辑器共用的 undo/redo 使用
         if (historyPanel != null) historyPanel.recordSnapshot();
         if (listener != null) listener.onDeckModified();
+        cn.garymb.ygomobile.rpg.RpgIntegration.onDeckEditorDeckChanged(currentDeck, cardSearcherManager);
     }
 
     protected void refreshCardGroupView(CardGroupView groupView, List<Card> cards, DeckInfo.Type type) {
