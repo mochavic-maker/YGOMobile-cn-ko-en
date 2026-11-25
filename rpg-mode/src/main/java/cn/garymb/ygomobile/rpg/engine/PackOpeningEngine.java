@@ -17,15 +17,26 @@ import cn.garymb.ygomobile.rpg.model.RpgProfile;
  */
 public class PackOpeningEngine {
 
+    public static final int MAX_OWNED_COPIES = 3;
+
     public static class PulledCard {
         public final RpgCard card;
         public final boolean isNew;
         public final int ownedAfter;
+        public final boolean autoDismantled;
+        public final int dustGained;
 
         public PulledCard(RpgCard card, boolean isNew, int ownedAfter) {
+            this(card, isNew, ownedAfter, false, 0);
+        }
+
+        public PulledCard(RpgCard card, boolean isNew, int ownedAfter,
+                          boolean autoDismantled, int dustGained) {
             this.card = card;
             this.isNew = isNew;
             this.ownedAfter = ownedAfter;
+            this.autoDismantled = autoDismantled;
+            this.dustGained = dustGained;
         }
     }
 
@@ -35,22 +46,29 @@ public class PackOpeningEngine {
         public final List<PulledCard> pulledCards;
         public final int tokensSpent;
         public final int tokensRemaining;
+        public final int autoDismantledCount;
+        public final int autoDismantledDust;
 
         private PackOpenResult(boolean success, String errorMessage,
-                               List<PulledCard> pulledCards, int tokensSpent, int tokensRemaining) {
+                               List<PulledCard> pulledCards, int tokensSpent, int tokensRemaining,
+                               int autoDismantledCount, int autoDismantledDust) {
             this.success = success;
             this.errorMessage = errorMessage;
             this.pulledCards = pulledCards;
             this.tokensSpent = tokensSpent;
             this.tokensRemaining = tokensRemaining;
+            this.autoDismantledCount = autoDismantledCount;
+            this.autoDismantledDust = autoDismantledDust;
         }
 
         public static PackOpenResult error(String msg, int tokensRemaining) {
-            return new PackOpenResult(false, msg, new ArrayList<>(), 0, tokensRemaining);
+            return new PackOpenResult(false, msg, new ArrayList<>(), 0, tokensRemaining, 0, 0);
         }
 
-        public static PackOpenResult ok(List<PulledCard> pulled, int spent, int remaining) {
-            return new PackOpenResult(true, null, pulled, spent, remaining);
+        public static PackOpenResult ok(List<PulledCard> pulled, int spent, int remaining,
+                                        int autoDismantledCount, int autoDismantledDust) {
+            return new PackOpenResult(true, null, pulled, spent, remaining,
+                    autoDismantledCount, autoDismantledDust);
         }
     }
 
@@ -65,6 +83,11 @@ public class PackOpeningEngine {
     }
 
     public PackOpenResult openPacks(RpgProfile profile, OcgPack pack, int packCount) {
+        return openPacks(profile, pack, packCount, null);
+    }
+
+    public PackOpenResult openPacks(RpgProfile profile, OcgPack pack, int packCount,
+                                    cn.garymb.ygomobile.rpg.model.RpgCatalog.CraftingRules craftingRules) {
         if (profile == null || pack == null || packCount <= 0) {
             return PackOpenResult.error("参数无效", profile != null ? profile.tokens : 0);
         }
@@ -90,13 +113,20 @@ public class PackOpeningEngine {
 
         profile.tokens -= totalCost;
         List<PulledCard> allPulled = new ArrayList<>(packCount * Math.max(1, pack.cardsPerPack));
+        int dismantledCount = 0;
+        int dismantledDust = 0;
 
         for (int p = 0; p < packCount; p++) {
             if (pack.fixedContents) {
                 for (RpgCard c : pack.cards) {
                     int qty = Math.max(1, c.quantity);
                     for (int q = 0; q < qty; q++) {
-                        allPulled.add(recordPull(profile, c));
+                        PulledCard pc = recordPull(profile, c, craftingRules);
+                        allPulled.add(pc);
+                        if (pc.autoDismantled) {
+                            dismantledCount++;
+                            dismantledDust += pc.dustGained;
+                        }
                     }
                 }
             } else {
@@ -106,7 +136,12 @@ public class PackOpeningEngine {
                 // Common slots (e.g., 4 in Vol., 2 in Carddass Booster, 0 in Premium Pack)
                 for (int i = 0; i < commonSlots; i++) {
                     RpgCard c = pickFromPool(commons.isEmpty() ? pack.cards : commons, usedInPack);
-                    allPulled.add(recordPull(profile, c));
+                    PulledCard pc = recordPull(profile, c, craftingRules);
+                    allPulled.add(pc);
+                    if (pc.autoDismantled) {
+                        dismantledCount++;
+                        dismantledDust += pc.dustGained;
+                    }
                 }
 
                 // Weighted rare/foil slot(s)
@@ -124,7 +159,12 @@ public class PackOpeningEngine {
                             profile.packsSinceLastRare++;
                         }
                     }
-                    allPulled.add(recordPull(profile, c));
+                    PulledCard pc = recordPull(profile, c, craftingRules);
+                    allPulled.add(pc);
+                    if (pc.autoDismantled) {
+                        dismantledCount++;
+                        dismantledDust += pc.dustGained;
+                    }
                 }
             }
 
@@ -132,13 +172,20 @@ public class PackOpeningEngine {
             profile.packsOpened.put(pack.id, (opened == null ? 0 : opened) + 1);
         }
 
-        return PackOpenResult.ok(allPulled, totalCost, profile.tokens);
+        return PackOpenResult.ok(allPulled, totalCost, profile.tokens, dismantledCount, dismantledDust);
     }
 
-    private PulledCard recordPull(RpgProfile profile, RpgCard card) {
+    private PulledCard recordPull(RpgProfile profile, RpgCard card,
+                                  cn.garymb.ygomobile.rpg.model.RpgCatalog.CraftingRules rules) {
         int before = profile.getOwnedCount(card.id);
+        if (before >= MAX_OWNED_COPIES) {
+            Rarity rarity = card.getRarityEnum();
+            int dust = rules != null ? rules.getDismantleDust(rarity) : rarity.defaultDismantleDust;
+            profile.dust += dust;
+            return new PulledCard(card, false, before, true, dust);
+        }
         profile.addCard(card.id, 1);
-        return new PulledCard(card, before == 0, before + 1);
+        return new PulledCard(card, before == 0, before + 1, false, 0);
     }
 
     private Rarity rollSlotRarity(Map<String, Integer> weights, boolean forceAtLeastRare) {

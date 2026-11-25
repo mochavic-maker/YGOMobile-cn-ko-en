@@ -344,11 +344,19 @@ public final class RpgIntegration {
                 }
 
                 // MainMenuDialog just reappeared after duel end or exiting native DeckEditor!
-                if (editedYdkToSyncBack != null) {
-                    sRpgDeckAllowedCaps = null;
-                    sRpgDeckCurrentCounts = null;
-                    if (editedYdkToSyncBack.exists()) {
-                        parseAndPublishEditedDeck(editedYdkToSyncBack);
+                sRpgDeckAllowedCaps = null;
+                sRpgDeckCurrentCounts = null;
+                if (editedYdkToSyncBack != null && editedYdkToSyncBack.exists()) {
+                    parseAndPublishEditedDeck(editedYdkToSyncBack);
+                }
+                if (editedYdkToSyncBack == null && targetTab == RpgHomeActivity.TAB_AI_DUEL) {
+                    // Restore lastdeckpath to player's RPG deck if we just exited readonly AI deck viewer
+                    File playerRpgDeck = new File(new File(AppsSettings.get().getDeckDir(), "RPG"), "rpg_player_active.ydk");
+                    if (playerRpgDeck.exists()) {
+                        String p = playerRpgDeck.getAbsolutePath();
+                        AppsSettings.get().setLastDeckPath(p);
+                        AppsSettings.get().saveSettings("lastdeckpath", p);
+                        AppsSettings.get().saveSettings("lastdeck", "rpg_player_active");
                     }
                 }
                 Intent intent = new Intent(activity, RpgHomeActivity.class);
@@ -467,7 +475,7 @@ public final class RpgIntegration {
                             : new java.util.HashMap<>();
                     sRpgDeckCurrentCounts = countCardsInYdk(syncedFile);
                     activity.showDeckEditorView();
-                    // Immediately filter the search panel to show only owned & still-available RPG cards
+                    // Load the exact RPG deck & filter search panel to owned & still-available RPG cards
                     View decor = activity.getWindow() != null ? activity.getWindow().getDecorView() : null;
                     if (decor != null) {
                         decor.postDelayed(() -> {
@@ -477,18 +485,82 @@ public final class RpgIntegration {
                                 f.setAccessible(true);
                                 Object mgr = f.get(activity);
                                 if (mgr instanceof cn.garymb.ygomobile.game.deck.DeckEditorManager) {
+                                    cn.garymb.ygomobile.game.deck.DeckEditorManager dem =
+                                            (cn.garymb.ygomobile.game.deck.DeckEditorManager) mgr;
+                                    dem.openDeckForRpg(syncedFile.getAbsolutePath(), "rpg_player_active", "RPG");
                                     cn.garymb.ygomobile.game.deck.CardSearcherManager searcher =
-                                            ((cn.garymb.ygomobile.game.deck.DeckEditorManager) mgr).getCardSearcherManager();
+                                            dem.getCardSearcherManager();
                                     if (searcher != null) searcher.refreshRpgSearch();
                                 }
                             } catch (Throwable ignored) {
                             }
-                        }, 200L);
+                        }, 150L);
                     }
                     Toast.makeText(activity,
                             "RPG 组卡限制已启用：仅显示已拥有且未达上限的卡片，保存并退出后自动同步",
                             Toast.LENGTH_LONG).show();
                     scheduleReturnToRpg(activity, RpgHomeActivity.TAB_DECK, syncedFile);
+                });
+            }
+
+            @Override
+            public void openReadonlyAiDeckViewer(Context context,
+                                                 String aiDeckYdkPath,
+                                                 String displayTitle) {
+                activity.runOnUiThread(() -> {
+                    // Place the preview file under aiDeckDir so DeckHistory.isReadonlyDeck()
+                    // automatically locks the native DeckEditor into full read-only mode.
+                    File aiDir = new File(AppsSettings.get().getAiDeckDir());
+                    if (!aiDir.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        aiDir.mkdirs();
+                    }
+                    File previewFile = new File(aiDir, "RPG_AI_preview.ydk");
+                    if (aiDeckYdkPath != null && !aiDeckYdkPath.isEmpty()) {
+                        File src = new File(aiDeckYdkPath);
+                        if (src.exists()) {
+                            try (java.io.FileInputStream in = new java.io.FileInputStream(src);
+                                 java.io.FileOutputStream out = new java.io.FileOutputStream(previewFile)) {
+                                byte[] buf = new byte[8192];
+                                int len;
+                                while ((len = in.read(buf)) > 0) {
+                                    out.write(buf, 0, len);
+                                }
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    }
+                    // Empty allowed caps double-locks card search and card addition
+                    sRpgDeckAllowedCaps = Collections.emptyMap();
+                    sRpgDeckCurrentCounts = Collections.emptyMap();
+
+                    final String label = (displayTitle != null && !displayTitle.isEmpty())
+                            ? displayTitle : "AI 卡组";
+                    activity.showDeckEditorView();
+                    View decor = activity.getWindow() != null ? activity.getWindow().getDecorView() : null;
+                    if (decor != null) {
+                        decor.postDelayed(() -> {
+                            try {
+                                java.lang.reflect.Field f = cn.garymb.ygomobile.YGOProActivityBase.class
+                                        .getDeclaredField("deckEditorManager");
+                                f.setAccessible(true);
+                                Object mgr = f.get(activity);
+                                if (mgr instanceof cn.garymb.ygomobile.game.deck.DeckEditorManager) {
+                                    cn.garymb.ygomobile.game.deck.DeckEditorManager dem =
+                                            (cn.garymb.ygomobile.game.deck.DeckEditorManager) mgr;
+                                    dem.openDeckForRpg(previewFile.getAbsolutePath(), label, "AI卡组(只读)");
+                                    cn.garymb.ygomobile.game.deck.CardSearcherManager searcher =
+                                            dem.getCardSearcherManager();
+                                    if (searcher != null) searcher.refreshRpgSearch();
+                                }
+                            } catch (Throwable ignored) {
+                            }
+                        }, 150L);
+                    }
+                    Toast.makeText(activity,
+                            "只读查看 AI 卡组：" + label + "（不可修改，点「退出编辑」返回选对手页）",
+                            Toast.LENGTH_LONG).show();
+                    scheduleReturnToRpg(activity, RpgHomeActivity.TAB_AI_DUEL, null);
                 });
             }
 

@@ -114,6 +114,10 @@ public final class RpgPackVisualDialogs {
         StringBuilder sumSb = new StringBuilder();
         sumSb.append("共获得 ").append(result.pulledCards.size()).append(" 张");
         if (newCount > 0) sumSb.append(" · ★NEW ").append(newCount).append(" 张");
+        if (result.autoDismantledCount > 0) {
+            sumSb.append(" · 自动分解 ").append(result.autoDismantledCount)
+                    .append(" 张(+").append(result.autoDismantledDust).append("尘)");
+        }
         sumSb.append(" · ");
         boolean first = true;
         for (Map.Entry<String, Integer> e : rarityCounts.entrySet()) {
@@ -121,7 +125,7 @@ public final class RpgPackVisualDialogs {
             sumSb.append(e.getKey()).append("×").append(e.getValue());
             first = false;
         }
-        sumSb.append("  |  剩余代币: ").append(profile.tokens);
+        sumSb.append("  |  代币: ").append(profile.tokens).append("  尘埃: ").append(profile.dust);
 
         TextView tvSummary = new TextView(activity);
         tvSummary.setText(sumSb.toString());
@@ -219,10 +223,18 @@ public final class RpgPackVisualDialogs {
                 tvRarity.setLayoutParams(rarLp);
                 cardFrame.addView(tvRarity);
 
-                // Top-right NEW or owned count badge
-                final TextView tvStatus = pc.isNew
-                        ? makeBadge(activity, "NEW", Color.parseColor("#F59E0B"), Color.parseColor("#0F172A"))
-                        : makeBadge(activity, "×" + pc.ownedAfter, Color.parseColor("#CC0F172A"), Color.parseColor("#E2E8F0"));
+                // Top-right NEW / auto-dismantled dust / owned count badge
+                final TextView tvStatus;
+                if (pc.autoDismantled) {
+                    tvStatus = makeBadge(activity, "+" + pc.dustGained + "尘",
+                            Color.parseColor("#7C3AED"), Color.WHITE);
+                } else if (pc.isNew) {
+                    tvStatus = makeBadge(activity, "NEW",
+                            Color.parseColor("#F59E0B"), Color.parseColor("#0F172A"));
+                } else {
+                    tvStatus = makeBadge(activity, "×" + pc.ownedAfter,
+                            Color.parseColor("#CC0F172A"), Color.parseColor("#E2E8F0"));
+                }
                 FrameLayout.LayoutParams stLp = new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                         Gravity.TOP | Gravity.END);

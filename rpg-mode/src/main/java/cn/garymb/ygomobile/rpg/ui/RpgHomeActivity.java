@@ -114,6 +114,11 @@ public class RpgHomeActivity extends AppCompatActivity {
             return;
         }
         profile.currentTimelineDate = TimelineEngine.clampDate(catalog, profile.currentTimelineDate);
+        CraftingEngine.CraftResult legacySurplus = CraftingEngine.dismantleAllSurplus(profile, catalog);
+        if (legacySurplus.success) {
+            saveProfileSafe();
+            Toast.makeText(this, "旧存档多余卡(>3张)已自动分解：" + legacySurplus.message, Toast.LENGTH_LONG).show();
+        }
 
         tvTokens = findViewById(R.id.tv_rpg_tokens);
         tvDust = findViewById(R.id.tv_rpg_dust);
@@ -131,7 +136,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         tabLayout.setTabMode(TabLayout.MODE_SCROLLABLE);
         tabLayout.addTab(tabLayout.newTab().setText("卡包商店"));
         tabLayout.addTab(tabLayout.newTab().setText("特典活动"));
-        tabLayout.addTab(tabLayout.newTab().setText("卡库/合成"));
+        tabLayout.addTab(tabLayout.newTab().setText("卡片合成"));
         tabLayout.addTab(tabLayout.newTab().setText("RPG 组卡"));
         tabLayout.addTab(tabLayout.newTab().setText("AI 对战"));
         tabLayout.addTab(tabLayout.newTab().setText("🏆 锦标赛"));
@@ -517,7 +522,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     }
 
     private void doOpenPack(OcgPack pack, int count) {
-        PackOpeningEngine.PackOpenResult res = packEngine.openPacks(profile, pack, count);
+        PackOpeningEngine.PackOpenResult res = packEngine.openPacks(profile, pack, count, catalog.craftingRules);
         if (!res.success) {
             Toast.makeText(this, res.errorMessage, Toast.LENGTH_SHORT).show();
             return;
@@ -569,6 +574,10 @@ public class RpgHomeActivity extends AppCompatActivity {
                     for (RpgCard c : r.grantedCards) {
                         sb.append("[").append(c.rarity).append("] ").append(c.getDisplayName()).append(" x1\n");
                     }
+                    if (r.autoDismantledCount > 0) {
+                        sb.append("\n超出 3 张的 ").append(r.autoDismantledCount)
+                                .append(" 张已自动分解为 +").append(r.autoDismantledDust).append(" 尘埃");
+                    }
                     new AlertDialog.Builder(this)
                             .setTitle("特典领取成功 · " + ev.name)
                             .setMessage(sb.toString())
@@ -582,53 +591,68 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
     }
 
-    // ==================== TAB 1: COLLECTION & CRAFTING ====================
+    // ==================== TAB 2: CARD CRAFTING (CRAFT-ONLY, HIDES >= 3 OWNED) ====================
     private void renderCollectionTab() {
-        Button toggleBtn = makeActionButton(collectionOnlyOwned ? "筛选: 仅看已拥有" : "筛选: 全部已发售", "#334155");
+        Button toggleBtn = makeActionButton(
+                collectionOnlyOwned ? "筛选: 仅看未拥有(0张)" : "筛选: 全部未满3张", "#334155");
         toggleBtn.setOnClickListener(v -> {
             collectionOnlyOwned = !collectionOnlyOwned;
             renderCurrentTab();
         });
-        Button bulkBtn = makeActionButton("一键分解多余(>3张)", "#7C3AED");
-        bulkBtn.setOnClickListener(v -> {
-            CraftingEngine.CraftResult r = CraftingEngine.dismantleAllSurplus(profile, catalog);
-            Toast.makeText(this, r.message, Toast.LENGTH_SHORT).show();
-            if (r.success) {
-                saveProfileSafe();
-                refreshAll();
-            }
-        });
         layoutTabActions.addView(toggleBtn);
-        layoutTabActions.addView(bulkBtn);
 
         OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
         List<RpgCard> released = TimelineEngine.getReleasedCards(catalog, profile.currentTimelineDate);
 
+        int hiddenFullCount = 0;
+        int shownCount = 0;
+
         for (final RpgCard card : released) {
             int owned = profile.getOwnedCount(card.id);
-            if (collectionOnlyOwned && owned <= 0) continue;
+            if (owned >= PackOpeningEngine.MAX_OWNED_COPIES) {
+                hiddenFullCount++;
+                continue;
+            }
+            if (collectionOnlyOwned && owned > 0) continue;
+            shownCount++;
 
             Rarity rarity = card.getRarityEnum();
-            int dismantleGain = catalog.craftingRules.getDismantleDust(rarity);
             int craftCost = catalog.craftingRules.getCraftCostDust(rarity);
             String limitBadge = banlist.getLimitBadge(card.id);
             String errataBadge = CardErrataEngine.getVersionBadge(catalog, card.id, profile.currentTimelineDate);
             final OcgCardErrata errataRec = catalog.findErrata(card.id);
 
             LinearLayout box = makeCardContainer();
+            box.setOrientation(LinearLayout.HORIZONTAL);
+            box.setGravity(Gravity.CENTER_VERTICAL);
+
+            ImageView thumb = new ImageView(this);
+            LinearLayout.LayoutParams thumbLp = new LinearLayout.LayoutParams(dp(52), dp(76));
+            thumbLp.setMarginEnd(dp(10));
+            thumb.setLayoutParams(thumbLp);
+            thumb.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            thumb.setAlpha(owned > 0 ? 1.0f : 0.65f);
+            RpgCardArtLoader.loadInto(thumb, card.id, dp(52));
+            thumb.setOnClickListener(v -> RpgPackVisualDialogs.showCardDetailDialog(this, catalog, profile, card));
+            box.addView(thumb);
+
+            LinearLayout infoCol = new LinearLayout(this);
+            infoCol.setOrientation(LinearLayout.VERTICAL);
+            infoCol.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
             String header = "[" + rarity.code + "] " + card.getDisplayName()
                     + (limitBadge.isEmpty() ? "" : " 【" + limitBadge + "】")
                     + (errataBadge.isEmpty() ? "" : " ⟪" + errataBadge + "⟫")
-                    + "  x" + owned;
+                    + "  (" + owned + "/3)";
             TextView tvTitle = makeTitleText(header);
             tvTitle.setTextColor(Color.parseColor(rarity.colorHex));
-            box.addView(tvTitle);
+            infoCol.addView(tvTitle);
 
             String stats = card.isMonster()
                     ? String.format(Locale.US, "Lv.%d %s/%s ATK %d / DEF %d (%s)",
                     card.level, card.attribute, card.race, card.atk, card.def, card.setCode)
                     : card.cardType + " (" + card.setCode + ")";
-            box.addView(makeSubtleText(stats));
+            infoCol.addView(makeSubtleText(stats));
 
             String effectiveDesc = CardErrataEngine.getEffectiveDescCn(catalog, card, profile.currentTimelineDate);
             if (!effectiveDesc.isEmpty()) {
@@ -636,14 +660,15 @@ public class RpgHomeActivity extends AppCompatActivity {
                 if (!errataBadge.isEmpty()) {
                     tvDesc.setTextColor(Color.parseColor("#FDE68A"));
                 }
-                box.addView(tvDesc);
+                infoCol.addView(tvDesc);
             }
 
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setPadding(0, dp(6), 0, 0);
 
-            Button craftBtn = makeActionButton("合成 (-" + craftCost + "尘)", "#0284C7");
+            Button craftBtn = makeActionButton("合成 (-" + craftCost + "尘)",
+                    profile.dust >= craftCost ? "#0284C7" : "#475569");
             craftBtn.setOnClickListener(v -> {
                 CraftingEngine.CraftResult r = CraftingEngine.craft(profile, catalog, card.id, 1);
                 Toast.makeText(this, r.message, Toast.LENGTH_SHORT).show();
@@ -654,25 +679,24 @@ public class RpgHomeActivity extends AppCompatActivity {
             });
             row.addView(craftBtn);
 
-            if (owned > 0) {
-                Button disBtn = makeActionButton("分解 (+" + dismantleGain + "尘)", "#B91C1C");
-                disBtn.setOnClickListener(v -> {
-                    CraftingEngine.CraftResult r = CraftingEngine.dismantle(profile, catalog, card.id, 1);
-                    Toast.makeText(this, r.message, Toast.LENGTH_SHORT).show();
-                    if (r.success) {
-                        saveProfileSafe();
-                        refreshAll();
-                    }
-                });
-                row.addView(disBtn);
-            }
             if (errataRec != null) {
                 Button histBtn = makeActionButton("勘误史(" + errataRec.revisions.size() + ")", "#7C3AED");
                 histBtn.setOnClickListener(v -> showErrataHistoryDialog(errataRec));
                 row.addView(histBtn);
             }
-            box.addView(row);
+            infoCol.addView(row);
+            box.addView(infoCol);
             layoutContent.addView(box);
+        }
+
+        TextView note = makeSubtleText("抽包/购入超 3 张将自动分解为尘埃（不支持手动分解）· 已自动隐藏 "
+                + hiddenFullCount + " 种满 3 张的卡片 · 待补齐 " + shownCount + " 种");
+        layoutTabActions.addView(note);
+
+        if (shownCount == 0) {
+            LinearLayout empty = makeCardContainer();
+            empty.addView(makeTitleText("🎉 当前时间轴全部已发售卡片均已集齐 3 张！"));
+            layoutContent.addView(empty);
         }
     }
 
@@ -966,6 +990,10 @@ public class RpgHomeActivity extends AppCompatActivity {
             quickBtn.setOnClickListener(v -> runQuickDuel(opp));
             row.addView(quickBtn);
 
+            Button viewDeckBtn = makeActionButton("👁️ 查看卡组", "#0284C7");
+            viewDeckBtn.setOnClickListener(v -> openAiDeckReadonlyViewer(opp));
+            row.addView(viewDeckBtn);
+
             if (opp.deckEvolutions != null && opp.deckEvolutions.size() > 1) {
                 Button evoBtn = makeActionButton("演变(" + opp.deckEvolutions.size() + "套)", "#475569");
                 evoBtn.setOnClickListener(v -> showAiEvolutionDialog(opp));
@@ -974,6 +1002,27 @@ public class RpgHomeActivity extends AppCompatActivity {
 
             box.addView(row);
             layoutContent.addView(box);
+        }
+    }
+
+    private void openAiDeckReadonlyViewer(AiOpponent opponent) {
+        RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
+            return;
+        }
+        long stableSeed = (profile.currentTimelineDate + "|" + opponent.id).hashCode();
+        AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
+                catalog, opponent, profile.currentTimelineDate, new Random(stableSeed));
+        try {
+            File aiYdk = DeckValidator.exportToYdk(
+                    repository.getAiDeckYdkFile(opponent.id), aiDeck.main, aiDeck.extra);
+            AiOpponent.EraDeckProfile activeDeck = opponent.getActiveDeckProfile(profile.currentTimelineDate);
+            String title = opponent.name + (activeDeck != null ? ("-" + activeDeck.deckName) : "");
+            bridge.openReadonlyAiDeckViewer(this, aiYdk.getAbsolutePath(), title);
+            finish();
+        } catch (IOException e) {
+            Toast.makeText(this, "导出 AI 卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 

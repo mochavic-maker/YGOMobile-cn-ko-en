@@ -250,6 +250,10 @@ abstract class DeckEditorManagerBase {
         AppsSettings.get().saveSettings("lastdeckpath", deckPath);
     }
 
+    public void openDeckForRpg(String deckPath, String deckName, String categoryName) {
+        applySelectedDeck(deckPath, deckName, categoryName);
+    }
+
     protected void updateDeckManagerButtonText() {
         if (btnDeckManager != null) {
             if (currentDeckName != null && !currentDeckName.isEmpty()) {

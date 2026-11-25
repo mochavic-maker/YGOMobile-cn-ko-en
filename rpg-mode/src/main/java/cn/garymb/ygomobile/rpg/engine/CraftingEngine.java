@@ -98,6 +98,12 @@ public final class CraftingEngine {
                     card.getDisplayName() + " 发售于 " + releaseDate + "，当前时间轴不可合成",
                     profile.dust);
         }
+        int owned = profile.getOwnedCount(cardId);
+        if (owned + quantity > PackOpeningEngine.MAX_OWNED_COPIES) {
+            return CraftResult.error(
+                    card.getDisplayName() + " 已拥有 " + owned + " 张，最多合成至 3 张",
+                    profile.dust);
+        }
         Rarity rarity = catalog.getCardRarity(cardId);
         int cost = catalog.craftingRules.getCraftCostDust(rarity) * quantity;
         if (profile.dust < cost) {

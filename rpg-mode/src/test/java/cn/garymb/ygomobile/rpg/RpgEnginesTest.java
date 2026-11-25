@@ -179,13 +179,22 @@ public class RpgEnginesTest {
         assertEquals(1, profile.getOwnedCount(RAIGEKI));
 
         // Advance to 1999-12-16 -> buy EX Starter Box (fixed 102 cards including 6x De-Spell, 2000 tokens)
+        // Copies beyond 3 must be automatically dismantled into dust.
         profile.currentTimelineDate = "1999-12-16";
         profile.tokens = 2500;
-        PackOpeningEngine.PackOpenResult exRes = engine.openPacks(profile, catalog.findPack("ocg_ex_starter_box"), 1);
+        int dustBeforeEx = profile.dust;
+        PackOpeningEngine.PackOpenResult exRes = engine.openPacks(
+                profile, catalog.findPack("ocg_ex_starter_box"), 1, catalog.craftingRules);
         assertTrue(exRes.success);
         assertEquals(102, exRes.pulledCards.size());
         assertEquals(2000, exRes.tokensSpent);
-        assertTrue("EX Starter Box must grant 6 copies of De-Spell", profile.getOwnedCount(DE_SPELL) >= 6);
+        assertEquals("EX Starter Box De-Spell must cap at 3 owned copies", 3, profile.getOwnedCount(DE_SPELL));
+        assertTrue("Surplus copies beyond 3 must auto-dismantle into dust",
+                exRes.autoDismantledCount >= 3 && exRes.autoDismantledDust > 0);
+        assertEquals(dustBeforeEx + exRes.autoDismantledDust, profile.dust);
+        for (Integer count : profile.collection.values()) {
+            assertTrue("No card in collection may exceed 3 copies after pack purchase", count <= 3);
+        }
     }
 
     @Test
@@ -228,7 +237,7 @@ public class RpgEnginesTest {
     public void craftingAndDismantlingObeyTimelineAndUpdateDeck() {
         RpgProfile profile = new RpgProfile();
         profile.currentTimelineDate = "1999-02-04";
-        profile.dust = 1000;
+        profile.dust = 2000;
 
         // Cannot craft Vol.2 card on 1999-02-04
         assertFalse(CraftingEngine.craft(profile, catalog, MONSTER_REBORN, 1).success);
@@ -236,13 +245,18 @@ public class RpgEnginesTest {
         // Can craft Vol.1 Dark Hole (SR = 240 dust)
         assertTrue(CraftingEngine.craft(profile, catalog, DARK_HOLE, 2).success);
         assertEquals(2, profile.getOwnedCount(DARK_HOLE));
-        assertEquals(520, profile.dust);
+        assertEquals(1520, profile.dust);
+
+        // Cannot craft beyond 3 owned copies
+        assertTrue(CraftingEngine.craft(profile, catalog, DARK_HOLE, 1).success);
+        assertEquals(3, profile.getOwnedCount(DARK_HOLE));
+        assertFalse("Crafting beyond 3 copies must be blocked",
+                CraftingEngine.craft(profile, catalog, DARK_HOLE, 1).success);
 
         profile.activeDeckMain.add(DARK_HOLE);
         profile.activeDeckMain.add(DARK_HOLE);
-        assertTrue(CraftingEngine.dismantle(profile, catalog, DARK_HOLE, 1).success);
+        assertTrue(CraftingEngine.dismantle(profile, catalog, DARK_HOLE, 2).success);
         assertEquals(1, profile.getOwnedCount(DARK_HOLE));
-        assertEquals(600, profile.dust);
         assertEquals(1, profile.activeDeckMain.size());
 
         // Advance to 1999-12-18 -> Premium Pack 2 Black Luster Soldier can be crafted

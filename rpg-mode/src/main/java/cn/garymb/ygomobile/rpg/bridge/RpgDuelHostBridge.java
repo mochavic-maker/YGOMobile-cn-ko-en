@@ -34,6 +34,15 @@ public interface RpgDuelHostBridge {
     }
 
     /**
+     * Opens YGOMobile's built-in visual Deck Editor in strict read-only mode to inspect
+     * an AI opponent's deck, then returns to RPG Mode's AI Duel tab upon exit.
+     */
+    default void openReadonlyAiDeckViewer(Context context,
+                                          String aiDeckYdkPath,
+                                          String displayTitle) {
+    }
+
+    /**
      * Loads raw card artwork image bytes (JPG/PNG) for the given YGOPro card passcode
      * from YGOMobile's pics.zip / expansions / pics directory. Must be called off the main thread.
      */

@@ -20,19 +20,24 @@ public final class EventClaimEngine {
         public final boolean success;
         public final String errorMessage;
         public final List<RpgCard> grantedCards;
+        public final int autoDismantledCount;
+        public final int autoDismantledDust;
 
-        private ClaimResult(boolean success, String errorMessage, List<RpgCard> grantedCards) {
+        private ClaimResult(boolean success, String errorMessage, List<RpgCard> grantedCards,
+                            int autoDismantledCount, int autoDismantledDust) {
             this.success = success;
             this.errorMessage = errorMessage;
             this.grantedCards = grantedCards;
+            this.autoDismantledCount = autoDismantledCount;
+            this.autoDismantledDust = autoDismantledDust;
         }
 
         public static ClaimResult error(String msg) {
-            return new ClaimResult(false, msg, new ArrayList<>());
+            return new ClaimResult(false, msg, new ArrayList<>(), 0, 0);
         }
 
-        public static ClaimResult ok(List<RpgCard> cards) {
-            return new ClaimResult(true, null, cards);
+        public static ClaimResult ok(List<RpgCard> cards, int autoDismantledCount, int autoDismantledDust) {
+            return new ClaimResult(true, null, cards, autoDismantledCount, autoDismantledDust);
         }
     }
 
@@ -57,22 +62,32 @@ public final class EventClaimEngine {
         }
 
         List<RpgCard> granted = new ArrayList<>();
+        int dismantledCount = 0;
+        int dismantledDust = 0;
+        List<RpgCard> toGrant;
         if ("RANDOM_PICK".equalsIgnoreCase(event.mode) && event.randomPickCount > 0) {
             List<RpgCard> pool = new ArrayList<>(event.rewardCards);
             Collections.shuffle(pool, random != null ? random : new Random());
             int count = Math.min(event.randomPickCount, pool.size());
-            for (int i = 0; i < count; i++) {
-                RpgCard c = pool.get(i);
-                profile.addCard(c.id, Math.max(1, c.quantity));
-                granted.add(c);
-            }
+            toGrant = pool.subList(0, count);
         } else {
-            for (RpgCard c : event.rewardCards) {
-                profile.addCard(c.id, Math.max(1, c.quantity));
-                granted.add(c);
+            toGrant = event.rewardCards;
+        }
+        for (RpgCard c : toGrant) {
+            int qty = Math.max(1, c.quantity);
+            for (int q = 0; q < qty; q++) {
+                if (profile.getOwnedCount(c.id) >= PackOpeningEngine.MAX_OWNED_COPIES) {
+                    int dust = c.getRarityEnum().defaultDismantleDust;
+                    profile.dust += dust;
+                    dismantledCount++;
+                    dismantledDust += dust;
+                } else {
+                    profile.addCard(c.id, 1);
+                }
             }
+            granted.add(c);
         }
         profile.claimedEventIds.add(event.id);
-        return ClaimResult.ok(granted);
+        return ClaimResult.ok(granted, dismantledCount, dismantledDust);
     }
 }
