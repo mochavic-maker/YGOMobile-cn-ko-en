@@ -1,6 +1,7 @@
 package cn.garymb.ygomobile.rpg.ui;
 
 import android.app.DatePickerDialog;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -8,6 +9,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -58,12 +60,22 @@ import cn.garymb.ygomobile.rpg.model.RpgProfile;
  * - Tab 0: Shop (Vol.1-6 / Booster 1-6 / STARTER BOX / EX / LE1 / PP1-2 at authentic JPY prices)
  * - Tab 1: 1999 Special Promo & Event Card Giveaways
  * - Tab 2: Card Collection & Dust Dismantle / Craft (with timeline-resolved errata text)
- * - Tab 3: Ownership + Timeline + Banlist Restricted Deck Builder
+ * - Tab 3: Ownership + Timeline + Banlist Restricted Deck Builder (with native DeckEditor reuse)
  * - Tab 4: Timeline-Compliant AI Duel Launcher (Manual WindBot & Quick Duel) & Token Rewards
  * - Tab 5: OCG Timeline Tournament (4-player / 8-player randomized elimination bracket)
  * - Tab 6: OCG Official Card Errata History Archive (Series 1 ~ Series 13)
  */
 public class RpgHomeActivity extends AppCompatActivity {
+
+    public static final String EXTRA_INITIAL_TAB = "extra_initial_tab";
+    public static final int TAB_SHOP = 0;
+    public static final int TAB_EVENTS = 1;
+    public static final int TAB_COLLECTION = 2;
+    public static final int TAB_DECK = 3;
+    public static final int TAB_AI_DUEL = 4;
+    public static final int TAB_TOURNAMENT = 5;
+    public static final int TAB_ERRATA = 6;
+    public static final int TAB_AI_SHOWDOWN = 7;
 
     private RpgCatalog catalog;
     private RpgRepository repository;
@@ -141,8 +153,29 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
         });
 
+        applyInitialTabFromIntent(getIntent());
         renderMilestones();
         refreshAll();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        applyInitialTabFromIntent(intent);
+    }
+
+    private void applyInitialTabFromIntent(Intent intent) {
+        if (intent == null || tabLayout == null) return;
+        int requested = intent.getIntExtra(EXTRA_INITIAL_TAB, -1);
+        if (requested >= 0 && requested < tabLayout.getTabCount()) {
+            activeTab = requested;
+            TabLayout.Tab tab = tabLayout.getTabAt(requested);
+            if (tab != null) {
+                tab.select();
+            }
+            intent.removeExtra(EXTRA_INITIAL_TAB);
+        }
     }
 
     @Override
@@ -151,6 +184,45 @@ public class RpgHomeActivity extends AppCompatActivity {
         if (repository != null) {
             profile = repository.loadProfile();
         }
+
+        // Sync back deck edits made in YGOMobile's native DeckEditor
+        RpgSessionManager.EditedDeckResult editedDeck = RpgSessionManager.consumePendingEditedDeck();
+        if (editedDeck != null && catalog != null) {
+            profile.activeDeckMain = new ArrayList<>(editedDeck.main);
+            profile.activeDeckExtra = new ArrayList<>(editedDeck.extra);
+            saveProfileSafe();
+            TabLayout.Tab deckTab = tabLayout.getTabAt(TAB_DECK);
+            if (deckTab != null) deckTab.select();
+
+            DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
+            if (val.valid) {
+                Toast.makeText(this,
+                        "✔ 已同步原版卡组编辑器修改（主 " + profile.activeDeckMain.size()
+                                + " / 额外 " + profile.activeDeckExtra.size() + "，合规可出战）",
+                        Toast.LENGTH_LONG).show();
+            } else {
+                StringBuilder errs = new StringBuilder();
+                int shown = 0;
+                for (String e : val.errors) {
+                    if (shown++ < 8) errs.append("• ").append(e).append("\n");
+                }
+                if (val.errors.size() > 8) {
+                    errs.append("… 其余 ").append(val.errors.size() - 8).append(" 项问题");
+                }
+                new AlertDialog.Builder(this)
+                        .setTitle("已导入编辑器卡组 · 存在 RPG 规则冲突")
+                        .setMessage("当前卡组已同步，但存在未拥有/未发售/超限卡片：\n\n" + errs.toString().trim())
+                        .setPositiveButton("一键剔除不合规卡", (d, w) -> {
+                            int removed = stripIllegalCardsFromActiveDeck();
+                            saveProfileSafe();
+                            Toast.makeText(this, "已自动剔除 " + removed + " 张不合规卡片", Toast.LENGTH_SHORT).show();
+                            refreshAll();
+                        })
+                        .setNegativeButton("保留并手动调整", null)
+                        .show();
+            }
+        }
+
         DuelRewardEngine.RewardSettlement settlement = RpgSessionManager.consumeLastSettlement();
         Boolean tournamentOutcome = RpgSessionManager.consumeTournamentDuelOutcome();
         TournamentEngine.TournamentBracket activeBracket = RpgSessionManager.getActiveTournament();
@@ -167,7 +239,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             if (prize > 0) {
                 saveProfileSafe();
             }
-            TabLayout.Tab tTab = tabLayout.getTabAt(5);
+            TabLayout.Tab tTab = tabLayout.getTabAt(TAB_TOURNAMENT);
             if (tTab != null) tTab.select();
         }
         if (settlement != null) {
@@ -185,6 +257,56 @@ public class RpgHomeActivity extends AppCompatActivity {
         if (catalog != null) {
             refreshAll();
         }
+    }
+
+    private int stripIllegalCardsFromActiveDeck() {
+        OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+        java.util.Set<Integer> releasedIds = new java.util.HashSet<>();
+        for (RpgCard rc : TimelineEngine.getReleasedCards(catalog, profile.currentTimelineDate)) {
+            releasedIds.add(rc.id);
+        }
+        Map<Integer, Integer> used = new HashMap<>();
+        int removed = 0;
+
+        List<Integer> cleanMain = new ArrayList<>();
+        for (Integer id : profile.activeDeckMain) {
+            if (id == null) continue;
+            RpgCard c = catalog.findCard(id);
+            if (c == null || !releasedIds.contains(id) || c.isExtraDeckCard()) {
+                removed++;
+                continue;
+            }
+            int cap = Math.min(profile.getOwnedCount(id), banlist.getMaxCopies(id));
+            int cur = used.getOrDefault(id, 0);
+            if (cur < cap && cleanMain.size() < DeckValidator.MAX_MAIN_DECK) {
+                cleanMain.add(id);
+                used.put(id, cur + 1);
+            } else {
+                removed++;
+            }
+        }
+
+        List<Integer> cleanExtra = new ArrayList<>();
+        for (Integer id : profile.activeDeckExtra) {
+            if (id == null) continue;
+            RpgCard c = catalog.findCard(id);
+            if (c == null || !releasedIds.contains(id) || !c.isExtraDeckCard()) {
+                removed++;
+                continue;
+            }
+            int cap = Math.min(profile.getOwnedCount(id), banlist.getMaxCopies(id));
+            int cur = used.getOrDefault(id, 0);
+            if (cur < cap && cleanExtra.size() < DeckValidator.MAX_EXTRA_DECK) {
+                cleanExtra.add(id);
+                used.put(id, cur + 1);
+            } else {
+                removed++;
+            }
+        }
+
+        profile.activeDeckMain = cleanMain;
+        profile.activeDeckExtra = cleanExtra;
+        return removed;
     }
 
     private void saveProfileSafe() {
@@ -364,27 +486,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     }
 
     private void showPackPoolDialog(OcgPack pack) {
-        java.util.Set<Integer> seenIds = new java.util.LinkedHashSet<>();
-        int unlockedInPack = 0, playset3InPack = 0;
-        StringBuilder sb = new StringBuilder();
-        for (RpgCard c : pack.cards) {
-            int own = profile.getOwnedCount(c.id);
-            if (seenIds.add(c.id)) {
-                if (own >= 1) unlockedInPack++;
-                if (own >= 3) playset3InPack++;
-            }
-            sb.append("[").append(c.rarity).append("] ").append(c.getDisplayName())
-                    .append("  —  已有 x").append(own)
-                    .append(own >= 3 ? " (满3)" : "")
-                    .append("\n");
-        }
-        String header = "已解锁 " + unlockedInPack + "/" + seenIds.size()
-                + " 种 · 已拥有 ≥3 张：" + playset3InPack + "/" + seenIds.size() + " 种\n\n";
-        new AlertDialog.Builder(this)
-                .setTitle("卡池明细 · " + pack.name)
-                .setMessage(header + sb.toString().trim())
-                .setPositiveButton("关闭", null)
-                .show();
+        RpgPackVisualDialogs.showPackPoolVisualDialog(this, catalog, profile, pack);
     }
 
     private void doOpenPack(OcgPack pack, int count) {
@@ -395,26 +497,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
         saveProfileSafe();
         refreshAll();
-
-        StringBuilder sb = new StringBuilder();
-        int shown = 0;
-        for (PackOpeningEngine.PulledCard pc : res.pulledCards) {
-            if (shown < 30) {
-                sb.append("[").append(pc.card.rarity).append("] ")
-                        .append(pc.card.getDisplayName())
-                        .append(pc.isNew ? "  ★NEW" : "  (已有 x" + pc.ownedAfter + ")")
-                        .append("\n");
-            }
-            shown++;
-        }
-        if (shown > 30) {
-            sb.append("… 其余 ").append(shown - 30).append(" 张卡片也已全部收入卡库。");
-        }
-        new AlertDialog.Builder(this)
-                .setTitle((pack.fixedContents ? "购入完成 · " : "开包结果 · ") + pack.name + " x" + count)
-                .setMessage(sb.toString())
-                .setPositiveButton("收入卡库", null)
-                .show();
+        RpgPackVisualDialogs.showPackOpeningSimulator(this, catalog, profile, pack, count, res, this::doOpenPack);
     }
 
     // ==================== TAB 1: 1999 SPECIAL PROMO EVENTS ====================
@@ -568,6 +651,8 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     // ==================== TAB 3: RPG DECK BUILDER ====================
     private void renderDeckTab() {
+        Button nativeEditorBtn = makeActionButton("🛠️ 原版卡组编辑器", "#7C3AED");
+        nativeEditorBtn.setOnClickListener(v -> launchNativeDeckEditor());
         Button autoBtn = makeActionButton("智能组卡 (40张)", "#059669");
         autoBtn.setOnClickListener(v -> {
             int built = DeckValidator.autoBuildLegalPlayerDeck(profile, catalog);
@@ -584,6 +669,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             saveProfileSafe();
             refreshAll();
         });
+        layoutTabActions.addView(nativeEditorBtn);
         layoutTabActions.addView(autoBtn);
         layoutTabActions.addView(saveDeckBtn);
         layoutTabActions.addView(clearBtn);
@@ -598,6 +684,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                         + (val.valid ? "✔ 合规可出战" : "✘ 未通过校验"));
         statusTitle.setTextColor(Color.parseColor(val.valid ? "#34D399" : "#F87171"));
         statusCard.addView(statusTitle);
+        statusCard.addView(makeSubtleText("💡 点击上方「🛠️ 原版卡组编辑器」可直接使用 YGOMobile 原版可视化卡组编辑器组卡，保存并退出后自动同步回 RPG 模式并校验合规性。"));
         if (!val.valid) {
             StringBuilder errs = new StringBuilder();
             for (String e : val.errors) {
@@ -682,18 +769,34 @@ public class RpgHomeActivity extends AppCompatActivity {
 
             int legalMax = Math.min(owned, banlist.getMaxCopies(card.id));
             LinearLayout box = makeCardContainer();
+            box.setOrientation(LinearLayout.HORIZONTAL);
+            box.setGravity(Gravity.CENTER_VERTICAL);
+
+            ImageView thumb = new ImageView(this);
+            LinearLayout.LayoutParams thumbLp = new LinearLayout.LayoutParams(dp(52), dp(76));
+            thumbLp.setMarginEnd(dp(10));
+            thumb.setLayoutParams(thumbLp);
+            thumb.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            RpgCardArtLoader.loadInto(thumb, card.id, dp(52));
+            thumb.setOnClickListener(v -> RpgPackVisualDialogs.showCardDetailDialog(this, catalog, profile, card));
+            box.addView(thumb);
+
+            LinearLayout infoCol = new LinearLayout(this);
+            infoCol.setOrientation(LinearLayout.VERTICAL);
+            infoCol.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
             String badge = banlist.getLimitBadge(card.id);
             String errataBadge = CardErrataEngine.getVersionBadge(catalog, card.id, profile.currentTimelineDate);
             TextView tv = makeTitleText("[" + card.rarity + "] " + card.getDisplayName()
                     + (badge.isEmpty() ? "" : " 【" + badge + "】")
                     + (errataBadge.isEmpty() ? "" : " ⟪" + errataBadge + "⟫"));
             tv.setTextColor(Color.parseColor(card.getRarityEnum().colorHex));
-            box.addView(tv);
-            box.addView(makeSubtleText("已投入 " + inDeck + " / 上限 " + legalMax + "（拥有 " + owned + " 张）"));
+            infoCol.addView(tv);
+            infoCol.addView(makeSubtleText("已投入 " + inDeck + " / 上限 " + legalMax + "（拥有 " + owned + " 张）"));
             if (!errataBadge.isEmpty()) {
                 TextView tvErrDesc = makeSubtleText(CardErrataEngine.getEffectiveDescCn(catalog, card, profile.currentTimelineDate));
                 tvErrDesc.setTextColor(Color.parseColor("#FDE68A"));
-                box.addView(tvErrDesc);
+                infoCol.addView(tvErrDesc);
             }
 
             LinearLayout row = new LinearLayout(this);
@@ -728,8 +831,25 @@ public class RpgHomeActivity extends AppCompatActivity {
 
             row.addView(addBtn);
             row.addView(rmBtn);
-            box.addView(row);
+            infoCol.addView(row);
+            box.addView(infoCol);
             layoutContent.addView(box);
+        }
+    }
+
+    private void launchNativeDeckEditor() {
+        RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
+            return;
+        }
+        try {
+            File playerYdk = DeckValidator.exportToYdk(
+                    repository.getPlayerDeckYdkFile(), profile.activeDeckMain, profile.activeDeckExtra);
+            bridge.openNativeDeckEditor(this, playerYdk.getAbsolutePath());
+            finish();
+        } catch (IOException e) {
+            Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 

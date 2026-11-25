@@ -87,6 +87,33 @@ public final class RpgSessionManager {
         return settlement;
     }
 
+    public static class EditedDeckResult {
+        public final java.util.List<Integer> main;
+        public final java.util.List<Integer> extra;
+
+        public EditedDeckResult(java.util.List<Integer> main, java.util.List<Integer> extra) {
+            this.main = main != null ? new java.util.ArrayList<>(main) : new java.util.ArrayList<>();
+            this.extra = extra != null ? new java.util.ArrayList<>(extra) : new java.util.ArrayList<>();
+        }
+    }
+
+    private static volatile EditedDeckResult sPendingEditedDeck;
+
+    public static synchronized boolean isLastDuelTournament() {
+        return sLastDuelWasTournament;
+    }
+
+    public static synchronized void setPendingEditedDeck(
+            java.util.List<Integer> main, java.util.List<Integer> extra) {
+        sPendingEditedDeck = new EditedDeckResult(main, extra);
+    }
+
+    public static synchronized EditedDeckResult consumePendingEditedDeck() {
+        EditedDeckResult res = sPendingEditedDeck;
+        sPendingEditedDeck = null;
+        return res;
+    }
+
     public static synchronized DuelRewardEngine.RewardSettlement consumeLastSettlement() {
         DuelRewardEngine.RewardSettlement s = sLastSettlement;
         sLastSettlement = null;
