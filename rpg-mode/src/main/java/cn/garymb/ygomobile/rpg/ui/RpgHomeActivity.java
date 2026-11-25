@@ -40,6 +40,7 @@ import cn.garymb.ygomobile.rpg.engine.EventClaimEngine;
 import cn.garymb.ygomobile.rpg.engine.PackOpeningEngine;
 import cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
+import cn.garymb.ygomobile.rpg.engine.TournamentEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
 import cn.garymb.ygomobile.rpg.model.OcgCardErrata;
@@ -58,7 +59,8 @@ import cn.garymb.ygomobile.rpg.model.RpgProfile;
  * - Tab 2: Card Collection & Dust Dismantle / Craft (with timeline-resolved errata text)
  * - Tab 3: Ownership + Timeline + Banlist Restricted Deck Builder
  * - Tab 4: Timeline-Compliant AI Duel Launcher (Manual WindBot & Quick Duel) & Token Rewards
- * - Tab 5: OCG Official Card Errata History Archive (Series 1 ~ Series 13)
+ * - Tab 5: OCG Timeline Tournament (4-player / 8-player randomized elimination bracket)
+ * - Tab 6: OCG Official Card Errata History Archive (Series 1 ~ Series 13)
  */
 public class RpgHomeActivity extends AppCompatActivity {
 
@@ -110,11 +112,13 @@ public class RpgHomeActivity extends AppCompatActivity {
         findViewById(R.id.btn_rpg_back).setOnClickListener(v -> finish());
         findViewById(R.id.btn_pick_date).setOnClickListener(v -> openDatePicker());
 
+        tabLayout.setTabMode(TabLayout.MODE_SCROLLABLE);
         tabLayout.addTab(tabLayout.newTab().setText("卡包商店"));
         tabLayout.addTab(tabLayout.newTab().setText("特典活动"));
         tabLayout.addTab(tabLayout.newTab().setText("卡库/合成"));
         tabLayout.addTab(tabLayout.newTab().setText("RPG 组卡"));
         tabLayout.addTab(tabLayout.newTab().setText("AI 对战"));
+        tabLayout.addTab(tabLayout.newTab().setText("🏆 锦标赛"));
         tabLayout.addTab(tabLayout.newTab().setText("效果勘误"));
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
@@ -143,11 +147,33 @@ public class RpgHomeActivity extends AppCompatActivity {
             profile = repository.loadProfile();
         }
         DuelRewardEngine.RewardSettlement settlement = RpgSessionManager.consumeLastSettlement();
+        Boolean tournamentOutcome = RpgSessionManager.consumeTournamentDuelOutcome();
+        TournamentEngine.TournamentBracket activeBracket = RpgSessionManager.getActiveTournament();
+        if (tournamentOutcome != null && activeBracket != null && catalog != null) {
+            TournamentEngine.recordPlayerMatchResult(
+                    catalog,
+                    activeBracket,
+                    tournamentOutcome,
+                    tournamentOutcome ? "你通过手打晋级！" : "手打落败止步本轮",
+                    null,
+                    new Random()
+            );
+            int prize = TournamentEngine.claimRewardIfFinished(profile, activeBracket);
+            if (prize > 0) {
+                saveProfileSafe();
+            }
+            TabLayout.Tab tTab = tabLayout.getTabAt(5);
+            if (tTab != null) tTab.select();
+        }
         if (settlement != null) {
+            String extraMsg = (tournamentOutcome != null && activeBracket != null && activeBracket.finished)
+                    ? ("\n\n🏆 锦标赛完赛：" + activeBracket.playerPlacementLabel
+                    + "（额外奖金 +" + activeBracket.rewardTokens + " 代币）")
+                    : "";
             new AlertDialog.Builder(this)
                     .setTitle("RPG 决斗结算 · " + settlement.outcomeLabel)
                     .setMessage("获得代币：+" + settlement.tokensEarned
-                            + "\n当前代币余额：" + settlement.totalTokensAfter)
+                            + "\n当前代币余额：" + profile.tokens + extraMsg)
                     .setPositiveButton("收下奖励", null)
                     .show();
         }
@@ -259,6 +285,9 @@ public class RpgHomeActivity extends AppCompatActivity {
                 renderAiDuelTab();
                 break;
             case 5:
+                renderTournamentTab();
+                break;
+            case 6:
                 renderErrataTab();
                 break;
         }
@@ -689,7 +718,214 @@ public class RpgHomeActivity extends AppCompatActivity {
                 .show();
     }
 
-    // ==================== TAB 5: OFFICIAL OCG ERRATA ARCHIVE ====================
+    // ==================== TAB 5: OCG TIMELINE TOURNAMENT ====================
+    private void renderTournamentTab() {
+        List<AiOpponent> unlocked = TimelineEngine.getAvailableOpponents(
+                AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
+        layoutTabActions.addView(makeSubtleText("🏆 锦标赛战绩：" + profile.tournamentWins + " 冠 / "
+                + profile.tournamentsPlayed + " 参赛 · 当前时间点开放 " + unlocked.size() + " 名 AI 对手"));
+
+        TournamentEngine.TournamentBracket bracket = RpgSessionManager.getActiveTournament();
+        if (bracket == null || !bracket.timelineDate.equals(profile.currentTimelineDate)) {
+            LinearLayout startBox = makeCardContainer();
+            startBox.addView(makeTitleText("随机抽签淘汰锦标赛（当前环境：" + profile.currentTimelineDate + "）"));
+            startBox.addView(makeSubtleText("你将与当前时间轴已解锁的 AI 对手完全随机分组对战，所有选手均严格遵守当前时间轴的规则、禁限表与勘误版本！"));
+            startBox.addView(makeSubtleText("• 4 人卡牌屋店赛（2 轮）：冠军 +600 / 亚军 +250 / 参与 +100 代币\n"
+                    + "• 8 人地区锦标赛（3 轮）：冠军 +1500 / 亚军 +650 / 四强 +300 / 参与 +120 代币"));
+            LinearLayout btnRow = new LinearLayout(this);
+            btnRow.setOrientation(LinearLayout.HORIZONTAL);
+            btnRow.setPadding(0, dp(10), 0, 0);
+            Button b4 = makeActionButton("🏅 开启 4 人店赛", "#059669");
+            b4.setOnClickListener(v -> startNewTournament(4));
+            btnRow.addView(b4);
+            Button b8 = makeActionButton("🏆 开启 8 人锦标赛", "#D97706");
+            b8.setOnClickListener(v -> startNewTournament(8));
+            btnRow.addView(b8);
+            startBox.addView(btnRow);
+            layoutContent.addView(startBox);
+            return;
+        }
+
+        // Active / finished tournament header
+        LinearLayout head = makeCardContainer();
+        head.addView(makeTitleText(bracket.tournamentName + (bracket.finished ? " — 已完赛" : " — 进行中")));
+        if (bracket.finished) {
+            TextView champTv = makeSubtleText("👑 本届冠军：" + (bracket.champion != null ? bracket.champion.displayName : "未知")
+                    + " · 你的成绩：" + bracket.playerPlacementLabel + "（奖金 +" + bracket.rewardTokens + " 代币）");
+            champTv.setTextColor(Color.parseColor("#FBBF24"));
+            head.addView(champTv);
+        } else if (bracket.playerEliminated) {
+            head.addView(makeSubtleText("你已止步本轮，可点击下方按钮模拟剩余 AI 淘汰赛决出本届冠军并领取奖金。"));
+        } else {
+            TournamentEngine.Match pm = bracket.findPendingPlayerMatch();
+            if (pm != null && pm.getPlayerOpponent() != null) {
+                TournamentEngine.Participant opp = pm.getPlayerOpponent();
+                TextView nextTv = makeSubtleText("▶ 你的下一场（" + bracket.getRoundTitle(bracket.currentRound)
+                        + "）：vs " + opp.displayName + " " + opp.activeDeckName);
+                nextTv.setTextColor(Color.parseColor("#38BDF8"));
+                head.addView(nextTv);
+            }
+        }
+
+        LinearLayout ctrlRow = new LinearLayout(this);
+        ctrlRow.setOrientation(LinearLayout.HORIZONTAL);
+        ctrlRow.setPadding(0, dp(8), 0, 0);
+        TournamentEngine.Match pendingPlayer = bracket.findPendingPlayerMatch();
+        if (pendingPlayer != null) {
+            Button bManual = makeActionButton("🪙 亲自手打参赛", "#DC2626");
+            bManual.setOnClickListener(v -> launchTournamentMatchManual(pendingPlayer));
+            ctrlRow.addView(bManual);
+
+            Button bQuick = makeActionButton("⚡ 快速决斗参赛", "#D97706");
+            bQuick.setOnClickListener(v -> playTournamentMatchQuick(bracket, pendingPlayer));
+            ctrlRow.addView(bQuick);
+        } else if (!bracket.finished && bracket.playerEliminated) {
+            Button bSimRest = makeActionButton("⏭ 模拟决出本届冠军", "#2563EB");
+            bSimRest.setOnClickListener(v -> {
+                TournamentEngine.simulateRemainingToChampion(catalog, bracket, new Random());
+                int prize = TournamentEngine.claimRewardIfFinished(profile, bracket);
+                if (prize > 0) saveProfileSafe();
+                refreshAll();
+                Toast.makeText(this, "冠军诞生：" + (bracket.champion != null ? bracket.champion.displayName : "")
+                        + "！已发放 +" + prize + " 代币", Toast.LENGTH_LONG).show();
+            });
+            ctrlRow.addView(bSimRest);
+        }
+        Button bReset = makeActionButton(bracket.finished ? "开启新一届" : "放弃本届", "#475569");
+        bReset.setOnClickListener(v -> {
+            RpgSessionManager.setActiveTournament(null);
+            renderCurrentTab();
+        });
+        ctrlRow.addView(bReset);
+        head.addView(ctrlRow);
+        layoutContent.addView(head);
+
+        // Render every round & match card
+        for (int r = 0; r < bracket.rounds.size(); r++) {
+            TextView rHeader = makeTitleText("—— " + bracket.getRoundTitle(r) + " ——");
+            rHeader.setTextColor(Color.parseColor("#F59E0B"));
+            rHeader.setPadding(0, dp(6), 0, dp(4));
+            layoutContent.addView(rHeader);
+
+            for (final TournamentEngine.Match m : bracket.rounds.get(r)) {
+                LinearLayout mBox = makeCardContainer();
+                String p1Label = (m.winner == m.p1 ? "✅ " : "") + m.p1.displayName
+                        + (m.p1.isPlayer ? "" : " " + m.p1.activeDeckName);
+                String p2Label = (m.winner == m.p2 ? "✅ " : "") + m.p2.displayName
+                        + (m.p2.isPlayer ? "" : " " + m.p2.activeDeckName);
+                mBox.addView(makeTitleText(p1Label + "  VS  " + p2Label));
+                if (m.finished) {
+                    TextView sumTv = makeSubtleText("结果：" + m.summary);
+                    sumTv.setTextColor(Color.parseColor("#34D399"));
+                    mBox.addView(sumTv);
+                    if (m.logs != null && !m.logs.isEmpty()) {
+                        Button logBtn = makeActionButton("📜 查看战报", "#334155");
+                        logBtn.setOnClickListener(v -> showTournamentLogDialog(m));
+                        LinearLayout lr = new LinearLayout(this);
+                        lr.setPadding(0, dp(6), 0, 0);
+                        lr.addView(logBtn);
+                        mBox.addView(lr);
+                    }
+                } else {
+                    mBox.addView(makeSubtleText(m.involvesPlayer() ? "⏳ 等待你的对局结果（同轮 AI 比赛将同步结算）" : "⏳ 同轮次 AI 对阵，待本轮推进"));
+                }
+                layoutContent.addView(mBox);
+            }
+        }
+    }
+
+    private void startNewTournament(int size) {
+        DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
+        if (!val.valid) {
+            new AlertDialog.Builder(this)
+                    .setTitle("RPG 卡组未通过校验")
+                    .setMessage(android.text.TextUtils.join("\n", val.errors))
+                    .setPositiveButton("去组卡", (d, w) -> {
+                        TabLayout.Tab t = tabLayout.getTabAt(3);
+                        if (t != null) t.select();
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+        TournamentEngine.TournamentBracket bracket = TournamentEngine.createBracket(
+                catalog, profile, size, new Random());
+        RpgSessionManager.setActiveTournament(bracket);
+        renderCurrentTab();
+        Toast.makeText(this, "已随机抽签生成 " + size + " 人锦标赛对阵表！", Toast.LENGTH_SHORT).show();
+    }
+
+    private void playTournamentMatchQuick(TournamentEngine.TournamentBracket bracket,
+                                          TournamentEngine.Match match) {
+        TournamentEngine.Participant opp = match.getPlayerOpponent();
+        if (opp == null) return;
+        QuickDuelSimulator.QuickDuelReport report = QuickDuelSimulator.simulateBetweenDecks(
+                catalog, "你", profile.activeDeckMain, opp.displayName, opp.deckMain,
+                bracket.timelineDate, new Random());
+        boolean pWin = !report.isDraw ? report.playerWon : (report.playerLp >= report.aiLp);
+        String summary = (pWin ? "你胜" : opp.displayName + "胜")
+                + " · T" + report.turns + " · LP " + report.playerLp + ":" + report.aiLp;
+        if (opp.opponent != null) {
+            DuelRewardEngine.settle(profile, opp.opponent, pWin, false);
+        }
+        TournamentEngine.recordPlayerMatchResult(catalog, bracket, pWin, summary, report.logs, new Random());
+        int prize = TournamentEngine.claimRewardIfFinished(profile, bracket);
+        saveProfileSafe();
+        refreshAll();
+
+        String msg = "本场对阵：你 vs " + opp.displayName + " " + opp.activeDeckName + "\n"
+                + "结果：" + summary + "\n"
+                + (bracket.finished
+                ? ("\n🏆 锦标赛结束！" + bracket.playerPlacementLabel + " · 额外奖金 +" + prize + " 代币")
+                : (pWin ? "\n✅ 你已晋级下一轮！同轮 AI 比赛已同步结算。" : "\n❌ 你止步本轮，可模拟剩余 AI 比赛决出冠军并领奖。"));
+        new AlertDialog.Builder(this)
+                .setTitle("🏆 锦标赛赛果 · " + bracket.getRoundTitle(match.roundIndex))
+                .setMessage(msg)
+                .setPositiveButton("查看对阵表", null)
+                .show();
+    }
+
+    private void launchTournamentMatchManual(TournamentEngine.Match match) {
+        TournamentEngine.Participant opp = match.getPlayerOpponent();
+        if (opp == null || opp.opponent == null) return;
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+        try {
+            File playerYdk = DeckValidator.exportToYdk(
+                    repository.getPlayerDeckYdkFile(), profile.activeDeckMain, profile.activeDeckExtra);
+            File aiYdk = DeckValidator.exportToYdk(
+                    repository.getAiDeckYdkFile(opp.opponent.id), opp.deckMain, opp.deckExtra);
+            RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+            if (bridge == null) {
+                Toast.makeText(this, "未注册 YGOMobile 决斗桥接器", Toast.LENGTH_LONG).show();
+                return;
+            }
+            RpgSessionManager.beginRpgDuel(opp.opponent, true);
+            bridge.startRpgAiDuel(this, opp.opponent,
+                    playerYdk.getAbsolutePath(), aiYdk.getAbsolutePath(),
+                    banlist, activeRule, profile.currentTimelineDate);
+            finish();
+        } catch (IOException e) {
+            Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showTournamentLogDialog(TournamentEngine.Match m) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(m.p1.displayName).append(" vs ").append(m.p2.displayName).append("\n")
+                .append("结果：").append(m.summary).append("\n\n");
+        int limit = Math.min(m.logs.size(), 25);
+        for (int i = 0; i < limit; i++) {
+            sb.append(m.logs.get(i)).append("\n");
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("📜 锦标赛战报")
+                .setMessage(sb.toString())
+                .setPositiveButton("关闭", null)
+                .show();
+    }
+
+    // ==================== TAB 6: OFFICIAL OCG ERRATA ARCHIVE ====================
     private void renderErrataTab() {
         int totalErrata = catalog.getErrataRecords().size();
         int cnt1999 = 0;

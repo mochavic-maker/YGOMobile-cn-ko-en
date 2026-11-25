@@ -49,8 +49,9 @@ public final class AiDeckGenerator {
     }
 
     /**
-     * Built-in 10 OCG 1999 AI opponents (1999-02-04 ~ 1999-12-31) with multi-era deck evolutions
-     * grounded in yugioh-history.com's Series 1 environment deck chronicle.
+     * Built-in 12 OCG 1999 AI opponents (1999-02-04 ~ 1999-12-31) with multi-era deck evolutions:
+     * includes 3 progressive non-meta/mid-tier opponents (Novice, Shop Regular, Weekend Challenger)
+     * plus 9 iconic metagame opponents grounded in yugioh-history.com's Series 1 chronicle.
      */
     public static List<AiOpponent> getDemoOpponents() {
         return Arrays.asList(
@@ -61,7 +62,7 @@ public final class AiDeckGenerator {
                         "Lv.1 · 平民凡骨进化线",
                         "1999-02-04",
                         1, 150, 80, 50,
-                        "随时间轴从 Vol.1 凡骨进化到 Booster 2 高攻下级、Booster 5 平民机械王，适合稳步赚代币。",
+                        "随时间轴从 Vol.1 凡骨进化到 Booster 2 高攻下级、Booster 5 平民机械王，不带顶级神卡，适合稳步赚代币。",
                         Arrays.asList(
                                 new AiOpponent.EraDeckProfile("1999-02-04", "【Vol.1 初学者凡骨】", "1999.02 入门",
                                         "仅用 Vol.1 低罕贵凡骨与基础装备/回复卡。",
@@ -72,13 +73,69 @@ public final class AiDeckGenerator {
                                         recipe(91939608, 3, 41762634, 3, 1784619, 3, 84990171, 3, 91152256, 2, 66788016, 2, 39897277, 2, 98374133, 2),
                                         null, "NOVICE_NR"),
                                 new AiOpponent.EraDeckProfile("1999-10-17", "【Booster 5 平民机械王】", "1999.10 机械王轴",
-                                        "yugioh-history 提及的高性价比 N 卡「机械王」(实质 2300+ 打点) 搭配岩石巨兵与强欲之壶。",
-                                        recipe(46700124, 3, 13039848, 3, 91939608, 3, 41762634, 3, 55144522, 2, 66788016, 3, 72302403, 1),
+                                        "yugioh-history 提及的高性价比 N 卡「机械王」(实质 2300+ 打点) 搭配岩石巨兵与基础解场。",
+                                        recipe(46700124, 3, 13039848, 3, 91939608, 3, 41762634, 3, 66788016, 2, 72302403, 1),
                                         null, "NOVICE_NR")
                         )
                 ),
 
-                // 2. Classic Yugi (1999-02-04): No-Tribute DM -> Vol.2 Reborn -> Expert Flip -> Summoned Skull -> EX Duel King
+                // 2. Card Shop Regular (1999-02-04): progressive non-meta casual decks without Raigeki/Dark Hole/Pot/Trap Hole
+                new AiOpponent(
+                        "ai_shop_regular",
+                        "卡牌屋常客·阿健",
+                        "Lv.1 · 校园非顶级娱乐流",
+                        "1999-02-04",
+                        1, 180, 90, 60,
+                        "刻意避开黑洞、雷击、强欲、落穴等顶级泛用神卡，用中游凡骨与趣味装备陪你平滑度过开荒期。",
+                        Arrays.asList(
+                                new AiOpponent.EraDeckProfile("1999-02-04", "【Vol.1 校园杂牌兽战】", "1999.02 休闲开荒",
+                                        "独眼巨人、银牙狼、猛犸的墓场搭配猛兽之齿/传说之剑，无黑洞无落穴，前期最稳练手对手。",
+                                        recipe(76184692, 3, 90357090, 3, 40374923, 3, 9159938, 3, 15401633, 3, 90963488, 3, 46009906, 2, 61854111, 2, 38199696, 3),
+                                        null, "CASUAL_MID"),
+                                new AiOpponent.EraDeckProfile("1999-03-27", "【Vol.2 奇趣下级混编】", "1999.03 休闲升级",
+                                        "换装炭烧战士(1500)、荒野盗龙(1500)、混沌男巫、奇迹鸟、大炮鸟，稳健推进但绝不超模。",
+                                        recipe(54541900, 3, 1784619, 3, 41544074, 3, 59036972, 3, 72842870, 3, 31339260, 3, 70681994, 3, 61854111, 2, 38199696, 2),
+                                        null, "CASUAL_MID"),
+                                new AiOpponent.EraDeckProfile("1999-05-27", "【Vol.3 中游凡骨休闲组】", "1999.05 休闲过渡",
+                                        "天空猎手(1550)、珍鱼(1500)、死亡撒旦(1400)配『守备』封禁，适合中前期刷代币攒卡。",
+                                        recipe(10202894, 3, 80516007, 3, 36304921, 3, 71407486, 3, 32452818, 3, 98818516, 3, 63102017, 2, 66788016, 2),
+                                        null, "CASUAL_MID"),
+                                new AiOpponent.EraDeckProfile("1999-09-23", "【Vol.5 校园中坚混打】", "1999.09 中游娱乐",
+                                        "苍白兽、兵主部、响女、铠武者僵尸搭配 1 祭品粗暴帝王，体验纯正校园桌游对决。",
+                                        recipe(21263083, 3, 2118022, 3, 64501875, 3, 20277860, 3, 76446915, 3, 99261403, 3, 26378150, 2, 66788016, 2),
+                                        null, "CASUAL_MID")
+                        )
+                ),
+
+                // 3. Weekend Shop Challenger (1999-03-01): Joey-style mid-tier warrior/dragon/gamble progression
+                new AiOpponent(
+                        "ai_weekend_challenger",
+                        "周末店赛挑战者·热血城之内风",
+                        "Lv.2 · 战士/龙/赌博中游流",
+                        "1999-03-01",
+                        2, 220, 100, 65,
+                        "定位介于新手与环境霸主之间的中坚对手：主打战士/真红眼/时间魔术师情怀轴，不堆砌顶级禁限神卡。",
+                        Arrays.asList(
+                                new AiOpponent.EraDeckProfile("1999-03-01", "【Booster 1 街头战士＆兽族】", "1999.03 中游起步",
+                                        "独眼巨人、银牙狼、石像怪、电气小子与基础装备＋单张地割，作为挑战暗游戏前的练兵。",
+                                        recipe(76184692, 3, 90357090, 3, 15303296, 3, 27324313, 3, 88643173, 3, 756652, 3, 61854111, 2, 46009906, 2, 66788016, 1, 38199696, 2),
+                                        null, "MID_TIER_THEME"),
+                                new AiOpponent.EraDeckProfile("1999-03-27", "【Vol.2 精灵剑士＆火焰战士】", "1999.03 店赛中坚",
+                                        "精灵剑士(1400)、炭烧战士(1500)、荒野盗龙(1500)、大炮鸟，搭配传说之剑与地割稳扎稳打。",
+                                        recipe(91152256, 3, 54541900, 3, 1784619, 3, 70681994, 3, 72842870, 3, 37421579, 3, 61854111, 2, 66788016, 2, 38199696, 2),
+                                        null, "MID_TIER_THEME"),
+                                new AiOpponent.EraDeckProfile("1999-05-27", "【Vol.3 真红眼＆岩石巨兵热血轴】", "1999.05 情怀中游",
+                                        "真红眼黑龙(2400)搭配花狼、暗杀者、岩石巨兵与天空猎手，攻势爽快但留足反制窗口。",
+                                        recipe(74677422, 2, 95952802, 2, 48365709, 2, 13039848, 2, 10202894, 3, 80516007, 3, 91152256, 3, 66788016, 2, 72302403, 1),
+                                        null, "MID_TIER_THEME"),
+                                new AiOpponent.EraDeckProfile("1999-08-26", "【巨蛋后 巨斧＆时间魔术师赌博流】", "1999.08~12 热血赌博",
+                                        "巨斧袭击者(1700)、真红眼黑龙、时间魔术师、邪恶蠕虫兽与宝贝龙(11.18起)，充满戏剧性的中坚对手！",
+                                        recipe(48305365, 3, 74677422, 2, 71625222, 2, 88819587, 2, 6285791, 3, 91152256, 3, 77998771, 2, 66788016, 2, 4206964, 1, 72302403, 1),
+                                        null, "MID_TIER_THEME")
+                        )
+                ),
+
+                // 4. Classic Yugi (1999-02-04): No-Tribute DM -> Vol.2 Reborn -> Expert Flip -> Summoned Skull -> EX Duel King
                 new AiOpponent(
                         "ai_vol1_yugi",
                         "初代暗游戏",
@@ -358,11 +415,17 @@ public final class AiDeckGenerator {
 
         // 2) Fill remaining slots up to 40 using archetype-aware scoring (strictly <= currentDate & banlist)
         if (main.size() < 40) {
+            boolean isNonTopTier = "NOVICE_NR".equals(style)
+                    || "CASUAL_MID".equals(style)
+                    || "MID_TIER_THEME".equals(style);
             List<RpgCard> fillPool = new ArrayList<>();
             for (RpgCard c : released) {
                 if (c.isExtraDeckCard() || "ritual".equalsIgnoreCase(c.frameType)) continue;
                 if (banlist.getMaxCopies(c.id) <= 0) continue;
-                if ("NOVICE_NR".equals(style) && c.getRarityEnum().ordinal() >= Rarity.SR.ordinal()) continue;
+                if (isNonTopTier && isTopTierStaple(c.id)) continue;
+                if (("NOVICE_NR".equals(style) || "CASUAL_MID".equals(style))
+                        && c.getRarityEnum().ordinal() >= Rarity.SR.ordinal()) continue;
+                if ("MID_TIER_THEME".equals(style) && c.getRarityEnum().ordinal() >= Rarity.UR.ordinal()) continue;
                 fillPool.add(c);
             }
             if (fillPool.isEmpty()) {
@@ -383,7 +446,7 @@ public final class AiDeckGenerator {
                 Collections.shuffle(fillPool.subList(0, window), random);
             }
 
-            int prefCopies = "NOVICE_NR".equals(style) ? 2 : 3;
+            int prefCopies = ("NOVICE_NR".equals(style) || "CASUAL_MID".equals(style)) ? 2 : 3;
             for (RpgCard c : fillPool) {
                 int already = countOf(main, c.id);
                 int legalMax = Math.min(prefCopies, banlist.getMaxCopies(c.id));
@@ -409,6 +472,23 @@ public final class AiDeckGenerator {
         return new GeneratedAiDeck(main, extra, banlist, profile);
     }
 
+    /** Top-tier 1999 blowout staples withheld from novice/casual/mid-tier filler pools. */
+    private static boolean isTopTierStaple(int cardId) {
+        return cardId == 12580477 // 雷击
+                || cardId == 53129443 // 黑洞
+                || cardId == 55144522 // 强欲之壶
+                || cardId == 79571449 // 天使的施舍
+                || cardId == 83764718 // 死者苏生
+                || cardId == 4031928  // 心变
+                || cardId == 44095762 // 神圣防护罩-反射镜力-
+                || cardId == 57728570 // 死之卡组破坏病毒
+                || cardId == 18144506 // 鹰身女妖的羽毛扫
+                || cardId == 41420027 // 神之宣告
+                || cardId == 4206964  // 落穴
+                || cardId == 69140098 // 双生精灵
+                || cardId == 7359741; // 机械猎手
+    }
+
     private static int scoreForStyle(RpgCard c, String style, OcgRuleSet rule) {
         int base = DeckValidator.scoreCard(c);
         if ("NO_TRIBUTE_BEAT".equals(style)) {
@@ -417,6 +497,21 @@ public final class AiDeckGenerator {
         if ("NOVICE_NR".equals(style)) {
             int pen = (rule != null && rule.tributeSummonEnabled && c.level >= 5) ? 900 : 0;
             return c.isMonster() ? (Math.max(c.atk, c.def) - pen) : 1100;
+        }
+        if ("CASUAL_MID".equals(style)) {
+            if (!c.isMonster()) return 950;
+            int stat = Math.max(c.atk, c.def);
+            // Prefer mid-low 900~1450 monsters instead of top beaters
+            int distPenalty = Math.abs(stat - 1250);
+            int highLevelPen = (c.level >= 5) ? 600 : 0;
+            return 1600 - distPenalty - highLevelPen;
+        }
+        if ("MID_TIER_THEME".equals(style)) {
+            if (!c.isMonster()) return 1150;
+            int stat = Math.max(c.atk, c.def);
+            int distPenalty = Math.abs(stat - 1500);
+            int highLevelPen = (rule != null && rule.tributeSummonEnabled && c.level >= 7) ? 700 : 0;
+            return 1900 - distPenalty - highLevelPen;
         }
         if ("EQUIP_LIGHT_EARTH".equals(style)) {
             int bonus = ("LIGHT".equalsIgnoreCase(c.attribute) || "EARTH".equalsIgnoreCase(c.attribute)) ? 600 : 0;

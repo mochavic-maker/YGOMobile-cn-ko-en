@@ -289,9 +289,9 @@ public class RpgEnginesTest {
     @Test
     public void aiDecksStrictlyObeyFull1999TimelineAndBanlist() {
         List<AiOpponent> opps = AiDeckGenerator.getDemoOpponents();
-        assertEquals(10, opps.size());
+        assertEquals(12, opps.size());
         String[] dates = {
-                "1999-02-04", "1999-03-06", "1999-03-27", "1999-05-05",
+                "1999-02-04", "1999-03-01", "1999-03-06", "1999-03-27", "1999-05-05",
                 "1999-05-25", "1999-05-27", "1999-07-08", "1999-07-22",
                 "1999-08-26", "1999-10-17", "1999-11-18", "1999-12-01",
                 "1999-12-16", "1999-12-31"
@@ -312,6 +312,12 @@ public class RpgEnginesTest {
                         DeckValidator.validateDeck(aiDeck.main, aiDeck.extra, catalog, date, null);
                 assertTrue("AI deck for " + opp.id + " (" + aiDeck.appliedProfile.deckName + ") at "
                         + date + " must be legal: " + res.errors, res.valid);
+                // Verify progressive non-top-tier AIs do NOT run blowout staples like Raigeki / Dark Hole / Pot of Greed
+                if ("ai_street_novice".equals(opp.id) || "ai_shop_regular".equals(opp.id) || "ai_weekend_challenger".equals(opp.id)) {
+                    assertFalse(opp.id + " should not pack Raigeki", aiDeck.main.contains(RAIGEKI));
+                    assertFalse(opp.id + " should not pack Dark Hole", aiDeck.main.contains(DARK_HOLE));
+                    assertFalse(opp.id + " should not pack Pot of Greed", aiDeck.main.contains(POT_OF_GREED));
+                }
             }
         }
 
@@ -518,5 +524,69 @@ public class RpgEnginesTest {
         }
         assertFalse("On 1999-12-20 Sangan MUST NOT trigger search when discarded from hand",
                 triggeredFromHandAfter);
+    }
+
+    @Test
+    public void tournamentEngineSupportsRandomBracketsAndChampionSettlement() {
+        RpgProfile profile = new RpgProfile();
+        profile.currentTimelineDate = "1999-08-26";
+        profile.tokens = 50000;
+        PackOpeningEngine engine = new PackOpeningEngine(new Random(7L));
+        engine.openPacks(profile, catalog.findPack("ocg_starter_box"), 1);
+        engine.openPacks(profile, catalog.findPack("ocg_vol4"), 5);
+        DeckValidator.autoBuildLegalPlayerDeck(profile, catalog);
+        assertEquals(40, profile.activeDeckMain.size());
+
+        // 1) 4-player Shop Cup: player wins Semi + Final -> Champion (+600 tokens)
+        cn.garymb.ygomobile.rpg.engine.TournamentEngine.TournamentBracket b4 =
+                cn.garymb.ygomobile.rpg.engine.TournamentEngine.createBracket(catalog, profile, 4, new Random(11L));
+        assertEquals(4, b4.size);
+        assertEquals(1, b4.rounds.size());
+        assertEquals(2, b4.rounds.get(0).size());
+        assertNotNull(b4.findPendingPlayerMatch());
+        for (cn.garymb.ygomobile.rpg.engine.TournamentEngine.Match m : b4.rounds.get(0)) {
+            assertEquals(40, m.p1.deckMain.size());
+            assertEquals(40, m.p2.deckMain.size());
+        }
+
+        int tokensBefore = profile.tokens;
+        cn.garymb.ygomobile.rpg.engine.TournamentEngine.recordPlayerMatchResult(
+                catalog, b4, true, "半决赛获胜", null, new Random(12L));
+        assertFalse(b4.finished);
+        assertEquals(1, b4.currentRound);
+        assertNotNull(b4.findPendingPlayerMatch());
+
+        cn.garymb.ygomobile.rpg.engine.TournamentEngine.recordPlayerMatchResult(
+                catalog, b4, true, "决赛夺冠", null, new Random(13L));
+        assertTrue(b4.finished);
+        assertTrue(b4.champion.isPlayer);
+        assertEquals(600, b4.rewardTokens);
+        int claimed = cn.garymb.ygomobile.rpg.engine.TournamentEngine.claimRewardIfFinished(profile, b4);
+        assertEquals(600, claimed);
+        assertEquals(tokensBefore + 600, profile.tokens);
+        assertEquals(1, profile.tournamentWins);
+        assertEquals(1, profile.tournamentsPlayed);
+        // Idempotent reward claim
+        assertEquals(0, cn.garymb.ygomobile.rpg.engine.TournamentEngine.claimRewardIfFinished(profile, b4));
+
+        // 2) 8-player Grand Tournament: player loses round 1 -> simulateRemainingToChampion crowns an AI
+        cn.garymb.ygomobile.rpg.engine.TournamentEngine.TournamentBracket b8 =
+                cn.garymb.ygomobile.rpg.engine.TournamentEngine.createBracket(catalog, profile, 8, new Random(21L));
+        assertEquals(8, b8.size);
+        assertEquals(4, b8.rounds.get(0).size());
+        cn.garymb.ygomobile.rpg.engine.TournamentEngine.recordPlayerMatchResult(
+                catalog, b8, false, "首轮惜败", null, new Random(22L));
+        assertTrue(b8.playerEliminated);
+        assertFalse(b8.finished);
+        cn.garymb.ygomobile.rpg.engine.TournamentEngine.simulateRemainingToChampion(
+                catalog, b8, new Random(23L));
+        assertTrue(b8.finished);
+        assertNotNull(b8.champion);
+        assertFalse(b8.champion.isPlayer);
+        assertEquals(3, b8.rounds.size());
+        assertEquals(120, b8.rewardTokens);
+        assertEquals(120, cn.garymb.ygomobile.rpg.engine.TournamentEngine.claimRewardIfFinished(profile, b8));
+        assertEquals(1, profile.tournamentWins);
+        assertEquals(2, profile.tournamentsPlayed);
     }
 }

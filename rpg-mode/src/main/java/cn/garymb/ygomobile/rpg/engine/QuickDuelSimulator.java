@@ -79,11 +79,21 @@ public final class QuickDuelSimulator {
                                            AiOpponent opponent,
                                            String currentDate,
                                            Random rng) {
+        return simulateBetweenDecks(catalog, "你", playerDeckIds, opponent.name, aiDeckIds, currentDate, rng);
+    }
+
+    public static QuickDuelReport simulateBetweenDecks(RpgCatalog catalog,
+                                                       String sideAName,
+                                                       List<Integer> deckAIds,
+                                                       String sideBName,
+                                                       List<Integer> deckBIds,
+                                                       String currentDate,
+                                                       Random rng) {
         OcgRuleSet rule = TimelineEngine.getActiveRuleSet(catalog, currentDate);
-        Side p = new Side(rule.startLp, playerDeckIds, rng);
-        Side a = new Side(rule.startLp, aiDeckIds, rng);
+        Side p = new Side(rule.startLp, deckAIds, rng);
+        Side a = new Side(rule.startLp, deckBIds, rng);
         List<String> logs = new ArrayList<>();
-        logs.add("快速决斗开始：你 vs " + opponent.name + "（时间轴：" + currentDate + " · 规则：" + rule.name + "）");
+        logs.add("快速决斗开始：" + sideAName + " vs " + sideBName + "（时间轴：" + currentDate + " · 规则：" + rule.name + "）");
 
         for (int i = 0; i < rule.startHand; i++) {
             draw(catalog, p);
@@ -92,14 +102,14 @@ public final class QuickDuelSimulator {
 
         int turn = 1;
         boolean playerTurn = rng.nextBoolean();
-        logs.add("🪙 抛硬币决定先手：" + (playerTurn ? "你先攻" : opponent.name + "先攻"));
+        logs.add("🪙 抛硬币决定先手：" + (playerTurn ? sideAName + "先攻" : sideBName + "先攻"));
         int maxTurns = 40;
 
         while (turn <= maxTurns && p.lp > 0 && a.lp > 0) {
             Side cur = playerTurn ? p : a;
             Side opp = playerTurn ? a : p;
-            String curName = playerTurn ? "你" : opponent.name;
-            String oppName = playerTurn ? opponent.name : "你";
+            String curName = playerTurn ? sideAName : sideBName;
+            String oppName = playerTurn ? sideBName : sideAName;
             cur.sanganUsedThisTurn = false;
             cur.witchUsedThisTurn = false;
             cur.lastWillActive = false;

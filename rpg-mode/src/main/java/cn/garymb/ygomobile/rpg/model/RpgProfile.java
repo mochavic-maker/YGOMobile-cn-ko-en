@@ -32,6 +32,8 @@ public class RpgProfile {
     public int wins = 0;
     public int losses = 0;
     public int draws = 0;
+    public int tournamentWins = 0;
+    public int tournamentsPlayed = 0;
 
     /** Active RPG deck (card passcodes). */
     public List<Integer> activeDeckMain = new ArrayList<>();

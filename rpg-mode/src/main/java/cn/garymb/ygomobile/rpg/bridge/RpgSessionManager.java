@@ -4,17 +4,22 @@ import android.content.Context;
 
 import cn.garymb.ygomobile.rpg.data.RpgRepository;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
+import cn.garymb.ygomobile.rpg.engine.TournamentEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.RpgProfile;
 
 /**
- * Tracks active RPG duel sessions so YGOMobile's EngineCallbackDelegate.onDuelResult
- * can settle RPG rewards without affecting normal free duels or LAN play.
+ * Tracks active RPG duel sessions & tournament brackets so YGOMobile's
+ * EngineCallbackDelegate.onDuelResult can settle RPG & tournament rewards cleanly.
  */
 public final class RpgSessionManager {
     private static volatile RpgDuelHostBridge sHostBridge;
     private static volatile AiOpponent sActiveOpponent;
+    private static volatile boolean sActiveDuelIsTournament;
+    private static volatile boolean sLastDuelWasTournament;
+    private static volatile boolean sLastDuelPlayerWon;
     private static volatile DuelRewardEngine.RewardSettlement sLastSettlement;
+    private static volatile TournamentEngine.TournamentBracket sActiveTournament;
 
     private RpgSessionManager() {}
 
@@ -26,9 +31,23 @@ public final class RpgSessionManager {
         return sHostBridge;
     }
 
+    public static synchronized void setActiveTournament(TournamentEngine.TournamentBracket bracket) {
+        sActiveTournament = bracket;
+    }
+
+    public static synchronized TournamentEngine.TournamentBracket getActiveTournament() {
+        return sActiveTournament;
+    }
+
     public static synchronized void beginRpgDuel(AiOpponent opponent) {
+        beginRpgDuel(opponent, false);
+    }
+
+    public static synchronized void beginRpgDuel(AiOpponent opponent, boolean isTournamentMatch) {
         sActiveOpponent = opponent;
+        sActiveDuelIsTournament = isTournamentMatch;
         sLastSettlement = null;
+        sLastDuelWasTournament = false;
     }
 
     public static synchronized boolean hasActiveRpgDuel() {
@@ -37,6 +56,7 @@ public final class RpgSessionManager {
 
     public static synchronized void cancelActiveRpgDuel() {
         sActiveOpponent = null;
+        sActiveDuelIsTournament = false;
     }
 
     /**
@@ -49,7 +69,9 @@ public final class RpgSessionManager {
             return null;
         }
         AiOpponent opp = sActiveOpponent;
+        boolean wasTournament = sActiveDuelIsTournament;
         sActiveOpponent = null;
+        sActiveDuelIsTournament = false;
 
         RpgRepository repo = new RpgRepository(context.getApplicationContext());
         RpgProfile profile = repo.loadProfile();
@@ -60,6 +82,8 @@ public final class RpgSessionManager {
         } catch (Exception ignored) {
         }
         sLastSettlement = settlement;
+        sLastDuelWasTournament = wasTournament;
+        sLastDuelPlayerWon = playerWon;
         return settlement;
     }
 
@@ -67,5 +91,11 @@ public final class RpgSessionManager {
         DuelRewardEngine.RewardSettlement s = sLastSettlement;
         sLastSettlement = null;
         return s;
+    }
+
+    public static synchronized Boolean consumeTournamentDuelOutcome() {
+        if (!sLastDuelWasTournament) return null;
+        sLastDuelWasTournament = false;
+        return sLastDuelPlayerWon;
     }
 }
