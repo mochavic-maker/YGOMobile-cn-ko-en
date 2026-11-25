@@ -15,6 +15,112 @@
       "UR": 600
     }
   },
+  "rules": [
+    {
+      "id": "ocg_official_1999",
+      "name": "1999.02.04 初代官方规则（公式ルール）",
+      "effectiveDate": "1999-02-04",
+      "description": "上级怪兽无需祭品直接通常召唤；每回合从手牌出魔法/陷阱各限 1 张；先攻第 1 回合不抽卡；卡组抽干按 LP 较高者胜。",
+      "startLp": 8000,
+      "startHand": 5,
+      "tributeSummonEnabled": false,
+      "spellTrapOncePerTurnLimit": true,
+      "firstTurnDrawEnabled": false,
+      "deckOutCompareLp": true,
+      "ygoproDuelRule": 1
+    },
+    {
+      "id": "ocg_expert_1999",
+      "name": "1999.05.05 专家规则（エキスパートルール）",
+      "effectiveDate": "1999-05-05",
+      "description": "正式引入祭品召唤（5~6星1祭品 / 7星+2祭品）；解除每回合魔陷使用次数限制；先攻第 1 回合抽卡；卡组抽干判负。",
+      "startLp": 8000,
+      "startHand": 5,
+      "tributeSummonEnabled": true,
+      "spellTrapOncePerTurnLimit": false,
+      "firstTurnDrawEnabled": true,
+      "deckOutCompareLp": false,
+      "ygoproDuelRule": 1
+    },
+    {
+      "id": "ocg_new_expert_2000",
+      "name": "2000.04.20 新专家规则（新エキスパートルール）",
+      "effectiveDate": "2000-04-20",
+      "description": "第 2 期规则确立：完善连锁与伤害步骤体系，延续祭品召唤与先攻第 1 回合抽卡。",
+      "startLp": 8000,
+      "startHand": 5,
+      "tributeSummonEnabled": true,
+      "spellTrapOncePerTurnLimit": false,
+      "firstTurnDrawEnabled": true,
+      "deckOutCompareLp": false,
+      "ygoproDuelRule": 1
+    },
+    {
+      "id": "ocg_mr1_2008",
+      "name": "2008.03.15 大师规则（Master Rule 1）",
+      "effectiveDate": "2008-03-15",
+      "description": "引入同调召唤，额外卡组上限 15 张，保留先攻抽卡。",
+      "startLp": 8000,
+      "startHand": 5,
+      "tributeSummonEnabled": true,
+      "spellTrapOncePerTurnLimit": false,
+      "firstTurnDrawEnabled": true,
+      "deckOutCompareLp": false,
+      "ygoproDuelRule": 1
+    },
+    {
+      "id": "ocg_mr2_2011",
+      "name": "2011.03.19 大师规则 2（Master Rule 2）",
+      "effectiveDate": "2011-03-19",
+      "description": "引入超量召唤、废除召唤成功时起动效果优先权，保留先攻抽卡。",
+      "startLp": 8000,
+      "startHand": 5,
+      "tributeSummonEnabled": true,
+      "spellTrapOncePerTurnLimit": false,
+      "firstTurnDrawEnabled": true,
+      "deckOutCompareLp": false,
+      "ygoproDuelRule": 2
+    },
+    {
+      "id": "ocg_mr3_2014",
+      "name": "2014.03.21 大师规则 3（Master Rule 3）",
+      "effectiveDate": "2014-03-21",
+      "description": "废除先攻第 1 回合抽卡；引入灵摆召唤；双方场地魔法可同时存在。",
+      "startLp": 8000,
+      "startHand": 5,
+      "tributeSummonEnabled": true,
+      "spellTrapOncePerTurnLimit": false,
+      "firstTurnDrawEnabled": false,
+      "deckOutCompareLp": false,
+      "ygoproDuelRule": 3
+    },
+    {
+      "id": "ocg_mr4_2017",
+      "name": "2017.03.25 新大师规则（Master Rule 4）",
+      "effectiveDate": "2017-03-25",
+      "description": "引入额外怪兽区与连接召唤，先攻第 1 回合不抽卡。",
+      "startLp": 8000,
+      "startHand": 5,
+      "tributeSummonEnabled": true,
+      "spellTrapOncePerTurnLimit": false,
+      "firstTurnDrawEnabled": false,
+      "deckOutCompareLp": false,
+      "ygoproDuelRule": 4
+    },
+    {
+      "id": "ocg_mr5_2020",
+      "name": "2020.04.01 大师规则 2020（Master Rule 5）",
+      "effectiveDate": "2020-04-01",
+      "description": "融合/同调/超量怪兽可直接从额外卡组特召至主怪兽区，先攻第 1 回合不抽卡。",
+      "startLp": 8000,
+      "startHand": 5,
+      "tributeSummonEnabled": true,
+      "spellTrapOncePerTurnLimit": false,
+      "firstTurnDrawEnabled": false,
+      "deckOutCompareLp": false,
+      "ygoproDuelRule": 5
+    }
+  ],
   "banlists": [
     {
       "id": "ocg_1999_02_04",

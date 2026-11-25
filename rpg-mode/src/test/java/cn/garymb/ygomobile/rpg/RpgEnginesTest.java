@@ -223,4 +223,57 @@ public class RpgEnginesTest {
         assertEquals(1350, reloaded.tokens);
         assertEquals(1, reloaded.wins);
     }
+
+    @Test
+    public void timelineRuleVersionAutoSelectsLatestOcgEra() {
+        // 1999-02-04: Official Rule (no tributes, 1 spell/trap per turn, no first-turn draw)
+        cn.garymb.ygomobile.rpg.model.OcgRuleSet r1999Feb =
+                TimelineEngine.getActiveRuleSet(catalog, "1999-02-04");
+        assertFalse(r1999Feb.tributeSummonEnabled);
+        assertTrue(r1999Feb.spellTrapOncePerTurnLimit);
+        assertFalse(r1999Feb.firstTurnDrawEnabled);
+        assertEquals(0, r1999Feb.requiredTributes(7));
+
+        // 1999-05-05: Expert Rule (tribute summon introduced, first-turn draw enabled)
+        cn.garymb.ygomobile.rpg.model.OcgRuleSet r1999May =
+                TimelineEngine.getActiveRuleSet(catalog, "1999-05-05");
+        assertTrue(r1999May.tributeSummonEnabled);
+        assertFalse(r1999May.spellTrapOncePerTurnLimit);
+        assertTrue(r1999May.firstTurnDrawEnabled);
+        assertEquals(1, r1999May.requiredTributes(5));
+        assertEquals(2, r1999May.requiredTributes(7));
+
+        // 2014-03-21: Master Rule 3 (first-turn draw removed, duelRule = 3)
+        cn.garymb.ygomobile.rpg.model.OcgRuleSet r2014 =
+                TimelineEngine.getActiveRuleSet(catalog, "2014-03-21");
+        assertFalse(r2014.firstTurnDrawEnabled);
+        assertEquals(3, r2014.ygoproDuelRule);
+
+        // 2020-04-01: Master Rule 5 (duelRule = 5)
+        cn.garymb.ygomobile.rpg.model.OcgRuleSet r2020 =
+                TimelineEngine.getActiveRuleSet(catalog, "2020-04-01");
+        assertEquals(5, r2020.ygoproDuelRule);
+    }
+
+    @Test
+    public void quickDuelSimulatorCompletesWithTimelineRules() {
+        RpgProfile profile = new RpgProfile();
+        profile.currentTimelineDate = "1999-03-27";
+        PackOpeningEngine packEngine = new PackOpeningEngine(new Random(7L));
+        packEngine.openPacks(profile, catalog.findPack("ocg_vol1"), 6);
+        packEngine.openPacks(profile, catalog.findPack("ocg_vol2"), 6);
+        DeckValidator.autoBuildLegalPlayerDeck(profile, catalog);
+
+        AiOpponent opp = AiDeckGenerator.getDemoOpponents().get(0);
+        AiDeckGenerator.GeneratedAiDeck aiDeck =
+                AiDeckGenerator.generateDeck(catalog, opp, profile.currentTimelineDate, new Random(7L));
+        cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator.QuickDuelReport report =
+                cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator.simulate(
+                        catalog, profile.activeDeckMain, aiDeck.main, opp,
+                        profile.currentTimelineDate, new Random(99L));
+
+        assertEquals("ocg_official_1999", report.appliedRule.id);
+        assertFalse(report.logs.isEmpty());
+        assertTrue(report.turns >= 1);
+    }
 }

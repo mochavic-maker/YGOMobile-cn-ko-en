@@ -109,6 +109,15 @@
             android:text="生效禁限表: 1999.02.04 OCG 创世环境（无禁限）"
             android:textColor="#94A3B8"
             android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tv_active_rule"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text="生效规则: 1999.02.04 初代官方规则（随时间轴自动锁定）"
+            android:textColor="#38BDF8"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <!-- Tabs -->

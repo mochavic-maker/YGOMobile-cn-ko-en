@@ -14,6 +14,7 @@ public class RpgCatalog {
     public String format = "OCG";
     public String version = "1.0-demo";
     public CraftingRules craftingRules = new CraftingRules();
+    public List<OcgRuleSet> rules = new ArrayList<>();
     public List<OcgBanlist> banlists = new ArrayList<>();
     public List<OcgPack> packs = new ArrayList<>();
 

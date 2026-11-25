@@ -19,6 +19,7 @@ import cn.garymb.ygomobile.rpg.bridge.RpgSessionManager;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.ui.RpgHomeActivity;
 import cn.garymb.ygomobile.ui.dialogs.lobby.PlayerWaitingDialog;
 
@@ -111,6 +112,7 @@ public final class RpgIntegration {
                                        String playerDeckYdkPath,
                                        String aiDeckYdkPath,
                                        OcgBanlist activeBanlist,
+                                       OcgRuleSet activeRuleSet,
                                        String currentTimelineDate) {
                 activity.runOnUiThread(() -> {
                     // Point player's active deck to the validated RPG .ydk
@@ -121,14 +123,15 @@ public final class RpgIntegration {
                     engine.setBotMode(true);
                     engine.setPlayerName(Constants.PlayerName);
 
-                    // Launch local server (noCheckDeck=true because :rpg-mode already enforced
-                    // exact historical OCG banlist + timeline + ownership for both player and AI)
+                    // Automatically apply the latest OCG rule version at currentTimelineDate
                     int duelMode = 0; // Single duel
-                    int duelRule = 5; // Master Rule 2020
+                    int duelRule = activeRuleSet != null ? activeRuleSet.ygoproDuelRule : 1;
+                    int startLp = activeRuleSet != null ? activeRuleSet.startLp : 8000;
+                    int startHand = activeRuleSet != null ? activeRuleSet.startHand : 5;
                     engine.startLocalServerWithSettings(
                             0, 5, duelMode, duelRule,
                             true, false,
-                            8000, 5, 1, 0,
+                            startLp, startHand, 1, 0,
                             "OCG RPG [" + currentTimelineDate + "]", "");
                     engine.gameLflist = 0;
                     engine.gameRule = 5;
@@ -136,8 +139,8 @@ public final class RpgIntegration {
                     engine.field.dInfo.duelRule = duelRule;
                     engine.gameNoCheckDeck = 1;
                     engine.gameNoShuffleDeck = 0;
-                    engine.gameStartLp = 8000;
-                    engine.gameStartHand = 5;
+                    engine.gameStartLp = startLp;
+                    engine.gameStartHand = startHand;
                     engine.gameDrawCount = 1;
                     engine.gameTimeLimit = 0;
                     engine.hasJoinRoomInfoCache = true;

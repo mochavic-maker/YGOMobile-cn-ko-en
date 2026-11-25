@@ -10,11 +10,12 @@ import java.util.TreeSet;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
+import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.model.RpgCard;
 import cn.garymb.ygomobile.rpg.model.RpgCatalog;
 
 /**
- * Enforces the OCG timeline dimension across packs, cards, banlists, and AI opponents.
+ * Enforces the OCG timeline dimension across packs, cards, banlists, rule versions, and AI opponents.
  * All date comparisons use ISO-8601 strings (YYYY-MM-DD), which sort lexicographically.
  */
 public final class TimelineEngine {
@@ -36,6 +37,32 @@ public final class TimelineEngine {
             }
         }
         return available;
+    }
+
+    /** Returns the latest OCG rule set whose effectiveDate <= currentDate (strictly timeline-driven). */
+    public static OcgRuleSet getActiveRuleSet(RpgCatalog catalog, String currentDate) {
+        OcgRuleSet best = null;
+        if (catalog != null && catalog.rules != null) {
+            for (OcgRuleSet r : catalog.rules) {
+                if (isReleasedOnOrBefore(r.effectiveDate, currentDate)) {
+                    if (best == null || r.effectiveDate.compareTo(best.effectiveDate) > 0) {
+                        best = r;
+                    }
+                }
+            }
+        }
+        if (best != null) return best;
+        OcgRuleSet fallback = new OcgRuleSet();
+        fallback.id = "ocg_official_1999";
+        fallback.name = "1999.02.04 初代官方规则（公式ルール）";
+        fallback.effectiveDate = "1999-02-04";
+        fallback.description = "上级怪兽免祭品；每回合魔法/陷阱各限 1 张；先攻不抽卡。";
+        fallback.tributeSummonEnabled = false;
+        fallback.spellTrapOncePerTurnLimit = true;
+        fallback.firstTurnDrawEnabled = false;
+        fallback.deckOutCompareLp = true;
+        fallback.ygoproDuelRule = 1;
+        return fallback;
     }
 
     /** Returns the latest OCG banlist whose effectiveDate <= currentDate. */
@@ -98,7 +125,7 @@ public final class TimelineEngine {
         return getActiveBanlist(catalog, currentDate).getMaxCopies(cardId);
     }
 
-    /** Returns sorted distinct milestone dates (pack releases + banlist effective dates). */
+    /** Returns sorted distinct milestone dates (pack releases + banlists + early rule shifts). */
     public static List<String> getTimelineMilestones(RpgCatalog catalog) {
         TreeSet<String> dates = new TreeSet<>();
         if (catalog != null) {
@@ -110,6 +137,11 @@ public final class TimelineEngine {
             if (catalog.banlists != null) {
                 for (OcgBanlist b : catalog.banlists) {
                     if (b.effectiveDate != null && !b.effectiveDate.isEmpty()) dates.add(b.effectiveDate);
+                }
+            }
+            if (catalog.rules != null) {
+                for (OcgRuleSet r : catalog.rules) {
+                    if (r.effectiveDate != null && !r.effectiveDate.isEmpty()) dates.add(r.effectiveDate);
                 }
             }
         }

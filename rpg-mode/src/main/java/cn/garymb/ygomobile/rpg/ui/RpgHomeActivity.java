@@ -35,10 +35,12 @@ import cn.garymb.ygomobile.rpg.engine.CraftingEngine;
 import cn.garymb.ygomobile.rpg.engine.DeckValidator;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
 import cn.garymb.ygomobile.rpg.engine.PackOpeningEngine;
+import cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
+import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.model.Rarity;
 import cn.garymb.ygomobile.rpg.model.RpgCard;
 import cn.garymb.ygomobile.rpg.model.RpgCatalog;
@@ -49,7 +51,7 @@ import cn.garymb.ygomobile.rpg.model.RpgProfile;
  * - Tab 0: Booster Pack Shop & Pack Opening (OCG Vol.1 / Vol.2 demo)
  * - Tab 1: Card Collection & Dust Dismantle / Craft
  * - Tab 2: Ownership + Timeline + Banlist Restricted Deck Builder
- * - Tab 3: Timeline-Compliant AI Duel Launcher & Token Rewards
+ * - Tab 3: Timeline-Compliant AI Duel Launcher (Manual WindBot & Quick Duel) & Token Rewards
  */
 public class RpgHomeActivity extends AppCompatActivity {
 
@@ -62,6 +64,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     private TextView tvDust;
     private TextView tvTimelineDate;
     private TextView tvActiveBanlist;
+    private TextView tvActiveRule;
     private LinearLayout layoutMilestones;
     private LinearLayout layoutTabActions;
     private LinearLayout layoutContent;
@@ -89,6 +92,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         tvDust = findViewById(R.id.tv_rpg_dust);
         tvTimelineDate = findViewById(R.id.tv_timeline_date);
         tvActiveBanlist = findViewById(R.id.tv_active_banlist);
+        tvActiveRule = findViewById(R.id.tv_active_rule);
         layoutMilestones = findViewById(R.id.layout_milestones);
         layoutTabActions = findViewById(R.id.layout_tab_actions);
         layoutContent = findViewById(R.id.layout_rpg_content);
@@ -157,6 +161,8 @@ public class RpgHomeActivity extends AppCompatActivity {
 
         OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
         tvActiveBanlist.setText("当前禁限表: " + banlist.name + " — " + banlist.description);
+        OcgRuleSet ruleSet = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        tvActiveRule.setText("当前规则（随时间轴自动锁定）: " + ruleSet.name + " — " + ruleSet.description);
         renderCurrentTab();
     }
 
@@ -471,9 +477,13 @@ public class RpgHomeActivity extends AppCompatActivity {
             row.setPadding(0, dp(8), 0, 0);
 
             if (unlocked) {
-                Button fightBtn = makeActionButton("发起 AI 决斗", "#DC2626");
+                Button fightBtn = makeActionButton("亲自对战 (WindBot)", "#DC2626");
                 fightBtn.setOnClickListener(v -> launchAiDuel(opp));
                 row.addView(fightBtn);
+
+                Button quickBtn = makeActionButton("⚡ 快速决斗", "#D97706");
+                quickBtn.setOnClickListener(v -> runQuickDuel(opp));
+                row.addView(quickBtn);
             } else {
                 TextView locked = new TextView(this);
                 locked.setText("未解锁（需时间轴 ≥ " + opp.unlockDate + "）");
@@ -484,6 +494,49 @@ public class RpgHomeActivity extends AppCompatActivity {
             box.addView(row);
             layoutContent.addView(box);
         }
+    }
+
+    private void runQuickDuel(AiOpponent opponent) {
+        DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
+        if (!val.valid) {
+            new AlertDialog.Builder(this)
+                    .setTitle("RPG 卡组未通过校验")
+                    .setMessage(android.text.TextUtils.join("\n", val.errors))
+                    .setPositiveButton("去组卡", (d, w) -> {
+                        TabLayout.Tab t = tabLayout.getTabAt(2);
+                        if (t != null) t.select();
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+        AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
+                catalog, opponent, profile.currentTimelineDate, new Random());
+        QuickDuelSimulator.QuickDuelReport report = QuickDuelSimulator.simulate(
+                catalog, profile.activeDeckMain, aiDeck.main, opponent,
+                profile.currentTimelineDate, new Random());
+        DuelRewardEngine.RewardSettlement settlement =
+                DuelRewardEngine.settle(profile, opponent, report.playerWon, report.isDraw);
+        saveProfileSafe();
+        refreshAll();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("规则：").append(report.appliedRule.name).append("\n")
+                .append("结果：").append(settlement.outcomeLabel)
+                .append("（我方 LP ").append(report.playerLp)
+                .append(" vs 对手 LP ").append(report.aiLp)
+                .append("，共 ").append(report.turns).append(" 回合）\n")
+                .append("获得代币：+").append(settlement.tokensEarned).append("\n\n")
+                .append("--- 战报摘录 ---\n");
+        int limit = Math.min(report.logs.size(), 18);
+        for (int i = 0; i < limit; i++) {
+            sb.append(report.logs.get(i)).append("\n");
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("⚡ 快速决斗结算 · " + settlement.outcomeLabel)
+                .setMessage(sb.toString())
+                .setPositiveButton("收下代币", null)
+                .show();
     }
 
     private void launchAiDuel(AiOpponent opponent) {
@@ -501,6 +554,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             return;
         }
 
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
         AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
                 catalog, opponent, profile.currentTimelineDate, new Random());
         try {
@@ -517,7 +571,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             RpgSessionManager.beginRpgDuel(opponent);
             bridge.startRpgAiDuel(this, opponent,
                     playerYdk.getAbsolutePath(), aiYdk.getAbsolutePath(),
-                    aiDeck.banlist, profile.currentTimelineDate);
+                    aiDeck.banlist, activeRule, profile.currentTimelineDate);
             finish();
         } catch (IOException e) {
             Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
