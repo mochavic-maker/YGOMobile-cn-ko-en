@@ -1,5 +1,54 @@
 // Isolated Gradle extension for RPG mode & custom branding.
 // Kept outside mobile/build.gradle so upstream merges stay conflict-free.
+def rpgLocalProps = new Properties()
+def rpgLocalPropsFile = rootProject.file("local.properties")
+if (rpgLocalPropsFile.exists()) {
+    rpgLocalPropsFile.withInputStream { rpgLocalProps.load(it) }
+}
+
+def rpgProp = { String key ->
+    def v = rpgLocalProps.getProperty(key)
+    if (v != null && !v.trim().isEmpty()) return v.trim()
+    v = System.getenv(key)
+    return (v != null && !v.trim().isEmpty()) ? v.trim() : null
+}
+
+android {
+    productFlavors {
+        cn {
+            // Use a distinct applicationId so YGOMobile RPG installs side-by-side
+            // with official YGOMobile (cn.garymb.ygomobile.CN) without overwriting it.
+            applicationIdSuffix ".CN.rpg"
+            resValue 'string', 'app_name', 'YGOMobile RPG'
+        }
+    }
+
+    signingConfigs {
+        rpgRelease {
+            def storePath = rpgProp("RPG_STORE_FILE")
+            if (storePath) {
+                storeFile file(storePath)
+            }
+            storePassword rpgProp("RPG_STORE_PASSWORD")
+            keyAlias rpgProp("RPG_KEY_ALIAS")
+            keyPassword rpgProp("RPG_KEY_PASSWORD")
+
+            enableV1Signing true
+            enableV2Signing true
+            enableV3Signing true
+        }
+    }
+
+    buildTypes {
+        release {
+            if (rpgProp("RPG_STORE_FILE")) {
+                signingConfig signingConfigs.rpgRelease
+            }
+        }
+    }
+}
+
 dependencies {
     implementation project(':rpg-mode')
 }
+
