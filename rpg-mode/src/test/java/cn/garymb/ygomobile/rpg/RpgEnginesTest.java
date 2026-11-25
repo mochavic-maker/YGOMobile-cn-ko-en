@@ -289,8 +289,13 @@ public class RpgEnginesTest {
     @Test
     public void aiDecksStrictlyObeyFull1999TimelineAndBanlist() {
         List<AiOpponent> opps = AiDeckGenerator.getDemoOpponents();
-        assertEquals(6, opps.size());
-        String[] dates = {"1999-02-04", "1999-03-01", "1999-03-18", "1999-05-27", "1999-08-26", "1999-12-31"};
+        assertEquals(10, opps.size());
+        String[] dates = {
+                "1999-02-04", "1999-03-06", "1999-03-27", "1999-05-05",
+                "1999-05-25", "1999-05-27", "1999-07-08", "1999-07-22",
+                "1999-08-26", "1999-10-17", "1999-11-18", "1999-12-01",
+                "1999-12-16", "1999-12-31"
+        };
 
         for (String date : dates) {
             List<AiOpponent> avail = TimelineEngine.getAvailableOpponents(opps, date);
@@ -298,13 +303,38 @@ public class RpgEnginesTest {
             for (AiOpponent opp : avail) {
                 AiDeckGenerator.GeneratedAiDeck aiDeck =
                         AiDeckGenerator.generateDeck(catalog, opp, date, new Random(123L));
-                assertEquals(40, aiDeck.main.size());
+                assertNotNull("Active EraDeckProfile must be selected", aiDeck.appliedProfile);
+                assertTrue("Applied deck profile date must be <= currentDate",
+                        aiDeck.appliedProfile.effectiveDate.compareTo(date) <= 0);
+                assertEquals("AI main deck must be 40 cards for " + opp.id + " at " + date,
+                        40, aiDeck.main.size());
                 DeckValidator.ValidationResult res =
                         DeckValidator.validateDeck(aiDeck.main, aiDeck.extra, catalog, date, null);
-                assertTrue("AI deck for " + opp.id + " at " + date + " must be legal: " + res.errors,
-                        res.valid);
+                assertTrue("AI deck for " + opp.id + " (" + aiDeck.appliedProfile.deckName + ") at "
+                        + date + " must be legal: " + res.errors, res.valid);
             }
         }
+
+        // Verify automatic deck switching along timeline for the SAME opponent (Kaiba & Exodia Master)
+        AiOpponent kaiba = null;
+        AiOpponent exodia = null;
+        for (AiOpponent o : opps) {
+            if ("ai_starter_kaiba".equals(o.id)) kaiba = o;
+            if ("ai_exodia_master".equals(o.id)) exodia = o;
+        }
+        assertNotNull(kaiba);
+        assertNotNull(exodia);
+
+        // Kaiba auto-switches from No-Tribute Blue-Eyes (03-06) -> Expert Transition (05-05) -> High ATK (08-26) -> EX (12-16)
+        assertEquals("1999-03-06", kaiba.getActiveDeckProfile("1999-03-18").effectiveDate);
+        assertEquals("1999-05-05", kaiba.getActiveDeckProfile("1999-05-05").effectiveDate);
+        assertEquals("1999-08-26", kaiba.getActiveDeckProfile("1999-08-26").effectiveDate);
+        assertEquals("1999-12-16", kaiba.getActiveDeckProfile("1999-12-31").effectiveDate);
+
+        // Exodia Master auto-switches from PP1 Hybrid (08-26) -> Vol.6 Pre-Errata Sangan/Witch (11-18) -> EX Last Will Loop (12-16)
+        assertEquals("1999-08-26", exodia.getActiveDeckProfile("1999-09-23").effectiveDate);
+        assertEquals("1999-11-18", exodia.getActiveDeckProfile("1999-11-18").effectiveDate);
+        assertEquals("1999-12-16", exodia.getActiveDeckProfile("1999-12-19").effectiveDate);
     }
 
     @Test

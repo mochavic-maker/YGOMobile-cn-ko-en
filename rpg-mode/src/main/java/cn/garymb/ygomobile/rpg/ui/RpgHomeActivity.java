@@ -632,12 +632,20 @@ public class RpgHomeActivity extends AppCompatActivity {
         List<AiOpponent> opponents = TimelineEngine.getAvailableOpponents(
                 AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
         layoutTabActions.addView(makeSubtleText("战绩：" + profile.wins + " 胜 " + profile.losses + " 负 " + profile.draws
-                + " 平 · 当前时间轴已解锁 " + opponents.size() + " 位对手（AI 卡组严格遵守当前时间轴与禁限表）"));
+                + " 平 · 当前时间轴已解锁 " + opponents.size() + " 位对手（随时间轴自动切换对应年代卡组）"));
 
         for (final AiOpponent opp : opponents) {
+            AiOpponent.EraDeckProfile activeDeck = opp.getActiveDeckProfile(profile.currentTimelineDate);
             LinearLayout box = makeCardContainer();
             box.addView(makeTitleText(opp.name + "  (" + opp.title + ")"));
-            box.addView(makeSubtleText(opp.strategyHint));
+            if (activeDeck != null) {
+                TextView deckTv = makeSubtleText("当前自动使用卡组：" + activeDeck.deckName + " [" + activeDeck.eraTag + "]");
+                deckTv.setTextColor(Color.parseColor("#38BDF8"));
+                box.addView(deckTv);
+                box.addView(makeSubtleText(activeDeck.description));
+            } else {
+                box.addView(makeSubtleText(opp.strategyHint));
+            }
             box.addView(makeSubtleText("奖励：胜 +" + opp.winRewardTokens + " / 平 +" + opp.drawRewardTokens + " / 负 +" + opp.lossRewardTokens + " 代币"));
 
             LinearLayout row = new LinearLayout(this);
@@ -652,9 +660,33 @@ public class RpgHomeActivity extends AppCompatActivity {
             quickBtn.setOnClickListener(v -> runQuickDuel(opp));
             row.addView(quickBtn);
 
+            if (opp.deckEvolutions != null && opp.deckEvolutions.size() > 1) {
+                Button evoBtn = makeActionButton("演变(" + opp.deckEvolutions.size() + "套)", "#475569");
+                evoBtn.setOnClickListener(v -> showAiEvolutionDialog(opp));
+                row.addView(evoBtn);
+            }
+
             box.addView(row);
             layoutContent.addView(box);
         }
+    }
+
+    private void showAiEvolutionDialog(AiOpponent opp) {
+        AiOpponent.EraDeckProfile active = opp.getActiveDeckProfile(profile.currentTimelineDate);
+        StringBuilder sb = new StringBuilder();
+        sb.append("当前时间轴：").append(profile.currentTimelineDate).append("\n\n");
+        for (AiOpponent.EraDeckProfile p : opp.deckEvolutions) {
+            boolean isCur = active != null && active.effectiveDate.equals(p.effectiveDate);
+            boolean unlocked = TimelineEngine.isReleasedOnOrBefore(p.effectiveDate, profile.currentTimelineDate);
+            sb.append(isCur ? "▶ [当前使用] " : (unlocked ? "• [历史旧版] " : "🔒 [未来版本] "))
+                    .append(p.effectiveDate).append(" ").append(p.deckName).append("\n")
+                    .append("  ").append(p.description).append("\n\n");
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("AI 卡组演变史 · " + opp.name)
+                .setMessage(sb.toString().trim())
+                .setPositiveButton("知道了", null)
+                .show();
     }
 
     // ==================== TAB 5: OFFICIAL OCG ERRATA ARCHIVE ====================
