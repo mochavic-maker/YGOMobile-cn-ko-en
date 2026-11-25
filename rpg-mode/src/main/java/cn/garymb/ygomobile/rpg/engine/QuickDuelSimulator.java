@@ -98,15 +98,70 @@ public final class QuickDuelSimulator {
                 }
             }
 
+            if (hasExodia(cur)) {
+                logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
+                return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
+            }
+
             int spellsPlayed = 0;
             int trapsSet = 0;
             int spellLimit = rule.spellTrapOncePerTurnLimit ? 1 : 99;
             int trapLimit = rule.spellTrapOncePerTurnLimit ? 1 : 99;
 
-            // Spells: Dark Hole / Fissure / Monster Reborn / Swords / Burn / Heal
+            // Spells: Raigeki / Dark Hole / Fissure / Pot of Greed / Graceful Charity / Feather Duster / Change of Heart / Reborn / Swords / Burn / Heal
             for (int i = cur.hand.size() - 1; i >= 0 && spellsPlayed < spellLimit; i--) {
+                if (i >= cur.hand.size()) continue;
                 RpgCard c = cur.hand.get(i);
-                if (c.id == 53129443 && !opp.monsters.isEmpty() && cur.monsters.isEmpty()) {
+                if (c.id == 55144522) { // Pot of Greed
+                    cur.hand.remove(i);
+                    cur.gy.add(c);
+                    draw(catalog, cur);
+                    draw(catalog, cur);
+                    spellsPlayed++;
+                    logs.add("T" + turn + " " + curName + " 发动「强欲之壶」抽 2 张卡！");
+                    if (hasExodia(cur)) {
+                        logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
+                        return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
+                    }
+                } else if (c.id == 79571449) { // Graceful Charity
+                    cur.hand.remove(i);
+                    cur.gy.add(c);
+                    draw(catalog, cur);
+                    draw(catalog, cur);
+                    draw(catalog, cur);
+                    for (int d = 0; d < 2 && !cur.hand.isEmpty(); d++) {
+                        cur.gy.add(cur.hand.remove(cur.hand.size() - 1));
+                    }
+                    spellsPlayed++;
+                    logs.add("T" + turn + " " + curName + " 发动「天使的施舍」抽 3 弃 2！");
+                    if (hasExodia(cur)) {
+                        logs.add("T" + turn + " " + curName + " 集齐「被封印的艾克佐迪亚」5张部件，特殊胜利！");
+                        return new QuickDuelReport(playerTurn, false, p.lp, a.lp, turn, rule, logs);
+                    }
+                } else if (c.id == 12580477 && !opp.monsters.isEmpty()) { // Raigeki
+                    cur.hand.remove(i);
+                    cur.gy.add(c);
+                    for (MonsterSlot ms : opp.monsters) opp.gy.add(ms.card);
+                    opp.monsters.clear();
+                    spellsPlayed++;
+                    logs.add("T" + turn + " " + curName + " 发动「雷击」摧毁对手全怪兽！");
+                } else if (c.id == 18144506 && (opp.hasTrapHole || opp.swordsTurns > 0)) { // Harpie's Feather Duster
+                    cur.hand.remove(i);
+                    cur.gy.add(c);
+                    opp.hasTrapHole = false;
+                    opp.swordsTurns = 0;
+                    spellsPlayed++;
+                    logs.add("T" + turn + " " + curName + " 发动「鹰身女妖的羽毛扫」清空对手后场！");
+                } else if (c.id == 4031928 && !opp.monsters.isEmpty() && cur.monsters.size() < 5) { // Change of Heart
+                    cur.hand.remove(i);
+                    cur.gy.add(c);
+                    MonsterSlot bestOpp = opp.monsters.get(0);
+                    for (MonsterSlot ms : opp.monsters) if (ms.atk() > bestOpp.atk()) bestOpp = ms;
+                    opp.monsters.remove(bestOpp);
+                    cur.monsters.add(bestOpp);
+                    spellsPlayed++;
+                    logs.add("T" + turn + " " + curName + " 发动「心变」夺取「" + bestOpp.card.getDisplayName() + "」！");
+                } else if (c.id == 53129443 && !opp.monsters.isEmpty() && cur.monsters.isEmpty()) {
                     cur.hand.remove(i);
                     cur.gy.add(c);
                     for (MonsterSlot ms : opp.monsters) opp.gy.add(ms.card);
@@ -138,15 +193,15 @@ public final class QuickDuelSimulator {
                     cur.swordsTurns = 3;
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「光之护封剑」(3回合)");
-                } else if (c.id == 73134081 || c.id == 76103675) {
-                    int dmg = c.id == 73134081 ? 600 : 200;
+                } else if (c.id == 73134081 || c.id == 76103675 || c.id == 46130346 || c.id == 19523799 || c.id == 56260110) {
+                    int dmg = c.id == 19523799 ? 800 : (c.id == 73134081 ? 600 : (c.id == 46130346 ? 500 : (c.id == 56260110 ? 300 : 200)));
                     cur.hand.remove(i);
                     cur.gy.add(c);
                     opp.lp = Math.max(0, opp.lp - dmg);
                     spellsPlayed++;
                     logs.add("T" + turn + " " + curName + " 发动「" + c.getDisplayName() + "」造成 " + dmg + " 伤害");
-                } else if (c.id == 11868825 || c.id == 38199696) {
-                    int heal = c.id == 11868825 ? 600 : 500;
+                } else if (c.id == 11868825 || c.id == 38199696 || c.id == 84257639 || c.id == 20871001) {
+                    int heal = c.id == 84257639 ? 1000 : (c.id == 11868825 ? 600 : (c.id == 38199696 ? 500 : 400));
                     cur.hand.remove(i);
                     cur.gy.add(c);
                     cur.lp += heal;
@@ -257,5 +312,17 @@ public final class QuickDuelSimulator {
         }
         if (best != null && owner != null) owner.gy.remove(best);
         return best;
+    }
+
+    private static boolean hasExodia(Side side) {
+        boolean h = false, la = false, ra = false, ll = false, rl = false;
+        for (RpgCard c : side.hand) {
+            if (c.id == 33396948) h = true;
+            else if (c.id == 7902349) la = true;
+            else if (c.id == 70903634) ra = true;
+            else if (c.id == 44519536) ll = true;
+            else if (c.id == 8124921) rl = true;
+        }
+        return h && la && ra && ll && rl;
     }
 }

@@ -9,17 +9,29 @@ import java.util.TreeSet;
 
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.model.RpgCard;
 import cn.garymb.ygomobile.rpg.model.RpgCatalog;
 
 /**
- * Enforces the OCG timeline dimension across packs, cards, banlists, rule versions, and AI opponents.
+ * Enforces the OCG timeline dimension across packs, promo events, cards, banlists,
+ * rule versions, and AI opponents (1999-02-04 ~ 1999-12-31).
  * All date comparisons use ISO-8601 strings (YYYY-MM-DD), which sort lexicographically.
  */
 public final class TimelineEngine {
     private TimelineEngine() {}
+
+    /** Clamps a YYYY-MM-DD date string into the catalog's supported timeline range. */
+    public static String clampDate(RpgCatalog catalog, String date) {
+        String minD = (catalog != null && catalog.minTimelineDate != null) ? catalog.minTimelineDate : "1999-02-04";
+        String maxD = (catalog != null && catalog.maxTimelineDate != null) ? catalog.maxTimelineDate : "1999-12-31";
+        if (date == null || date.length() != 10) return minD;
+        if (date.compareTo(minD) < 0) return minD;
+        if (date.compareTo(maxD) > 0) return maxD;
+        return date;
+    }
 
     /** Returns true if releaseDate is on or before currentDate. */
     public static boolean isReleasedOnOrBefore(String releaseDate, String currentDate) {
@@ -27,13 +39,25 @@ public final class TimelineEngine {
         return releaseDate.compareTo(currentDate) <= 0;
     }
 
-    /** Returns all OCG packs released on or before currentDate. */
+    /** Returns all OCG packs/boxes released on or before currentDate. */
     public static List<OcgPack> getAvailablePacks(RpgCatalog catalog, String currentDate) {
         List<OcgPack> available = new ArrayList<>();
         if (catalog == null || catalog.packs == null) return available;
         for (OcgPack pack : catalog.packs) {
             if (isReleasedOnOrBefore(pack.releaseDate, currentDate)) {
                 available.add(pack);
+            }
+        }
+        return available;
+    }
+
+    /** Returns all OCG promo/giveaway events unlocked on or before currentDate. */
+    public static List<OcgEvent> getAvailableEvents(RpgCatalog catalog, String currentDate) {
+        List<OcgEvent> available = new ArrayList<>();
+        if (catalog == null || catalog.events == null) return available;
+        for (OcgEvent ev : catalog.events) {
+            if (isReleasedOnOrBefore(ev.releaseDate, currentDate)) {
+                available.add(ev);
             }
         }
         return available;
@@ -86,12 +110,18 @@ public final class TimelineEngine {
         return fallback;
     }
 
-    /** Returns all unique card passcodes released on or before currentDate. */
+    /** Returns all unique card passcodes released on or before currentDate (packs + promo events). */
     public static Set<Integer> getReleasedCardIds(RpgCatalog catalog, String currentDate) {
         Set<Integer> ids = new LinkedHashSet<>();
         for (OcgPack pack : getAvailablePacks(catalog, currentDate)) {
             if (pack.cards == null) continue;
             for (RpgCard c : pack.cards) {
+                ids.add(c.id);
+            }
+        }
+        for (OcgEvent ev : getAvailableEvents(catalog, currentDate)) {
+            if (ev.rewardCards == null) continue;
+            for (RpgCard c : ev.rewardCards) {
                 ids.add(c.id);
             }
         }
@@ -125,13 +155,18 @@ public final class TimelineEngine {
         return getActiveBanlist(catalog, currentDate).getMaxCopies(cardId);
     }
 
-    /** Returns sorted distinct milestone dates (pack releases + banlists + early rule shifts). */
+    /** Returns sorted distinct milestone dates (pack releases + promo events + banlists + rule shifts + year-end). */
     public static List<String> getTimelineMilestones(RpgCatalog catalog) {
         TreeSet<String> dates = new TreeSet<>();
         if (catalog != null) {
             if (catalog.packs != null) {
                 for (OcgPack p : catalog.packs) {
                     if (p.releaseDate != null && !p.releaseDate.isEmpty()) dates.add(p.releaseDate);
+                }
+            }
+            if (catalog.events != null) {
+                for (OcgEvent e : catalog.events) {
+                    if (e.releaseDate != null && !e.releaseDate.isEmpty()) dates.add(e.releaseDate);
                 }
             }
             if (catalog.banlists != null) {
@@ -143,6 +178,9 @@ public final class TimelineEngine {
                 for (OcgRuleSet r : catalog.rules) {
                     if (r.effectiveDate != null && !r.effectiveDate.isEmpty()) dates.add(r.effectiveDate);
                 }
+            }
+            if (catalog.maxTimelineDate != null && !catalog.maxTimelineDate.isEmpty()) {
+                dates.add(catalog.maxTimelineDate);
             }
         }
         return new ArrayList<>(dates);

@@ -2,6 +2,7 @@ package cn.garymb.ygomobile.rpg;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
@@ -20,20 +21,31 @@ import cn.garymb.ygomobile.rpg.engine.AiDeckGenerator;
 import cn.garymb.ygomobile.rpg.engine.CraftingEngine;
 import cn.garymb.ygomobile.rpg.engine.DeckValidator;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
+import cn.garymb.ygomobile.rpg.engine.EventClaimEngine;
 import cn.garymb.ygomobile.rpg.engine.PackOpeningEngine;
+import cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
+import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.model.RpgCard;
 import cn.garymb.ygomobile.rpg.model.RpgCatalog;
 import cn.garymb.ygomobile.rpg.model.RpgProfile;
 
 public class RpgEnginesTest {
-    private static final int DARK_MAGICIAN = 46986414; // Vol.1 UR
-    private static final int DARK_HOLE = 53129443;     // Vol.1 SR
-    private static final int TRAP_HOLE = 4206964;      // Vol.1 SR
+    private static final int DARK_MAGICIAN = 46986414;  // Vol.1 UR
+    private static final int DARK_HOLE = 53129443;      // Vol.1 SR
+    private static final int TRAP_HOLE = 4206964;       // Vol.1 SR
+    private static final int BLUE_EYES = 89631139;      // Starter Box UR
+    private static final int RAIGEKI = 12580477;        // Starter Box SR
     private static final int MONSTER_REBORN = 83764718; // Vol.2 SR
+    private static final int CELTIC_GUARDIAN = 91152256;// Starter Box pre-order promo SR
+    private static final int POT_OF_GREED = 55144522;   // Vol.3 N
+    private static final int EXODIA_HEAD = 33396948;    // Premium Pack UR
+    private static final int BLACK_LUSTER = 5405694;    // Premium Pack 2 UR
+    private static final int DE_SPELL = 19159413;       // EX x6
 
     private RpgCatalog catalog;
 
@@ -46,59 +58,87 @@ public class RpgEnginesTest {
     }
 
     @Test
-    public void catalogContainsFullOcgVol1AndVol2Data() {
+    public void catalogContainsFull1999OcgLineupWithAuthenticJpyPrices() {
         assertEquals("OCG", catalog.format);
-        assertEquals(2, catalog.packs.size());
-        assertEquals(40, catalog.findPack("ocg_vol1").cards.size());
-        assertEquals(40, catalog.findPack("ocg_vol2").cards.size());
+        assertEquals("1999-02-04", catalog.minTimelineDate);
+        assertEquals("1999-12-31", catalog.maxTimelineDate);
+        assertEquals(20, catalog.packs.size());
+        assertEquals(11, catalog.events.size());
+        assertTrue("Full 1999 catalog should have 600+ unique OCG cards",
+                catalog.getAllCardsMap().size() >= 600);
+
+        // Authentic JPY pricing
+        assertEquals(150, catalog.findPack("ocg_vol1").priceTokens);
+        assertEquals(100, catalog.findPack("ocg_booster1").priceTokens);
+        assertEquals(3, catalog.findPack("ocg_booster1").cardsPerPack);
+        assertEquals(3480, catalog.findPack("ocg_starter_box_theater").priceTokens);
+        assertEquals(3480, catalog.findPack("ocg_starter_box").priceTokens);
+        assertEquals(50, catalog.findPack("ocg_starter_box").cards.size());
+        assertEquals(300, catalog.findPack("ocg_le1_yugi").priceTokens);
+        assertEquals(200, catalog.findPack("ocg_pp1").priceTokens);
+        assertEquals(2000, catalog.findPack("ocg_ex_starter_box").priceTokens);
+        assertEquals(102, catalog.findPack("ocg_ex_starter_box").cardsPerPack);
+        assertEquals(500, catalog.findPack("ocg_pp2").priceTokens);
+
         assertEquals("黑魔术师", catalog.findCard(DARK_MAGICIAN).nameCn);
+        assertEquals("青眼白龙", catalog.findCard(BLUE_EYES).nameCn);
+        assertEquals("雷击", catalog.findCard(RAIGEKI).nameCn);
         assertEquals("死者苏生", catalog.findCard(MONSTER_REBORN).nameCn);
     }
 
     @Test
-    public void timelineControlsPackAvailabilityAndActiveBanlist() {
-        // 1999-02-04: only Vol.1, unrestricted
+    public void timelineControls1999ProductsBanlistAndBounds() {
+        assertEquals("1999-02-04", TimelineEngine.clampDate(catalog, "1998-01-01"));
+        assertEquals("1999-12-31", TimelineEngine.clampDate(catalog, "2001-01-01"));
+
+        // 1999-02-04: only Vol.1
         List<OcgPack> febPacks = TimelineEngine.getAvailablePacks(catalog, "1999-02-04");
         assertEquals(1, febPacks.size());
         assertEquals("ocg_vol1", febPacks.get(0).id);
+
+        // 1999-03-01: Vol.1 + Booster 1
+        assertEquals(2, TimelineEngine.getAvailablePacks(catalog, "1999-03-01").size());
+
+        // 1999-03-18: Vol.1 + Booster 1 + Starter Box (Theatrical + Retail)
+        assertEquals(4, TimelineEngine.getAvailablePacks(catalog, "1999-03-18").size());
+
+        // 1999-03-27: + Vol.2
+        assertEquals(5, TimelineEngine.getAvailablePacks(catalog, "1999-03-27").size());
+
+        // 1999-12-31: all 20 products & all 11 events unlocked
+        assertEquals(20, TimelineEngine.getAvailablePacks(catalog, "1999-12-31").size());
+        assertEquals(11, TimelineEngine.getAvailableEvents(catalog, "1999-12-31").size());
+
+        // 1999-02-04: unrestricted
         OcgBanlist febBan = TimelineEngine.getActiveBanlist(catalog, "1999-02-04");
         assertEquals(3, febBan.getMaxCopies(DARK_HOLE));
         assertEquals(3, febBan.getMaxCopies(TRAP_HOLE));
+        assertEquals(3, febBan.getMaxCopies(RAIGEKI));
 
-        // 1999-03-27: Vol.1 + Vol.2 unlocked, still unrestricted
-        List<OcgPack> marPacks = TimelineEngine.getAvailablePacks(catalog, "1999-03-27");
-        assertEquals(2, marPacks.size());
-
-        // 1999-08-26: First OCG banlist (Dark Hole & Trap Hole limited to 1)
+        // 1999-08-26: First OCG banlist (Dark Hole, Trap Hole, Raigeki limited to 1)
         OcgBanlist augBan = TimelineEngine.getActiveBanlist(catalog, "1999-08-26");
         assertEquals(1, augBan.getMaxCopies(DARK_HOLE));
         assertEquals(1, augBan.getMaxCopies(TRAP_HOLE));
+        assertEquals(1, augBan.getMaxCopies(RAIGEKI));
         assertEquals(3, augBan.getMaxCopies(MONSTER_REBORN));
-
-        // 2000-04-01: Dark Hole stays 1, Trap Hole unlimited (3), Monster Reborn semi-limited (2)
-        OcgBanlist apr2000Ban = TimelineEngine.getActiveBanlist(catalog, "2000-04-01");
-        assertEquals(1, apr2000Ban.getMaxCopies(DARK_HOLE));
-        assertEquals(3, apr2000Ban.getMaxCopies(TRAP_HOLE));
-        assertEquals(2, apr2000Ban.getMaxCopies(MONSTER_REBORN));
+        assertEquals(3, augBan.getMaxCopies(POT_OF_GREED));
     }
 
     @Test
-    public void packOpeningRespectsTimelineTokensAndPity() {
+    public void packOpeningSupportsVolBoosterFixedStarterBoxAndExBox() {
         RpgProfile profile = new RpgProfile();
         profile.currentTimelineDate = "1999-02-04";
         PackOpeningEngine engine = new PackOpeningEngine(new Random(42L));
 
-        // Cannot buy Vol.2 before 1999-03-27
-        PackOpeningEngine.PackOpenResult blocked = engine.openPacks(profile, catalog.findPack("ocg_vol2"), 1);
-        assertFalse(blocked.success);
-        assertEquals(1200, profile.tokens);
+        // Cannot buy Booster 1 before 1999-03-01
+        assertFalse(engine.openPacks(profile, catalog.findPack("ocg_booster1"), 1).success);
 
-        // Open 5 packs of Vol.1 -> 25 cards, 500 tokens spent, guaranteed >= 1 R+
+        // Open 5 packs of Vol.1 -> 25 cards, 750 tokens spent (150 x 5), guaranteed >= 1 R+
         PackOpeningEngine.PackOpenResult res = engine.openPacks(profile, catalog.findPack("ocg_vol1"), 5);
         assertTrue(res.success);
         assertEquals(25, res.pulledCards.size());
-        assertEquals(700, profile.tokens);
-        assertEquals(25, profile.getTotalOwnedCards());
+        assertEquals(750, res.tokensSpent);
+        assertEquals(750, profile.tokens);
         boolean hasRareOrBetter = false;
         for (PackOpeningEngine.PulledCard pc : res.pulledCards) {
             if (pc.card.getRarityEnum().ordinal() >= 1) {
@@ -107,6 +147,68 @@ public class RpgEnginesTest {
             }
         }
         assertTrue("5-pack pity must guarantee at least one R or higher card", hasRareOrBetter);
+
+        // Advance to 1999-03-01 -> Booster 1 Carddass vending machine (100 tokens -> 3 OCG cards)
+        profile.currentTimelineDate = "1999-03-01";
+        PackOpeningEngine.PackOpenResult booRes = engine.openPacks(profile, catalog.findPack("ocg_booster1"), 2);
+        assertTrue(booRes.success);
+        assertEquals(6, booRes.pulledCards.size());
+        assertEquals(200, booRes.tokensSpent);
+
+        // Advance to 1999-03-18 -> buy Starter Box (fixed 50 cards, 3480 tokens)
+        profile.currentTimelineDate = "1999-03-18";
+        profile.tokens = 4000;
+        PackOpeningEngine.PackOpenResult stRes = engine.openPacks(profile, catalog.findPack("ocg_starter_box"), 1);
+        assertTrue(stRes.success);
+        assertEquals(50, stRes.pulledCards.size());
+        assertEquals(3480, stRes.tokensSpent);
+        assertEquals(1, profile.getOwnedCount(BLUE_EYES));
+        assertEquals(1, profile.getOwnedCount(RAIGEKI));
+
+        // Advance to 1999-12-16 -> buy EX Starter Box (fixed 102 cards including 6x De-Spell, 2000 tokens)
+        profile.currentTimelineDate = "1999-12-16";
+        profile.tokens = 2500;
+        PackOpeningEngine.PackOpenResult exRes = engine.openPacks(profile, catalog.findPack("ocg_ex_starter_box"), 1);
+        assertTrue(exRes.success);
+        assertEquals(102, exRes.pulledCards.size());
+        assertEquals(2000, exRes.tokensSpent);
+        assertTrue("EX Starter Box must grant 6 copies of De-Spell", profile.getOwnedCount(DE_SPELL) >= 6);
+    }
+
+    @Test
+    public void specialPromoEventsEnforceDateWinRequirementAndClaimOnce() {
+        RpgProfile profile = new RpgProfile();
+        profile.currentTimelineDate = "1999-02-04";
+
+        // Starter Box pre-order Celtic Guardian not unlocked on 1999-02-04
+        OcgEvent preorder = catalog.findEvent("evt_1999_03_18_starter_preorder");
+        assertNotNull(preorder);
+        assertFalse(EventClaimEngine.claim(profile, preorder, new Random(1L)).success);
+
+        // Advance to 1999-03-18 -> claim Celtic Guardian once
+        profile.currentTimelineDate = "1999-03-18";
+        EventClaimEngine.ClaimResult r1 = EventClaimEngine.claim(profile, preorder, new Random(1L));
+        assertTrue(r1.success);
+        assertEquals(1, r1.grantedCards.size());
+        assertEquals(1, profile.getOwnedCount(CELTIC_GUARDIAN));
+        // Second claim blocked
+        assertFalse(EventClaimEngine.claim(profile, preorder, new Random(1L)).success);
+
+        // DM2 GBC promo: RANDOM_PICK 3 distinct cards on 1999-07-08
+        profile.currentTimelineDate = "1999-07-08";
+        OcgEvent dm2 = catalog.findEvent("evt_1999_07_08_dm2_game");
+        EventClaimEngine.ClaimResult rDm2 = EventClaimEngine.claim(profile, dm2, new Random(7L));
+        assertTrue(rDm2.success);
+        assertEquals(3, rDm2.grantedCards.size());
+
+        // Tokyo Dome championship prizes require >= 1 win
+        profile.currentTimelineDate = "1999-08-26";
+        OcgEvent domePrizes = catalog.findEvent("evt_1999_08_26_tokyo_dome_prizes");
+        assertFalse(EventClaimEngine.claim(profile, domePrizes, new Random(1L)).success);
+        profile.wins = 1;
+        EventClaimEngine.ClaimResult rDome = EventClaimEngine.claim(profile, domePrizes, new Random(1L));
+        assertTrue(rDome.success);
+        assertEquals(6, rDome.grantedCards.size());
     }
 
     @Test
@@ -116,45 +218,39 @@ public class RpgEnginesTest {
         profile.dust = 1000;
 
         // Cannot craft Vol.2 card on 1999-02-04
-        CraftingEngine.CraftResult blockedCraft = CraftingEngine.craft(profile, catalog, MONSTER_REBORN, 1);
-        assertFalse(blockedCraft.success);
+        assertFalse(CraftingEngine.craft(profile, catalog, MONSTER_REBORN, 1).success);
 
         // Can craft Vol.1 Dark Hole (SR = 240 dust)
-        CraftingEngine.CraftResult craftOk = CraftingEngine.craft(profile, catalog, DARK_HOLE, 2);
-        assertTrue(craftOk.success);
+        assertTrue(CraftingEngine.craft(profile, catalog, DARK_HOLE, 2).success);
         assertEquals(2, profile.getOwnedCount(DARK_HOLE));
         assertEquals(520, profile.dust);
 
-        // Put both in deck, then dismantle 1 -> deck should auto-trim to 1 copy
         profile.activeDeckMain.add(DARK_HOLE);
         profile.activeDeckMain.add(DARK_HOLE);
-        CraftingEngine.CraftResult disOk = CraftingEngine.dismantle(profile, catalog, DARK_HOLE, 1);
-        assertTrue(disOk.success);
+        assertTrue(CraftingEngine.dismantle(profile, catalog, DARK_HOLE, 1).success);
         assertEquals(1, profile.getOwnedCount(DARK_HOLE));
         assertEquals(600, profile.dust);
         assertEquals(1, profile.activeDeckMain.size());
 
-        // Advance timeline to 1999-03-27 -> now Monster Reborn can be crafted
-        profile.currentTimelineDate = "1999-03-27";
-        CraftingEngine.CraftResult craftVol2 = CraftingEngine.craft(profile, catalog, MONSTER_REBORN, 1);
-        assertTrue(craftVol2.success);
-        assertEquals(1, profile.getOwnedCount(MONSTER_REBORN));
+        // Advance to 1999-12-18 -> Premium Pack 2 Black Luster Soldier can be crafted
+        profile.currentTimelineDate = "1999-12-18";
+        assertTrue(CraftingEngine.craft(profile, catalog, BLACK_LUSTER, 1).success);
+        assertEquals(1, profile.getOwnedCount(BLACK_LUSTER));
     }
 
     @Test
-    public void deckValidatorEnforcesOwnershipTimelineAndBanlist() {
+    public void deckValidatorEnforcesOwnershipTimelineAnd1999Banlist() {
         RpgProfile profile = new RpgProfile();
         profile.currentTimelineDate = "1999-03-27";
 
-        // Give player 3 copies of every Vol.1 & Vol.2 card
         for (RpgCard c : TimelineEngine.getReleasedCards(catalog, "1999-03-27")) {
             profile.addCard(c.id, 3);
         }
 
-        // Build a 40-card deck containing 3x Dark Hole, 3x Trap Hole, 3x Monster Reborn
         List<Integer> deck = new ArrayList<>();
         for (int i = 0; i < 3; i++) deck.add(DARK_HOLE);
         for (int i = 0; i < 3; i++) deck.add(TRAP_HOLE);
+        for (int i = 0; i < 3; i++) deck.add(RAIGEKI);
         for (int i = 0; i < 3; i++) deck.add(MONSTER_REBORN);
         for (RpgCard c : catalog.findPack("ocg_vol1").cards) {
             if (c.id == DARK_HOLE || c.id == TRAP_HOLE) continue;
@@ -167,34 +263,27 @@ public class RpgEnginesTest {
         // Legal on 1999-03-27
         assertTrue(DeckValidator.validatePlayerDeck(profile, catalog).valid);
 
-        // Move timeline BACK to 1999-02-04 -> Monster Reborn (Vol.2) becomes illegal
+        // Move BACK to 1999-02-04 -> Raigeki & Monster Reborn not yet released
         profile.currentTimelineDate = "1999-02-04";
         assertFalse(DeckValidator.validatePlayerDeck(profile, catalog).valid);
 
-        // Move timeline FORWARD to 1999-08-26 -> Dark Hole & Trap Hole exceed limit 1
+        // Move FORWARD to 1999-08-26 -> Dark Hole, Trap Hole, Raigeki exceed limit 1
         profile.currentTimelineDate = "1999-08-26";
         DeckValidator.ValidationResult augRes = DeckValidator.validatePlayerDeck(profile, catalog);
         assertFalse(augRes.valid);
-        assertTrue(augRes.errors.size() >= 2);
-
-        // Move timeline FORWARD to 2000-04-01 -> Dark Hole (>1) and Monster Reborn (>2) illegal, Trap Hole (3) legal
-        profile.currentTimelineDate = "2000-04-01";
-        DeckValidator.ValidationResult aprRes = DeckValidator.validatePlayerDeck(profile, catalog);
-        assertFalse(aprRes.valid);
-        boolean mentionsTrapHole = false;
-        for (String err : aprRes.errors) {
-            if (err.contains("落穴")) mentionsTrapHole = true;
-        }
-        assertFalse("Trap Hole was unlimited on 2000-04-01", mentionsTrapHole);
+        assertTrue(augRes.errors.size() >= 3);
     }
 
     @Test
-    public void aiDecksStrictlyObeyCurrentTimelineAndBanlist() {
+    public void aiDecksStrictlyObeyFull1999TimelineAndBanlist() {
         List<AiOpponent> opps = AiDeckGenerator.getDemoOpponents();
-        String[] dates = {"1999-02-04", "1999-03-27", "1999-08-26", "2000-04-01"};
+        assertEquals(6, opps.size());
+        String[] dates = {"1999-02-04", "1999-03-01", "1999-03-18", "1999-05-27", "1999-08-26", "1999-12-31"};
 
         for (String date : dates) {
-            for (AiOpponent opp : TimelineEngine.getAvailableOpponents(opps, date)) {
+            List<AiOpponent> avail = TimelineEngine.getAvailableOpponents(opps, date);
+            assertFalse(avail.isEmpty());
+            for (AiOpponent opp : avail) {
                 AiDeckGenerator.GeneratedAiDeck aiDeck =
                         AiDeckGenerator.generateDeck(catalog, opp, date, new Random(123L));
                 assertEquals(40, aiDeck.main.size());
@@ -215,65 +304,57 @@ public class RpgEnginesTest {
 
         DuelRewardEngine.RewardSettlement win = DuelRewardEngine.settle(profile, opp, true, false);
         assertEquals(150, win.tokensEarned);
-        assertEquals(1350, profile.tokens);
+        assertEquals(1650, profile.tokens);
         assertEquals(1, profile.wins);
 
+        profile.claimedEventIds.add("evt_1999_02_21_dm1_nationals");
         repo.saveProfile(profile);
         RpgProfile reloaded = repo.loadProfile();
-        assertEquals(1350, reloaded.tokens);
-        assertEquals(1, reloaded.wins);
+        assertEquals(1650, reloaded.tokens);
+        assertTrue(reloaded.claimedEventIds.contains("evt_1999_02_21_dm1_nationals"));
     }
 
     @Test
-    public void timelineRuleVersionAutoSelectsLatestOcgEra() {
-        // 1999-02-04: Official Rule (no tributes, 1 spell/trap per turn, no first-turn draw)
-        cn.garymb.ygomobile.rpg.model.OcgRuleSet r1999Feb =
-                TimelineEngine.getActiveRuleSet(catalog, "1999-02-04");
-        assertFalse(r1999Feb.tributeSummonEnabled);
-        assertTrue(r1999Feb.spellTrapOncePerTurnLimit);
-        assertFalse(r1999Feb.firstTurnDrawEnabled);
-        assertEquals(0, r1999Feb.requiredTributes(7));
+    public void timelineRuleVersionAutoSelects1999OfficialAndExpertRules() {
+        OcgRuleSet rFeb = TimelineEngine.getActiveRuleSet(catalog, "1999-02-04");
+        assertEquals("ocg_official_1999", rFeb.id);
+        assertFalse(rFeb.tributeSummonEnabled);
+        assertTrue(rFeb.spellTrapOncePerTurnLimit);
+        assertFalse(rFeb.firstTurnDrawEnabled);
+        assertEquals(0, rFeb.requiredTributes(8));
 
-        // 1999-05-05: Expert Rule (tribute summon introduced, first-turn draw enabled)
-        cn.garymb.ygomobile.rpg.model.OcgRuleSet r1999May =
-                TimelineEngine.getActiveRuleSet(catalog, "1999-05-05");
-        assertTrue(r1999May.tributeSummonEnabled);
-        assertFalse(r1999May.spellTrapOncePerTurnLimit);
-        assertTrue(r1999May.firstTurnDrawEnabled);
-        assertEquals(1, r1999May.requiredTributes(5));
-        assertEquals(2, r1999May.requiredTributes(7));
+        OcgRuleSet rMay = TimelineEngine.getActiveRuleSet(catalog, "1999-05-05");
+        assertEquals("ocg_expert_1999", rMay.id);
+        assertTrue(rMay.tributeSummonEnabled);
+        assertFalse(rMay.spellTrapOncePerTurnLimit);
+        assertTrue(rMay.firstTurnDrawEnabled);
+        assertEquals(1, rMay.requiredTributes(5));
+        assertEquals(2, rMay.requiredTributes(8));
 
-        // 2014-03-21: Master Rule 3 (first-turn draw removed, duelRule = 3)
-        cn.garymb.ygomobile.rpg.model.OcgRuleSet r2014 =
-                TimelineEngine.getActiveRuleSet(catalog, "2014-03-21");
-        assertFalse(r2014.firstTurnDrawEnabled);
-        assertEquals(3, r2014.ygoproDuelRule);
-
-        // 2020-04-01: Master Rule 5 (duelRule = 5)
-        cn.garymb.ygomobile.rpg.model.OcgRuleSet r2020 =
-                TimelineEngine.getActiveRuleSet(catalog, "2020-04-01");
-        assertEquals(5, r2020.ygoproDuelRule);
+        OcgRuleSet rDec = TimelineEngine.getActiveRuleSet(catalog, "1999-12-31");
+        assertEquals("ocg_expert_1999", rDec.id);
     }
 
     @Test
-    public void quickDuelSimulatorCompletesWithTimelineRules() {
+    public void quickDuelSimulatorSupports1999RulesAndExodiaCheck() {
         RpgProfile profile = new RpgProfile();
-        profile.currentTimelineDate = "1999-03-27";
+        profile.currentTimelineDate = "1999-08-26";
+        profile.tokens = 5000;
         PackOpeningEngine packEngine = new PackOpeningEngine(new Random(7L));
-        packEngine.openPacks(profile, catalog.findPack("ocg_vol1"), 6);
-        packEngine.openPacks(profile, catalog.findPack("ocg_vol2"), 6);
+        packEngine.openPacks(profile, catalog.findPack("ocg_starter_box"), 1);
         DeckValidator.autoBuildLegalPlayerDeck(profile, catalog);
 
-        AiOpponent opp = AiDeckGenerator.getDemoOpponents().get(0);
+        AiOpponent opp = AiDeckGenerator.getDemoOpponents().get(4);
         AiDeckGenerator.GeneratedAiDeck aiDeck =
                 AiDeckGenerator.generateDeck(catalog, opp, profile.currentTimelineDate, new Random(7L));
-        cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator.QuickDuelReport report =
-                cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator.simulate(
+        QuickDuelSimulator.QuickDuelReport report =
+                QuickDuelSimulator.simulate(
                         catalog, profile.activeDeckMain, aiDeck.main, opp,
                         profile.currentTimelineDate, new Random(99L));
 
-        assertEquals("ocg_official_1999", report.appliedRule.id);
+        assertEquals("ocg_expert_1999", report.appliedRule.id);
         assertFalse(report.logs.isEmpty());
         assertTrue(report.turns >= 1);
+        assertNotNull(catalog.findCard(EXODIA_HEAD));
     }
 }

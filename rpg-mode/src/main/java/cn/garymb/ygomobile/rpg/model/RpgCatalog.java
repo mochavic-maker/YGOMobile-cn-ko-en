@@ -12,11 +12,14 @@ import java.util.Map;
  */
 public class RpgCatalog {
     public String format = "OCG";
-    public String version = "1.0-demo";
+    public String version = "1999-full-v1";
+    public String minTimelineDate = "1999-02-04";
+    public String maxTimelineDate = "1999-12-31";
     public CraftingRules craftingRules = new CraftingRules();
     public List<OcgRuleSet> rules = new ArrayList<>();
     public List<OcgBanlist> banlists = new ArrayList<>();
     public List<OcgPack> packs = new ArrayList<>();
+    public List<OcgEvent> events = new ArrayList<>();
 
     private transient Map<Integer, RpgCard> cardById;
     private transient Map<Integer, String> earliestReleaseByCardId;
@@ -41,22 +44,32 @@ public class RpgCatalog {
         cardById = new LinkedHashMap<>();
         earliestReleaseByCardId = new HashMap<>();
         highestRarityByCardId = new HashMap<>();
-        if (packs == null) return;
-        for (OcgPack pack : packs) {
-            if (pack.cards == null) continue;
-            for (RpgCard card : pack.cards) {
-                if (!cardById.containsKey(card.id)) {
-                    cardById.put(card.id, card);
-                }
-                String prevDate = earliestReleaseByCardId.get(card.id);
-                if (prevDate == null || (pack.releaseDate != null && pack.releaseDate.compareTo(prevDate) < 0)) {
-                    earliestReleaseByCardId.put(card.id, pack.releaseDate);
-                }
-                Rarity cur = card.getRarityEnum();
-                Rarity prevR = highestRarityByCardId.get(card.id);
-                if (prevR == null || cur.ordinal() > prevR.ordinal()) {
-                    highestRarityByCardId.put(card.id, cur);
-                }
+        if (packs != null) {
+            for (OcgPack pack : packs) {
+                indexCardList(pack.cards, pack.releaseDate);
+            }
+        }
+        if (events != null) {
+            for (OcgEvent ev : events) {
+                indexCardList(ev.rewardCards, ev.releaseDate);
+            }
+        }
+    }
+
+    private void indexCardList(List<RpgCard> list, String releaseDate) {
+        if (list == null) return;
+        for (RpgCard card : list) {
+            if (!cardById.containsKey(card.id)) {
+                cardById.put(card.id, card);
+            }
+            String prevDate = earliestReleaseByCardId.get(card.id);
+            if (prevDate == null || (releaseDate != null && releaseDate.compareTo(prevDate) < 0)) {
+                earliestReleaseByCardId.put(card.id, releaseDate);
+            }
+            Rarity cur = card.getRarityEnum();
+            Rarity prevR = highestRarityByCardId.get(card.id);
+            if (prevR == null || cur.ordinal() > prevR.ordinal()) {
+                highestRarityByCardId.put(card.id, cur);
             }
         }
     }
@@ -92,6 +105,14 @@ public class RpgCatalog {
         if (packs == null || packId == null) return null;
         for (OcgPack p : packs) {
             if (packId.equals(p.id)) return p;
+        }
+        return null;
+    }
+
+    public OcgEvent findEvent(String eventId) {
+        if (events == null || eventId == null) return null;
+        for (OcgEvent ev : events) {
+            if (eventId.equals(ev.id)) return ev;
         }
         return null;
     }

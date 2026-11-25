@@ -19,6 +19,7 @@ import com.google.android.material.tabs.TabLayout;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -34,11 +35,13 @@ import cn.garymb.ygomobile.rpg.engine.AiDeckGenerator;
 import cn.garymb.ygomobile.rpg.engine.CraftingEngine;
 import cn.garymb.ygomobile.rpg.engine.DeckValidator;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
+import cn.garymb.ygomobile.rpg.engine.EventClaimEngine;
 import cn.garymb.ygomobile.rpg.engine.PackOpeningEngine;
 import cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.model.Rarity;
@@ -47,11 +50,12 @@ import cn.garymb.ygomobile.rpg.model.RpgCatalog;
 import cn.garymb.ygomobile.rpg.model.RpgProfile;
 
 /**
- * Self-contained Android UI for the OCG Timeline RPG Mode:
- * - Tab 0: Booster Pack Shop & Pack Opening (OCG Vol.1 / Vol.2 demo)
- * - Tab 1: Card Collection & Dust Dismantle / Craft
- * - Tab 2: Ownership + Timeline + Banlist Restricted Deck Builder
- * - Tab 3: Timeline-Compliant AI Duel Launcher (Manual WindBot & Quick Duel) & Token Rewards
+ * Self-contained Android UI for the 1999 OCG Timeline RPG Mode (1999-02-04 ~ 1999-12-31):
+ * - Tab 0: Shop (Vol.1-6 / Booster 1-6 / STARTER BOX / EX / LE1 / PP1-2 at authentic JPY prices)
+ * - Tab 1: 1999 Special Promo & Event Card Giveaways
+ * - Tab 2: Card Collection & Dust Dismantle / Craft
+ * - Tab 3: Ownership + Timeline + Banlist Restricted Deck Builder
+ * - Tab 4: Timeline-Compliant AI Duel Launcher (Manual WindBot & Quick Duel) & Token Rewards
  */
 public class RpgHomeActivity extends AppCompatActivity {
 
@@ -87,6 +91,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             finish();
             return;
         }
+        profile.currentTimelineDate = TimelineEngine.clampDate(catalog, profile.currentTimelineDate);
 
         tvTokens = findViewById(R.id.tv_rpg_tokens);
         tvDust = findViewById(R.id.tv_rpg_dust);
@@ -102,6 +107,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         findViewById(R.id.btn_pick_date).setOnClickListener(v -> openDatePicker());
 
         tabLayout.addTab(tabLayout.newTab().setText("卡包商店"));
+        tabLayout.addTab(tabLayout.newTab().setText("特典活动"));
         tabLayout.addTab(tabLayout.newTab().setText("卡库/合成"));
         tabLayout.addTab(tabLayout.newTab().setText("RPG 组卡"));
         tabLayout.addTab(tabLayout.newTab().setText("AI 对战"));
@@ -154,10 +160,12 @@ public class RpgHomeActivity extends AppCompatActivity {
     }
 
     private void refreshAll() {
+        profile.currentTimelineDate = TimelineEngine.clampDate(catalog, profile.currentTimelineDate);
         tvTokens.setText("代币: " + profile.tokens);
         tvDust.setText("尘埃: " + profile.dust);
         tvTimelineDate.setText("当前时间轴: " + profile.currentTimelineDate
-                + "（已收集 " + profile.collection.size() + " 种 / 共 " + profile.getTotalOwnedCards() + " 张）");
+                + "（范围 1999.02.04~1999.12.31 · 已收集 " + profile.collection.size()
+                + " 种 / 共 " + profile.getTotalOwnedCards() + " 张）");
 
         OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
         tvActiveBanlist.setText("当前禁限表: " + banlist.name + " — " + banlist.description);
@@ -182,7 +190,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             btn.setLayoutParams(lp);
             btn.setPadding(dp(10), 0, dp(10), 0);
             btn.setOnClickListener(v -> {
-                profile.currentTimelineDate = date;
+                profile.currentTimelineDate = TimelineEngine.clampDate(catalog, date);
                 saveProfileSafe();
                 refreshAll();
             });
@@ -200,10 +208,17 @@ public class RpgHomeActivity extends AppCompatActivity {
         } catch (Exception ignored) {}
 
         DatePickerDialog dlg = new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
-            profile.currentTimelineDate = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth);
+            String picked = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth);
+            profile.currentTimelineDate = TimelineEngine.clampDate(catalog, picked);
             saveProfileSafe();
             refreshAll();
         }, y, m, d);
+        Calendar minCal = Calendar.getInstance();
+        minCal.set(1999, Calendar.FEBRUARY, 4, 0, 0, 0);
+        Calendar maxCal = Calendar.getInstance();
+        maxCal.set(1999, Calendar.DECEMBER, 31, 23, 59, 59);
+        dlg.getDatePicker().setMinDate(minCal.getTimeInMillis());
+        dlg.getDatePicker().setMaxDate(maxCal.getTimeInMillis());
         dlg.show();
     }
 
@@ -215,12 +230,15 @@ public class RpgHomeActivity extends AppCompatActivity {
                 renderShopTab();
                 break;
             case 1:
-                renderCollectionTab();
+                renderEventsTab();
                 break;
             case 2:
-                renderDeckTab();
+                renderCollectionTab();
                 break;
             case 3:
+                renderDeckTab();
+                break;
+            case 4:
                 renderAiDuelTab();
                 break;
         }
@@ -228,18 +246,21 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     // ==================== TAB 0: SHOP & PACK OPENING ====================
     private void renderShopTab() {
-        TextView hint = makeSubtleText("仅可购买发售日 ≤ " + profile.currentTimelineDate + " 的 OCG 卡包（每包 5 张，5 包保底 R 以上）");
+        TextView hint = makeSubtleText("仅可购买发售日 ≤ " + profile.currentTimelineDate
+                + " 的 1999 OCG 商品（代币价 1:1 还原当年日元定价）");
         layoutTabActions.addView(hint);
 
         for (final OcgPack pack : catalog.packs) {
             boolean unlocked = TimelineEngine.isReleasedOnOrBefore(pack.releaseDate, profile.currentTimelineDate);
             LinearLayout card = makeCardContainer();
 
-            TextView title = makeTitleText(pack.name + " [" + pack.code + "]");
+            TextView title = makeTitleText("[" + pack.getProductTypeLabelCn() + "] " + pack.name);
+            String unit = pack.fixedContents ? "盒/套" : ("VENDING_MACHINE".equals(pack.productType) ? "次" : "包");
             TextView meta = makeSubtleText("发售日: " + pack.releaseDate
-                    + " · 收录 " + pack.cards.size() + " 种 · 单价 " + pack.priceTokens + " 代币"
-                    + " · 已开 " + profile.packsOpened.getOrDefault(pack.id, 0) + " 包");
-            TextView odds = makeSubtleText(pack.slotRules.description);
+                    + " · 收录 " + pack.cards.size() + " 种 · " + pack.cardsPerPack + " 张/" + unit
+                    + " · 定价 " + pack.priceTokens + " 代币（原价 ¥" + pack.priceTokens + "）"
+                    + " · 已购 " + profile.packsOpened.getOrDefault(pack.id, 0) + " " + unit);
+            TextView odds = makeSubtleText(pack.description != null ? pack.description : pack.slotRules.description);
 
             card.addView(title);
             card.addView(meta);
@@ -250,12 +271,18 @@ public class RpgHomeActivity extends AppCompatActivity {
             btnRow.setPadding(0, dp(8), 0, 0);
 
             if (unlocked) {
-                Button b1 = makeActionButton("买 1 包 (" + pack.priceTokens + ")", "#D97706");
-                b1.setOnClickListener(v -> doOpenPack(pack, 1));
-                Button b5 = makeActionButton("买 5 包 (" + (pack.priceTokens * 5) + ")", "#0284C7");
-                b5.setOnClickListener(v -> doOpenPack(pack, 5));
-                btnRow.addView(b1);
-                btnRow.addView(b5);
+                if (pack.fixedContents) {
+                    Button buyBox = makeActionButton("购买整套 (" + pack.priceTokens + " 代币)", "#059669");
+                    buyBox.setOnClickListener(v -> doOpenPack(pack, 1));
+                    btnRow.addView(buyBox);
+                } else {
+                    Button b1 = makeActionButton("买 1 " + unit + " (" + pack.priceTokens + ")", "#D97706");
+                    b1.setOnClickListener(v -> doOpenPack(pack, 1));
+                    Button b5 = makeActionButton("买 5 " + unit + " (" + (pack.priceTokens * 5) + ")", "#0284C7");
+                    b5.setOnClickListener(v -> doOpenPack(pack, 5));
+                    btnRow.addView(b1);
+                    btnRow.addView(b5);
+                }
             } else {
                 TextView locked = new TextView(this);
                 locked.setText("未到发售日（请将时间轴移动至 " + pack.releaseDate + " 或之后）");
@@ -279,17 +306,79 @@ public class RpgHomeActivity extends AppCompatActivity {
         refreshAll();
 
         StringBuilder sb = new StringBuilder();
+        int shown = 0;
         for (PackOpeningEngine.PulledCard pc : res.pulledCards) {
-            sb.append("[").append(pc.card.rarity).append("] ")
-                    .append(pc.card.getDisplayName())
-                    .append(pc.isNew ? "  ★NEW" : "  (已有 x" + pc.ownedAfter + ")")
-                    .append("\n");
+            if (shown < 30) {
+                sb.append("[").append(pc.card.rarity).append("] ")
+                        .append(pc.card.getDisplayName())
+                        .append(pc.isNew ? "  ★NEW" : "  (已有 x" + pc.ownedAfter + ")")
+                        .append("\n");
+            }
+            shown++;
+        }
+        if (shown > 30) {
+            sb.append("… 其余 ").append(shown - 30).append(" 张卡片也已全部收入卡库。");
         }
         new AlertDialog.Builder(this)
-                .setTitle("开包结果 · " + pack.name + " x" + count)
+                .setTitle((pack.fixedContents ? "购入完成 · " : "开包结果 · ") + pack.name + " x" + count)
                 .setMessage(sb.toString())
                 .setPositiveButton("收入卡库", null)
                 .show();
+    }
+
+    // ==================== TAB 1: 1999 SPECIAL PROMO EVENTS ====================
+    private void renderEventsTab() {
+        TextView hint = makeSubtleText("1999 年真实 OCG 期间特典/大会/攻略本单卡赠送活动（时间轴到达活动开启日后可免费领取）");
+        layoutTabActions.addView(hint);
+
+        for (final OcgEvent ev : catalog.events) {
+            boolean unlocked = TimelineEngine.isReleasedOnOrBefore(ev.releaseDate, profile.currentTimelineDate);
+            boolean claimed = profile.claimedEventIds != null && profile.claimedEventIds.contains(ev.id);
+
+            LinearLayout card = makeCardContainer();
+            card.addView(makeTitleText(ev.name + (claimed ? " 【已领取】" : "")));
+            card.addView(makeSubtleText("活动日期: " + ev.releaseDate
+                    + (ev.endDate != null && !ev.endDate.equals(ev.releaseDate) ? " ~ " + ev.endDate : "")
+                    + (ev.requiredWins > 0 ? " · 需累计胜场 ≥ " + ev.requiredWins : " · 免费领取")));
+            card.addView(makeSubtleText(ev.description));
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(0, dp(8), 0, 0);
+
+            if (claimed) {
+                TextView done = makeSubtleText("✓ 特典已收入卡库");
+                done.setTextColor(Color.parseColor("#34D399"));
+                row.addView(done);
+            } else if (!unlocked) {
+                TextView locked = makeSubtleText("未到活动日期（时间轴 ≥ " + ev.releaseDate + " 开启）");
+                locked.setTextColor(Color.parseColor("#F87171"));
+                row.addView(locked);
+            } else {
+                Button btn = makeActionButton("领取特典单卡", "#7C3AED");
+                btn.setOnClickListener(v -> {
+                    EventClaimEngine.ClaimResult r = EventClaimEngine.claim(profile, ev, new Random());
+                    if (!r.success) {
+                        Toast.makeText(this, r.errorMessage, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    saveProfileSafe();
+                    refreshAll();
+                    StringBuilder sb = new StringBuilder();
+                    for (RpgCard c : r.grantedCards) {
+                        sb.append("[").append(c.rarity).append("] ").append(c.getDisplayName()).append(" x1\n");
+                    }
+                    new AlertDialog.Builder(this)
+                            .setTitle("特典领取成功 · " + ev.name)
+                            .setMessage(sb.toString())
+                            .setPositiveButton("收下特典", null)
+                            .show();
+                });
+                row.addView(btn);
+            }
+            card.addView(row);
+            layoutContent.addView(card);
+        }
     }
 
     // ==================== TAB 1: COLLECTION & CRAFTING ====================

@@ -32,7 +32,7 @@ public final class AiDeckGenerator {
         }
     }
 
-    /** Built-in OCG Series 1 (Vol.1 & Vol.2) demo opponents. */
+    /** Built-in 1999 full-year OCG RPG opponents (1999-02-04 ~ 1999-12-31). */
     public static List<AiOpponent> getDemoOpponents() {
         return Arrays.asList(
                 new AiOpponent(
@@ -41,23 +41,47 @@ public final class AiDeckGenerator {
                         "Lv.1 · 仅使用 N/R 级凡骨与基础装备",
                         "1999-02-04",
                         1, 150, 80, 50,
-                        "只使用当前时间轴已发售的 N/R 卡片，适合开局凑代币。"
+                        "只使用当前时间轴已发售的 N/R 卡片，适合开局赚取 150 代币买包。"
                 ),
                 new AiOpponent(
                         "ai_vol1_yugi",
                         "初代暗游戏（Vol.1 构筑）",
                         "Lv.2 · 黑魔术师 & 盖亚 + 经典解场",
                         "1999-02-04",
-                        2, 220, 100, 60,
-                        "严格遵守当前时间轴的 OCG 卡池与禁限表（如 1999.08 后黑洞/落穴限 1）。"
+                        2, 240, 110, 70,
+                        "严格遵守当前时间轴的 OCG 卡池、禁限表与历史规则。"
                 ),
                 new AiOpponent(
-                        "ai_vol2_ace",
-                        "决斗王国精英（Vol.1+Vol.2）",
-                        "Lv.3 · 死者苏生 / 护封剑 / 诅咒之龙",
-                        "1999-03-27",
-                        3, 300, 120, 80,
-                        "解锁 Vol.2 后登场，融合 Vol.1+Vol.2 高稀有主力，并严格遵守最新禁限表。"
+                        "ai_starter_kaiba",
+                        "社长·海马濑人（STARTER BOX）",
+                        "Lv.3 · 青眼白龙 & 雷击 / 场地强攻",
+                        "1999-03-18",
+                        3, 350, 150, 90,
+                        "STARTER BOX 发售解锁：在 1999.05 专家规则前可免祭品拍青眼白龙！"
+                ),
+                new AiOpponent(
+                        "ai_vol3_expert",
+                        "决斗王国精英（专家规则 · Vol.3）",
+                        "Lv.4 · 真红眼 / 强欲之壶 / 反转效果",
+                        "1999-05-27",
+                        3, 450, 180, 110,
+                        "专家规则与 Vol.3 效果怪兽上线后登场，擅用上级召唤与滤抽解场。"
+                ),
+                new AiOpponent(
+                        "ai_tokyo_dome",
+                        "东京巨蛋大会决赛选手（1999.08 限表）",
+                        "Lv.5 · 恶魔召唤 / 天使的施舍 / 羽毛扫",
+                        "1999-08-26",
+                        3, 600, 240, 140,
+                        "严格遵守 1999.08.26 史上首次限制表（黑洞/落穴/雷击各限 1）。"
+                ),
+                new AiOpponent(
+                        "ai_1999_champion",
+                        "1999 世纪末决斗王（EX & PP2 全卡池）",
+                        "Lv.6 · 1999 全年 Good Stuff 终极构筑",
+                        "1999-12-16",
+                        3, 800, 320, 180,
+                        "EX 双卡组盒发售解锁，集结 1999 年全 OCG 强卡，高额代币奖励。"
                 )
         );
     }

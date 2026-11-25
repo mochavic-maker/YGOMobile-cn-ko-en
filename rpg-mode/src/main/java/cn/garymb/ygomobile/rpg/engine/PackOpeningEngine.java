@@ -83,37 +83,49 @@ public class PackOpeningEngine {
         List<RpgCard> rares = pack.getCardsByRarity(Rarity.R);
         List<RpgCard> supers = pack.getCardsByRarity(Rarity.SR);
         List<RpgCard> ultras = pack.getCardsByRarity(Rarity.UR);
+        List<RpgCard> secrets = pack.getCardsByRarity(Rarity.SCR);
         if (pack.cards == null || pack.cards.isEmpty()) {
             return PackOpenResult.error("卡包卡池为空", profile.tokens);
         }
 
         profile.tokens -= totalCost;
-        List<PulledCard> allPulled = new ArrayList<>(packCount * pack.cardsPerPack);
+        List<PulledCard> allPulled = new ArrayList<>(packCount * Math.max(1, pack.cardsPerPack));
 
         for (int p = 0; p < packCount; p++) {
-            Set<Integer> usedInPack = new HashSet<>();
-            int commonSlots = Math.min(pack.slotRules.guaranteedCommonSlots, pack.cardsPerPack);
-
-            // Slots 1..4: Common (N)
-            for (int i = 0; i < commonSlots; i++) {
-                RpgCard c = pickFromPool(commons.isEmpty() ? pack.cards : commons, usedInPack);
-                allPulled.add(recordPull(profile, c));
-            }
-
-            // Remaining slot(s) (Slot 5 in OCG Vol. series): weighted rarity with pity
-            int extraSlots = Math.max(0, pack.cardsPerPack - commonSlots);
-            for (int i = 0; i < extraSlots; i++) {
-                boolean pityHit = pack.slotRules.pityRareEveryPacks > 0
-                        && (profile.packsSinceLastRare + 1) >= pack.slotRules.pityRareEveryPacks;
-                Rarity rolled = rollFifthSlotRarity(pack.slotRules.fifthSlotWeights, pityHit);
-                List<RpgCard> pool = poolForRarity(rolled, commons, rares, supers, ultras, pack.cards);
-                RpgCard c = pickFromPool(pool, usedInPack);
-                if (c.getRarityEnum().ordinal() >= Rarity.R.ordinal()) {
-                    profile.packsSinceLastRare = 0;
-                } else {
-                    profile.packsSinceLastRare++;
+            if (pack.fixedContents) {
+                for (RpgCard c : pack.cards) {
+                    int qty = Math.max(1, c.quantity);
+                    for (int q = 0; q < qty; q++) {
+                        allPulled.add(recordPull(profile, c));
+                    }
                 }
-                allPulled.add(recordPull(profile, c));
+            } else {
+                Set<Integer> usedInPack = new HashSet<>();
+                int commonSlots = Math.min(pack.slotRules.guaranteedCommonSlots, pack.cardsPerPack);
+
+                // Common slots (e.g., 4 in Vol., 2 in Carddass Booster, 0 in Premium Pack)
+                for (int i = 0; i < commonSlots; i++) {
+                    RpgCard c = pickFromPool(commons.isEmpty() ? pack.cards : commons, usedInPack);
+                    allPulled.add(recordPull(profile, c));
+                }
+
+                // Weighted rare/foil slot(s)
+                int extraSlots = Math.max(0, pack.cardsPerPack - commonSlots);
+                for (int i = 0; i < extraSlots; i++) {
+                    boolean pityHit = pack.slotRules.pityRareEveryPacks > 0
+                            && (profile.packsSinceLastRare + 1) >= pack.slotRules.pityRareEveryPacks;
+                    Rarity rolled = rollSlotRarity(pack.slotRules.fifthSlotWeights, pityHit);
+                    List<RpgCard> pool = poolForRarity(rolled, commons, rares, supers, ultras, secrets, pack.cards);
+                    RpgCard c = pickFromPool(pool, usedInPack);
+                    if (pack.slotRules.pityRareEveryPacks > 0) {
+                        if (c.getRarityEnum().ordinal() >= Rarity.R.ordinal()) {
+                            profile.packsSinceLastRare = 0;
+                        } else {
+                            profile.packsSinceLastRare++;
+                        }
+                    }
+                    allPulled.add(recordPull(profile, c));
+                }
             }
 
             Integer opened = profile.packsOpened.get(pack.id);
@@ -129,15 +141,18 @@ public class PackOpeningEngine {
         return new PulledCard(card, before == 0, before + 1);
     }
 
-    private Rarity rollFifthSlotRarity(Map<String, Integer> weights, boolean forceAtLeastRare) {
-        int wN = forceAtLeastRare ? 0 : weightOf(weights, "N", 76);
-        int wR = weightOf(weights, "R", 15);
-        int wSR = weightOf(weights, "SR", 6);
+    private Rarity rollSlotRarity(Map<String, Integer> weights, boolean forceAtLeastRare) {
+        int wN = forceAtLeastRare ? 0 : weightOf(weights, "N", 74);
+        int wR = weightOf(weights, "R", 16);
+        int wSR = weightOf(weights, "SR", 7);
         int wUR = weightOf(weights, "UR", 3);
-        int total = wN + wR + wSR + wUR;
+        int wSCR = weightOf(weights, "SCR", 0);
+        int total = wN + wR + wSR + wUR + wSCR;
         if (total <= 0) return forceAtLeastRare ? Rarity.R : Rarity.N;
 
         int roll = random.nextInt(total);
+        if (roll < wSCR) return Rarity.SCR;
+        roll -= wSCR;
         if (roll < wUR) return Rarity.UR;
         roll -= wUR;
         if (roll < wSR) return Rarity.SR;
@@ -152,12 +167,14 @@ public class PackOpeningEngine {
     }
 
     private List<RpgCard> poolForRarity(Rarity r, List<RpgCard> n, List<RpgCard> rare,
-                                        List<RpgCard> sr, List<RpgCard> ur, List<RpgCard> fallback) {
+                                        List<RpgCard> sr, List<RpgCard> ur, List<RpgCard> scr,
+                                        List<RpgCard> fallback) {
         switch (r) {
-            case UR: return !ur.isEmpty() ? ur : (!sr.isEmpty() ? sr : fallback);
-            case SR: return !sr.isEmpty() ? sr : (!rare.isEmpty() ? rare : fallback);
-            case R:  return !rare.isEmpty() ? rare : fallback;
-            default: return !n.isEmpty() ? n : fallback;
+            case SCR: return !scr.isEmpty() ? scr : (!ur.isEmpty() ? ur : fallback);
+            case UR:  return !ur.isEmpty() ? ur : (!sr.isEmpty() ? sr : fallback);
+            case SR:  return !sr.isEmpty() ? sr : (!rare.isEmpty() ? rare : fallback);
+            case R:   return !rare.isEmpty() ? rare : fallback;
+            default:  return !n.isEmpty() ? n : fallback;
         }
     }
 

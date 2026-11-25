@@ -8,6 +8,8 @@ public class RpgCard {
     public int id;
     public String setCode;
     public String rarity;
+    /** Copy count granted per purchase for fixed products (e.g., EX Starter Box). */
+    public int quantity = 1;
     public String nameCn;
     public String nameJp;
     public String nameEn;
