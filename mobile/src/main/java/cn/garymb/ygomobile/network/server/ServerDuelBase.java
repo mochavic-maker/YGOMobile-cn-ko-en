@@ -283,6 +283,7 @@ abstract class ServerDuelBase implements YGOProtocol {
 
         analyzer.refreshExtra(0);
         analyzer.refreshExtra(1);
+        cn.garymb.ygomobile.rpg.RpgIntegration.applyActiveRpgRulesToDuel(pduel);
         OcgDuelEngine.startDuel(pduel, opt);
         if (hi.timeLimit != 0) {
             startTimer();

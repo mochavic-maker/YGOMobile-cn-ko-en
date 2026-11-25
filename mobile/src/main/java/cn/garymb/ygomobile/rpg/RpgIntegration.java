@@ -95,6 +95,7 @@ public final class RpgIntegration {
         if (activity == null || !RpgSessionManager.hasActiveRpgDuel()) {
             return;
         }
+        sActiveRpgDuelRuleSet = null;
         boolean isDraw = (winner == 2);
         DuelRewardEngine.RewardSettlement settlement =
                 RpgSessionManager.onDuelFinished(activity.getApplicationContext(), selfWon, isDraw);
@@ -146,6 +147,72 @@ public final class RpgIntegration {
 
     private static volatile java.util.Map<Integer, Integer> sRpgDeckAllowedCaps = null;
     private static volatile java.util.Map<Integer, Integer> sRpgDeckCurrentCounts = null;
+    private static volatile OcgRuleSet sActiveRpgDuelRuleSet = null;
+
+    /**
+     * Hook called from ServerDuelBase (and ServerDuel undo rebuild) right before OcgDuelEngine.startDuel().
+     * Injects historical OCG rule overrides (e.g. 1999-02-04 no-tribute summon/set, no Turn 1 draw,
+     * no 6-card End Phase hand limit) directly into ocgcore via Lua GlobalEffects.
+     */
+    public static void applyActiveRpgRulesToDuel(long pduel) {
+        if (pduel == 0L || !RpgSessionManager.hasActiveRpgDuel()) return;
+        OcgRuleSet rule = sActiveRpgDuelRuleSet;
+        if (rule == null) return;
+
+        StringBuilder lua = new StringBuilder();
+        lua.append("-- Auto-generated OCG Timeline RPG rule override: ").append(rule.id).append("\n");
+        if (!rule.tributeSummonEnabled) {
+            // 1999.02.04 公式ルール: Level 5+ monsters require 0 tributes to Normal Summon or Normal Set
+            lua.append("local e1=Effect.GlobalEffect()\n");
+            lua.append("e1:SetType(EFFECT_TYPE_FIELD)\n");
+            lua.append("e1:SetCode(EFFECT_DECREASE_TRIBUTE)\n");
+            lua.append("e1:SetProperty(EFFECT_FLAG_IGNORE_IMMUNE)\n");
+            lua.append("e1:SetTargetRange(LOCATION_HAND,LOCATION_HAND)\n");
+            lua.append("e1:SetValue(0x20002)\n");
+            lua.append("Duel.RegisterEffect(e1,0)\n");
+
+            lua.append("local e2=Effect.GlobalEffect()\n");
+            lua.append("e2:SetType(EFFECT_TYPE_FIELD)\n");
+            lua.append("e2:SetCode(EFFECT_DECREASE_TRIBUTE_SET)\n");
+            lua.append("e2:SetProperty(EFFECT_FLAG_IGNORE_IMMUNE)\n");
+            lua.append("e2:SetTargetRange(LOCATION_HAND,LOCATION_HAND)\n");
+            lua.append("e2:SetValue(0x20002)\n");
+            lua.append("Duel.RegisterEffect(e2,0)\n");
+        }
+        if (!rule.firstTurnDrawEnabled) {
+            // 1999 Series 1 Official & Expert Rules: Turn 1 player does not draw in Draw Phase
+            lua.append("local e3=Effect.GlobalEffect()\n");
+            lua.append("e3:SetType(EFFECT_TYPE_FIELD)\n");
+            lua.append("e3:SetProperty(EFFECT_FLAG_PLAYER_TARGET)\n");
+            lua.append("e3:SetCode(EFFECT_DRAW_COUNT)\n");
+            lua.append("e3:SetTargetRange(1,1)\n");
+            lua.append("e3:SetCondition(function(e) return Duel.GetTurnCount()==1 end)\n");
+            lua.append("e3:SetValue(0)\n");
+            lua.append("Duel.RegisterEffect(e3,0)\n");
+        }
+        if (rule.deckOutCompareLp) {
+            // 1999 Series 1 rules had no 6-card hand size limit in End Phase
+            lua.append("local e4=Effect.GlobalEffect()\n");
+            lua.append("e4:SetType(EFFECT_TYPE_FIELD)\n");
+            lua.append("e4:SetProperty(EFFECT_FLAG_PLAYER_TARGET)\n");
+            lua.append("e4:SetCode(EFFECT_HAND_LIMIT)\n");
+            lua.append("e4:SetTargetRange(1,1)\n");
+            lua.append("e4:SetValue(100)\n");
+            lua.append("Duel.RegisterEffect(e4,0)\n");
+        }
+
+        File ruleFile = new File(AppsSettings.get().getResourcePath(), "rpg_rule_override.lua");
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(ruleFile)) {
+            fos.write(lua.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            android.util.Log.e("RpgIntegration", "Failed to write rpg_rule_override.lua", e);
+            return;
+        }
+        int res = cn.garymb.ygomobile.engine.OcgDuelEngine.preloadScript(pduel, "./rpg_rule_override.lua");
+        android.util.Log.i("RpgIntegration", "Preloaded RPG rule override (" + rule.id
+                + ", tribute=" + rule.tributeSummonEnabled
+                + ", t1Draw=" + rule.firstTurnDrawEnabled + ") -> res=" + res);
+    }
 
     /**
      * Hook called from CardSearcherManagerBase.executeFilterAsync():
@@ -338,9 +405,19 @@ public final class RpgIntegration {
                                        OcgRuleSet activeRuleSet,
                                        String currentTimelineDate) {
                 activity.runOnUiThread(() -> {
+                    // Record active historical OCG rule set so ServerDuelBase injects matching Lua rule overrides
+                    sActiveRpgDuelRuleSet = activeRuleSet;
+
                     // Sync player's validated RPG .ydk into native deck/RPG/ and register via setLastDeckPath
                     // so PlayerWaitingDialog loads the player's actual RPG deck instead of the default sample deck.
                     syncYdkToNativeDeckDir(playerDeckYdkPath);
+
+                    if (activeRuleSet != null) {
+                        String ruleSummary = activeRuleSet.name
+                                + (activeRuleSet.tributeSummonEnabled ? "（上级需祭品" : "（上级免祭品")
+                                + (activeRuleSet.firstTurnDrawEnabled ? " · 先攻抽卡）" : " · 先攻不抽卡）");
+                        Toast.makeText(activity, "已应用 RPG 规则：" + ruleSummary, Toast.LENGTH_LONG).show();
+                    }
 
                     GameEngine engine = activity.getEngine();
                     engine.setBotMode(true);

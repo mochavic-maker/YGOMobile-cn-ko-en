@@ -243,6 +243,7 @@ final class ServerDuel extends ServerDuelBase {
                 room.curPlayer[0] = room.players[0];
                 room.curPlayer[1] = room.players[3];
             }
+            cn.garymb.ygomobile.rpg.RpgIntegration.applyActiveRpgRulesToDuel(pduel);
             OcgDuelEngine.startDuel(pduel, undoOpt);
             ok = processSilent();
             for (int i = 0; ok && i < keep; i++) {
