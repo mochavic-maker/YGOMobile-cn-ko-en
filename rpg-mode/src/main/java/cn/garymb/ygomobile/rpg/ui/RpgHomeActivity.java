@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -551,27 +552,20 @@ public class RpgHomeActivity extends AppCompatActivity {
             topRow.addView(infoCol);
             card.addView(topRow);
 
-            LinearLayout btnRow = new LinearLayout(this);
-            btnRow.setOrientation(LinearLayout.HORIZONTAL);
-            btnRow.setPadding(0, dp(8), 0, 0);
+            Button poolBtn = makeActionButton("查看卡池", "#475569");
+            poolBtn.setOnClickListener(v -> showPackPoolDialog(pack));
 
             if (pack.fixedContents) {
-                Button buyBox = makeActionButton("购买整套 (" + pack.priceTokens + " 代币)", "#059669");
+                Button buyBox = makeActionButton("购买整套 (" + pack.priceTokens + ")", "#059669");
                 buyBox.setOnClickListener(v -> doOpenPack(pack, 1));
-                btnRow.addView(buyBox);
+                card.addView(makeEqualWeightButtonRow(8, buyBox, poolBtn));
             } else {
                 Button b1 = makeActionButton("买 1 " + unit + " (" + pack.priceTokens + ")", "#D97706");
                 b1.setOnClickListener(v -> doOpenPack(pack, 1));
                 Button b5 = makeActionButton("买 5 " + unit + " (" + (pack.priceTokens * 5) + ")", "#0284C7");
                 b5.setOnClickListener(v -> doOpenPack(pack, 5));
-                btnRow.addView(b1);
-                btnRow.addView(b5);
+                card.addView(makeEqualWeightButtonRow(8, b1, b5, poolBtn));
             }
-            Button poolBtn = makeActionButton("查看卡池", "#475569");
-            poolBtn.setOnClickListener(v -> showPackPoolDialog(pack));
-            btnRow.addView(poolBtn);
-
-            card.addView(btnRow);
             layoutContent.addView(card);
         }
     }
@@ -1037,29 +1031,24 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
             box.addView(wrTv);
 
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, dp(8), 0, 0);
-
-            Button fightBtn = makeActionButton("🪙 亲自对战 (OCG专属AI)", "#DC2626");
+            Button fightBtn = makeActionButton("🪙 亲自对战", "#DC2626");
             fightBtn.setOnClickListener(v -> launchAiDuel(opp));
-            row.addView(fightBtn);
 
             Button quickBtn = makeActionButton("⚡ AI托管快战", "#D97706");
             quickBtn.setOnClickListener(v -> runQuickDuel(opp));
-            row.addView(quickBtn);
+
+            box.addView(makeEqualWeightButtonRow(8, fightBtn, quickBtn));
 
             Button viewDeckBtn = makeActionButton("👁️ 查看卡组", "#0284C7");
             viewDeckBtn.setOnClickListener(v -> openAiDeckReadonlyViewer(opp));
-            row.addView(viewDeckBtn);
 
             if (opp.deckEvolutions != null && opp.deckEvolutions.size() > 1) {
-                Button evoBtn = makeActionButton("演变(" + opp.deckEvolutions.size() + "套)", "#475569");
+                Button evoBtn = makeActionButton("📜 演变史(" + opp.deckEvolutions.size() + "套)", "#475569");
                 evoBtn.setOnClickListener(v -> showAiEvolutionDialog(opp));
-                row.addView(evoBtn);
+                box.addView(makeEqualWeightButtonRow(6, viewDeckBtn, evoBtn));
+            } else {
+                box.addView(makeEqualWeightButtonRow(6, viewDeckBtn));
             }
-
-            box.addView(row);
             layoutContent.addView(box);
         }
     }
@@ -1152,18 +1141,22 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
         }
 
-        LinearLayout ctrlRow = new LinearLayout(this);
-        ctrlRow.setOrientation(LinearLayout.HORIZONTAL);
-        ctrlRow.setPadding(0, dp(8), 0, 0);
+        Button bReset = makeActionButton(bracket.finished ? "开启新一届" : "放弃本届", "#475569");
+        bReset.setOnClickListener(v -> {
+            RpgSessionManager.setActiveTournament(null);
+            renderCurrentTab();
+        });
+
         TournamentEngine.Match pendingPlayer = bracket.findPendingPlayerMatch();
         if (pendingPlayer != null) {
             Button bManual = makeActionButton("🪙 亲自手打参赛", "#DC2626");
             bManual.setOnClickListener(v -> launchTournamentMatchManual(pendingPlayer));
-            ctrlRow.addView(bManual);
 
-            Button bQuick = makeActionButton("⚡ AI托管参赛(真引擎)", "#D97706");
+            Button bQuick = makeActionButton("⚡ AI托管参赛", "#D97706");
             bQuick.setOnClickListener(v -> playTournamentMatchQuick(bracket, pendingPlayer));
-            ctrlRow.addView(bQuick);
+
+            head.addView(makeEqualWeightButtonRow(8, bManual, bQuick));
+            head.addView(makeEqualWeightButtonRow(6, bReset));
         } else if (!bracket.finished && bracket.playerEliminated) {
             Button bSimRest = makeActionButton("⏭ 真引擎决出本届冠军", "#2563EB");
             bSimRest.setOnClickListener(v -> {
@@ -1184,15 +1177,10 @@ public class RpgHomeActivity extends AppCompatActivity {
                     });
                 }, "RpgTournamentSim").start();
             });
-            ctrlRow.addView(bSimRest);
+            head.addView(makeEqualWeightButtonRow(8, bSimRest, bReset));
+        } else {
+            head.addView(makeEqualWeightButtonRow(8, bReset));
         }
-        Button bReset = makeActionButton(bracket.finished ? "开启新一届" : "放弃本届", "#475569");
-        bReset.setOnClickListener(v -> {
-            RpgSessionManager.setActiveTournament(null);
-            renderCurrentTab();
-        });
-        ctrlRow.addView(bReset);
-        head.addView(ctrlRow);
         layoutContent.addView(head);
 
         // Render every round & match card
@@ -1723,13 +1711,43 @@ public class RpgHomeActivity extends AppCompatActivity {
         b.setTextSize(12f);
         b.setTextColor(Color.WHITE);
         b.setGravity(Gravity.CENTER);
-        b.setBackgroundColor(Color.parseColor(hexBg));
+        b.setSingleLine(true);
+        b.setEllipsize(TextUtils.TruncateAt.END);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.parseColor(hexBg));
+        bg.setCornerRadius(dp(6));
+        b.setBackground(bg);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(34));
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(36));
         lp.setMarginEnd(dp(8));
         b.setLayoutParams(lp);
         b.setPadding(dp(12), 0, dp(12), 0);
+        b.setMinHeight(0);
+        b.setMinWidth(0);
         return b;
+    }
+
+    private LinearLayout makeEqualWeightButtonRow(int topPadDp, Button... buttons) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        row.setPadding(0, dp(topPadDp), 0, 0);
+        List<Button> nonNull = new ArrayList<>();
+        for (Button b : buttons) {
+            if (b != null) nonNull.add(b);
+        }
+        for (int i = 0; i < nonNull.size(); i++) {
+            Button b = nonNull.get(i);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(36), 1f);
+            if (i < nonNull.size() - 1) {
+                lp.setMarginEnd(dp(8));
+            }
+            b.setLayoutParams(lp);
+            b.setPadding(dp(8), 0, dp(8), 0);
+            row.addView(b);
+        }
+        return row;
     }
 
     private static class ShowdownDeckChoice {
@@ -1900,17 +1918,11 @@ public class RpgHomeActivity extends AppCompatActivity {
         pickerCard.addView(makeSubtleText("A 方：" + (choiceA != null ? choiceA.label : "未选择")));
         pickerCard.addView(makeSubtleText("B 方：" + (choiceB != null ? choiceB.label : "未选择")));
 
-        LinearLayout pickRow = new LinearLayout(this);
-        pickRow.setOrientation(LinearLayout.HORIZONTAL);
-        pickRow.setPadding(0, dp(8), 0, 0);
-
         Button pickABtn = makeActionButton("选择 A 方", "#0284C7");
         pickABtn.setOnClickListener(v -> showShowdownPickerDialog(true, choices));
-        pickRow.addView(pickABtn);
 
         Button pickBBtn = makeActionButton("选择 B 方", "#7C3AED");
         pickBBtn.setOnClickListener(v -> showShowdownPickerDialog(false, choices));
-        pickRow.addView(pickBBtn);
 
         Button swapBtn = makeActionButton("🔄 互换", "#475569");
         swapBtn.setOnClickListener(v -> {
@@ -1919,20 +1931,13 @@ public class RpgHomeActivity extends AppCompatActivity {
             showdownKeyB = tmp;
             renderCurrentTab();
         });
-        pickRow.addView(swapBtn);
-        pickerCard.addView(pickRow);
-
-        LinearLayout runRow = new LinearLayout(this);
-        runRow.setOrientation(LinearLayout.HORIZONTAL);
-        runRow.setPadding(0, dp(8), 0, 0);
+        pickerCard.addView(makeEqualWeightButtonRow(8, pickABtn, pickBBtn, swapBtn));
 
         Button run20Btn = makeActionButton("⚡ 20 局真引擎", "#059669");
         run20Btn.setOnClickListener(v -> runRealOcgShowdownBatch(choiceA, choiceB, 20));
-        runRow.addView(run20Btn);
 
         Button run100Btn = makeActionButton("🔥 100 局真引擎", "#D97706");
         run100Btn.setOnClickListener(v -> runRealOcgShowdownBatch(choiceA, choiceB, 100));
-        runRow.addView(run100Btn);
 
         Button spectateBtn = makeActionButton("👁️ 3D实况观战", "#DC2626");
         spectateBtn.setOnClickListener(v -> {
@@ -1955,9 +1960,9 @@ public class RpgHomeActivity extends AppCompatActivity {
                     profile.currentTimelineDate);
             finish();
         });
-        runRow.addView(spectateBtn);
 
-        pickerCard.addView(runRow);
+        pickerCard.addView(makeEqualWeightButtonRow(8, run20Btn, run100Btn));
+        pickerCard.addView(makeEqualWeightButtonRow(6, spectateBtn));
         layoutContent.addView(pickerCard);
 
         if (lastShowdownReport != null) {

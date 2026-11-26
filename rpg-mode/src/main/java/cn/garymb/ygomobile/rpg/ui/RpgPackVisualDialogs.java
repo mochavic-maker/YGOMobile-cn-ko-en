@@ -360,14 +360,31 @@ public final class RpgPackVisualDialogs {
         dialog.show();
     }
 
+    private static final class PoolTileHolder {
+        final int cardId;
+        final LinearLayout tile;
+        final GradientDrawable frameBg;
+        final int normalStrokeColor;
+        final int normalStrokeWidthPx;
+
+        PoolTileHolder(int cardId, LinearLayout tile, GradientDrawable frameBg,
+                       int normalStrokeColor, int normalStrokeWidthPx) {
+            this.cardId = cardId;
+            this.tile = tile;
+            this.frameBg = frameBg;
+            this.normalStrokeColor = normalStrokeColor;
+            this.normalStrokeWidthPx = normalStrokeWidthPx;
+        }
+    }
+
     public static void showPackPoolVisualDialog(final Activity activity,
                                                 final RpgCatalog catalog,
                                                 final RpgProfile profile,
                                                 final OcgPack pack) {
         final Dialog dialog = createFullWidthDialog(activity);
-        final int cols = isLandscape(activity) ? 5 : 3;
-        final int cardWidthPx = computeCardWidthPx(activity, cols, 48);
-        final int cardHeightPx = Math.round(cardWidthPx * 1.45f);
+        final boolean landscape = isLandscape(activity);
+        final int cols = landscape ? 6 : 4;
+        final int cardWidthPx = computeCardWidthPx(activity, cols, 36);
 
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -376,30 +393,40 @@ public final class RpgPackVisualDialogs {
         rootBg.setCornerRadius(dp(activity, 14));
         rootBg.setStroke(dp(activity, 1), Color.parseColor("#334155"));
         root.setBackground(rootBg);
-        root.setPadding(dp(activity, 12), dp(activity, 12), dp(activity, 12), dp(activity, 12));
+        root.setPadding(dp(activity, 10), dp(activity, 10), dp(activity, 10), dp(activity, 10));
 
-        // Deduplicate & compute progress
+        // Deduplicate & compute progress + per-filter counts
         Set<Integer> seenIds = new LinkedHashSet<>();
         final List<RpgCard> uniqueCards = new ArrayList<>();
         int unlockedCount = 0;
         int playset3Count = 0;
+        int unownedCount = 0;
+        int highRarityCount = 0;
+        int rareCount = 0;
+        int normalCount = 0;
         for (RpgCard c : pack.cards) {
             if (seenIds.add(c.id)) {
                 uniqueCards.add(c);
                 int own = profile.getOwnedCount(c.id);
                 if (own >= 1) unlockedCount++;
+                else unownedCount++;
                 if (own >= 3) playset3Count++;
+                Rarity rr = c.getRarityEnum();
+                if (rr == Rarity.UR || rr == Rarity.SR || rr == Rarity.SCR) highRarityCount++;
+                else if (rr == Rarity.R) rareCount++;
+                else if (rr == Rarity.N) normalCount++;
             }
         }
 
+        // Compact header bar with pack thumbnail, title, progress, and inline Close button
         LinearLayout poolHeader = new LinearLayout(activity);
         poolHeader.setOrientation(LinearLayout.HORIZONTAL);
         poolHeader.setGravity(Gravity.CENTER_VERTICAL);
-        poolHeader.setPadding(0, 0, 0, dp(activity, 8));
+        poolHeader.setPadding(0, 0, 0, dp(activity, 6));
 
         ImageView ivPoolCover = new ImageView(activity);
-        LinearLayout.LayoutParams pCoverLp = new LinearLayout.LayoutParams(dp(activity, 42), dp(activity, 62));
-        pCoverLp.setMarginEnd(dp(activity, 10));
+        LinearLayout.LayoutParams pCoverLp = new LinearLayout.LayoutParams(dp(activity, 28), dp(activity, 40));
+        pCoverLp.setMarginEnd(dp(activity, 8));
         ivPoolCover.setLayoutParams(pCoverLp);
         ivPoolCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
         RpgCardArtLoader.loadPackCoverInto(activity, ivPoolCover, pack.id);
@@ -410,138 +437,378 @@ public final class RpgPackVisualDialogs {
         pHeaderText.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         TextView tvTitle = new TextView(activity);
-        tvTitle.setText("🃏 卡池一览 · " + pack.name);
+        tvTitle.setText("🃏 卡池 · " + pack.name);
         tvTitle.setTextColor(Color.parseColor("#F8FAFC"));
-        tvTitle.setTextSize(15f);
+        tvTitle.setTextSize(14f);
         tvTitle.setTypeface(null, Typeface.BOLD);
+        tvTitle.setSingleLine(true);
+        tvTitle.setEllipsize(TextUtils.TruncateAt.END);
         pHeaderText.addView(tvTitle);
 
         TextView tvSub = new TextView(activity);
         tvSub.setText("共 " + uniqueCards.size() + " 种 · 已解锁 " + unlockedCount + "/" + uniqueCards.size()
-                + " · 已满3张 " + playset3Count + "/" + uniqueCards.size() + "（点击卡图查看详情）");
+                + " · 满3张 " + playset3Count + "/" + uniqueCards.size());
         tvSub.setTextColor(Color.parseColor("#38BDF8"));
-        tvSub.setTextSize(11.5f);
-        tvSub.setPadding(0, dp(activity, 3), 0, 0);
+        tvSub.setTextSize(11f);
+        tvSub.setSingleLine(true);
+        tvSub.setEllipsize(TextUtils.TruncateAt.END);
         pHeaderText.addView(tvSub);
 
         poolHeader.addView(pHeaderText);
+
+        Button btnClose = makeDialogButton(activity, "关闭", "#475569");
+        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 32));
+        closeLp.setMarginStart(dp(activity, 6));
+        btnClose.setLayoutParams(closeLp);
+        btnClose.setPadding(dp(activity, 12), 0, dp(activity, 12), 0);
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+        poolHeader.addView(btnClose);
         root.addView(poolHeader);
 
-        // Filter bar
+        // ==================== TOP PANE: PERSISTENT CARD DETAIL PANEL ====================
+        LinearLayout detailPanel = new LinearLayout(activity);
+        detailPanel.setOrientation(LinearLayout.HORIZONTAL);
+        detailPanel.setGravity(Gravity.TOP);
+        LinearLayout.LayoutParams detailLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, landscape ? 0.42f : 0.36f);
+        detailLp.bottomMargin = dp(activity, 6);
+        detailPanel.setLayoutParams(detailLp);
+        GradientDrawable detailBg = new GradientDrawable();
+        detailBg.setColor(Color.parseColor("#111C33"));
+        detailBg.setCornerRadius(dp(activity, 10));
+        detailBg.setStroke(dp(activity, 1), Color.parseColor("#334155"));
+        detailPanel.setBackground(detailBg);
+        detailPanel.setPadding(dp(activity, 8), dp(activity, 8), dp(activity, 8), dp(activity, 8));
+
+        final int detailArtW = dp(activity, landscape ? 70 : 96);
+        final int detailArtH = Math.round(detailArtW * 1.45f);
+
+        final FrameLayout detailArtFrame = new FrameLayout(activity);
+        LinearLayout.LayoutParams artFrameLp = new LinearLayout.LayoutParams(detailArtW, detailArtH);
+        artFrameLp.setMarginEnd(dp(activity, 10));
+        artFrameLp.gravity = Gravity.CENTER_VERTICAL;
+        detailArtFrame.setLayoutParams(artFrameLp);
+        detailArtFrame.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
+        final GradientDrawable detailArtBg = new GradientDrawable();
+        detailArtBg.setColor(Color.parseColor("#0F172A"));
+        detailArtBg.setCornerRadius(dp(activity, 6));
+        detailArtBg.setStroke(dp(activity, 2), Color.parseColor("#475569"));
+        detailArtFrame.setBackground(detailArtBg);
+
+        final ImageView ivDetailArt = new ImageView(activity);
+        ivDetailArt.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        ivDetailArt.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        detailArtFrame.addView(ivDetailArt);
+        detailPanel.addView(detailArtFrame);
+
+        LinearLayout detailInfoCol = new LinearLayout(activity);
+        detailInfoCol.setOrientation(LinearLayout.VERTICAL);
+        detailInfoCol.setLayoutParams(new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+
+        final TextView tvDetailName = new TextView(activity);
+        tvDetailName.setTextColor(Color.parseColor("#F8FAFC"));
+        tvDetailName.setTextSize(14.5f);
+        tvDetailName.setTypeface(null, Typeface.BOLD);
+        tvDetailName.setMaxLines(2);
+        tvDetailName.setEllipsize(TextUtils.TruncateAt.END);
+        detailInfoCol.addView(tvDetailName);
+
+        final TextView tvDetailStats = new TextView(activity);
+        tvDetailStats.setTextColor(Color.parseColor("#CBD5E1"));
+        tvDetailStats.setTextSize(11.5f);
+        tvDetailStats.setPadding(0, dp(activity, 2), 0, 0);
+        detailInfoCol.addView(tvDetailStats);
+
+        final TextView tvDetailMeta = new TextView(activity);
+        tvDetailMeta.setTextColor(Color.parseColor("#38BDF8"));
+        tvDetailMeta.setTextSize(11f);
+        tvDetailMeta.setPadding(0, dp(activity, 2), 0, dp(activity, 4));
+        detailInfoCol.addView(tvDetailMeta);
+
+        View detailDivider = new View(activity);
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(activity, 1));
+        divLp.bottomMargin = dp(activity, 4);
+        detailDivider.setLayoutParams(divLp);
+        detailDivider.setBackgroundColor(Color.parseColor("#1E293B"));
+        detailInfoCol.addView(detailDivider);
+
+        final ScrollView detailDescScroll = new ScrollView(activity);
+        detailDescScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        detailDescScroll.setNestedScrollingEnabled(true);
+        final TextView tvDetailDesc = new TextView(activity);
+        tvDetailDesc.setTextColor(Color.parseColor("#E2E8F0"));
+        tvDetailDesc.setTextSize(12f);
+        tvDetailDesc.setLineSpacing(dp(activity, 2), 1.0f);
+        detailDescScroll.addView(tvDetailDesc);
+        detailInfoCol.addView(detailDescScroll);
+
+        detailPanel.addView(detailInfoCol);
+        root.addView(detailPanel);
+
+        // ==================== MIDDLE: COMPACT FILTER BAR ====================
         HorizontalScrollView filterScroll = new HorizontalScrollView(activity);
         filterScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout.LayoutParams filterScrollLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        filterScrollLp.bottomMargin = dp(activity, 6);
+        filterScroll.setLayoutParams(filterScrollLp);
         LinearLayout filterRow = new LinearLayout(activity);
         filterRow.setOrientation(LinearLayout.HORIZONTAL);
         filterScroll.addView(filterRow);
         root.addView(filterScroll);
 
-        ScrollView scroll = new ScrollView(activity);
+        // ==================== BOTTOM PANE: SCROLLABLE CARD POOL LIST ====================
+        final ScrollView gridScroll = new ScrollView(activity);
         LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        scrollLp.topMargin = dp(activity, 6);
-        scroll.setLayoutParams(scrollLp);
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, landscape ? 0.58f : 0.64f);
+        gridScroll.setLayoutParams(scrollLp);
+        GradientDrawable listBg = new GradientDrawable();
+        listBg.setColor(Color.parseColor("#0F172A"));
+        listBg.setCornerRadius(dp(activity, 8));
+        listBg.setStroke(dp(activity, 1), Color.parseColor("#1E293B"));
+        gridScroll.setBackground(listBg);
+        gridScroll.setPadding(dp(activity, 4), dp(activity, 4), dp(activity, 4), dp(activity, 4));
 
         final GridLayout grid = new GridLayout(activity);
         grid.setColumnCount(cols);
         grid.setUseDefaultMargins(false);
-        scroll.addView(grid);
-        root.addView(scroll);
+        gridScroll.addView(grid);
+        root.addView(gridScroll);
 
-        final String[] filters = new String[]{"全部", "未拥有", "高罕(UR/SR/SER)", "R", "N"};
+        final OcgBanlist activeBanlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+        final RpgCard[] selectedCardRef = new RpgCard[1];
+        final PoolTileHolder[] selectedHolderRef = new PoolTileHolder[1];
+        final Map<Integer, PoolTileHolder> holderByCardId = new LinkedHashMap<>();
+
+        final Runnable clearDetailEmpty = () -> {
+            selectedCardRef[0] = null;
+            selectedHolderRef[0] = null;
+            ivDetailArt.setImageDrawable(RpgCardArtLoader.createCardBackDrawable());
+            detailArtBg.setStroke(dp(activity, 1), Color.parseColor("#334155"));
+            tvDetailName.setText("当前筛选条件下暂无卡片");
+            tvDetailName.setTextColor(Color.parseColor("#94A3B8"));
+            tvDetailStats.setText("请切换下方筛选标签查看本包收录卡片");
+            tvDetailMeta.setText("");
+            tvDetailDesc.setText("");
+        };
+
+        final java.util.function.Consumer<RpgCard> selectCard = card -> {
+            if (card == null) {
+                clearDetailEmpty.run();
+                return;
+            }
+            selectedCardRef[0] = card;
+
+            // Update tile highlight in-place without rebuilding the grid
+            if (selectedHolderRef[0] != null) {
+                PoolTileHolder prev = selectedHolderRef[0];
+                prev.frameBg.setStroke(prev.normalStrokeWidthPx, prev.normalStrokeColor);
+                prev.tile.setBackground(null);
+            }
+            PoolTileHolder nextHolder = holderByCardId.get(card.id);
+            if (nextHolder != null) {
+                nextHolder.frameBg.setStroke(dp(activity, 3), Color.parseColor("#38BDF8"));
+                GradientDrawable selTileBg = new GradientDrawable();
+                selTileBg.setColor(Color.parseColor("#1E3A5F"));
+                selTileBg.setCornerRadius(dp(activity, 6));
+                nextHolder.tile.setBackground(selTileBg);
+                selectedHolderRef[0] = nextHolder;
+            } else {
+                selectedHolderRef[0] = null;
+            }
+
+            // Populate top detail panel
+            Rarity rarity = card.getRarityEnum();
+            int rarityColor = parseRarityColor(rarity);
+            int owned = profile.getOwnedCount(card.id);
+            String limitBadge = activeBanlist.getLimitBadge(card.id);
+            String errataBadge = CardErrataEngine.getVersionBadge(catalog, card.id, profile.currentTimelineDate);
+            String effectiveDesc = CardErrataEngine.getEffectiveDescCn(catalog, card, profile.currentTimelineDate);
+
+            detailArtBg.setStroke(dp(activity, 2), rarityColor);
+            RpgCardArtLoader.loadInto(ivDetailArt, card.id, detailArtW);
+            ivDetailArt.setOnClickListener(v -> showCardDetailDialog(activity, catalog, profile, card));
+
+            tvDetailName.setText("[" + rarity.code + "] " + card.getDisplayName()
+                    + (limitBadge.isEmpty() ? "" : " 【" + limitBadge + "】"));
+            tvDetailName.setTextColor(rarityColor);
+
+            String statsText;
+            if (card.isMonster()) {
+                String typeTag = (card.typesCn != null && !card.typesCn.isEmpty()) ? (card.typesCn + " · ") : "";
+                statsText = String.format(Locale.US, "%sLv.%d %s/%s · ATK %d / DEF %d",
+                        typeTag, card.level,
+                        card.attribute != null ? card.attribute : "",
+                        card.race != null ? card.race : "",
+                        card.atk, card.def);
+            } else {
+                statsText = (card.typesCn != null && !card.typesCn.isEmpty())
+                        ? card.typesCn
+                        : (card.cardType != null ? card.cardType : "魔法/陷阱");
+            }
+            tvDetailStats.setText(statsText);
+
+            String ownStr = owned <= 0 ? "未拥有" : (owned >= 3 ? "已满3 (×" + owned + ")" : "已有 ×" + owned);
+            StringBuilder metaSb = new StringBuilder();
+            metaSb.append(ownStr);
+            if (pack.fixedContents && card.quantity > 1) {
+                metaSb.append(" · 盒内×").append(card.quantity);
+            }
+            if (card.setCode != null && !card.setCode.isEmpty()) {
+                metaSb.append(" · ").append(card.setCode);
+            }
+            if (!errataBadge.isEmpty()) {
+                metaSb.append(" · ⟪").append(errataBadge).append("⟫");
+            }
+            tvDetailMeta.setText(metaSb.toString());
+            tvDetailMeta.setTextColor(owned >= 3 ? Color.parseColor("#34D399")
+                    : (owned > 0 ? Color.parseColor("#38BDF8") : Color.parseColor("#94A3B8")));
+
+            tvDetailDesc.setText(!effectiveDesc.isEmpty() ? effectiveDesc : "（无效果文本）");
+            tvDetailDesc.setTextColor(errataBadge.isEmpty()
+                    ? Color.parseColor("#E2E8F0")
+                    : Color.parseColor("#FDE68A"));
+            detailDescScroll.scrollTo(0, 0);
+        };
+
+        final String[] filterKeys = new String[]{"全部", "未拥有", "高罕", "R", "N"};
+        final String[] filterLabels = new String[]{
+                "全部(" + uniqueCards.size() + ")",
+                "未拥有(" + unownedCount + ")",
+                "高罕(" + highRarityCount + ")",
+                "R(" + rareCount + ")",
+                "N(" + normalCount + ")"
+        };
         final String[] activeFilter = new String[]{"全部"};
         final List<Button> filterButtons = new ArrayList<>();
 
         final Runnable renderPoolGrid = () -> {
             grid.removeAllViews();
+            holderByCardId.clear();
+            selectedHolderRef[0] = null;
             for (Button fb : filterButtons) {
                 boolean sel = activeFilter[0].equals(fb.getTag());
-                fb.setBackgroundColor(Color.parseColor(sel ? "#0284C7" : "#1E293B"));
+                GradientDrawable fbg = new GradientDrawable();
+                fbg.setColor(Color.parseColor(sel ? "#0284C7" : "#1E293B"));
+                fbg.setCornerRadius(dp(activity, 6));
+                fb.setBackground(fbg);
             }
+            RpgCard firstVisible = null;
+            boolean currentStillVisible = false;
             for (final RpgCard card : uniqueCards) {
                 int own = profile.getOwnedCount(card.id);
                 Rarity r = card.getRarityEnum();
                 if ("未拥有".equals(activeFilter[0]) && own > 0) continue;
-                if ("高罕(UR/SR/SER)".equals(activeFilter[0])
+                if ("高罕".equals(activeFilter[0])
                         && !(r == Rarity.UR || r == Rarity.SR || r == Rarity.SCR)) continue;
                 if ("R".equals(activeFilter[0]) && r != Rarity.R) continue;
                 if ("N".equals(activeFilter[0]) && r != Rarity.N) continue;
 
+                if (firstVisible == null) firstVisible = card;
+                if (selectedCardRef[0] != null && selectedCardRef[0].id == card.id) {
+                    currentStillVisible = true;
+                }
+
                 int rarityColor = parseRarityColor(r);
+                int normalStrokeW = dp(activity, own > 0 ? 2 : 1);
+                int normalStrokeC = own > 0 ? rarityColor : Color.parseColor("#334155");
 
                 LinearLayout tile = new LinearLayout(activity);
                 tile.setOrientation(LinearLayout.VERTICAL);
                 tile.setGravity(Gravity.CENTER_HORIZONTAL);
+                tile.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
                 GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
                 glp.width = cardWidthPx;
-                glp.setMargins(dp(activity, 4), dp(activity, 4), dp(activity, 4), dp(activity, 8));
+                glp.setMargins(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 5));
                 tile.setLayoutParams(glp);
 
                 FrameLayout frame = new FrameLayout(activity);
-                frame.setLayoutParams(new LinearLayout.LayoutParams(cardWidthPx, cardHeightPx));
+                int innerArtW = Math.max(dp(activity, 44), cardWidthPx - dp(activity, 4));
+                int innerArtH = Math.round(innerArtW * 1.45f);
+                frame.setLayoutParams(new LinearLayout.LayoutParams(innerArtW, innerArtH));
                 frame.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
                 GradientDrawable bg = new GradientDrawable();
-                bg.setCornerRadius(dp(activity, 6));
+                bg.setCornerRadius(dp(activity, 5));
                 bg.setColor(Color.parseColor("#1E293B"));
-                bg.setStroke(dp(activity, own > 0 ? 2 : 1), own > 0 ? rarityColor : Color.parseColor("#334155"));
+                bg.setStroke(normalStrokeW, normalStrokeC);
                 frame.setBackground(bg);
 
                 ImageView iv = new ImageView(activity);
                 iv.setLayoutParams(new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                 iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                iv.setAlpha(own > 0 ? 1.0f : 0.40f);
-                RpgCardArtLoader.loadInto(iv, card.id, cardWidthPx);
+                iv.setAlpha(own > 0 ? 1.0f : 0.45f);
+                RpgCardArtLoader.loadInto(iv, card.id, innerArtW);
                 frame.addView(iv);
 
                 TextView tvRarity = makeBadge(activity, r.code, rarityColor, Color.parseColor("#0F172A"));
                 FrameLayout.LayoutParams rlp = new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                         Gravity.TOP | Gravity.START);
-                rlp.setMargins(dp(activity, 3), dp(activity, 3), 0, 0);
+                rlp.setMargins(dp(activity, 2), dp(activity, 2), 0, 0);
                 tvRarity.setLayoutParams(rlp);
                 frame.addView(tvRarity);
 
-                String ownLabel = own <= 0 ? "未拥有" : (own >= 3 ? "满3 (×" + own + ")" : "×" + own);
+                String ownLabel = own <= 0 ? "未拥有" : (own >= 3 ? "满3" : "×" + own);
                 int ownBg = own <= 0 ? Color.parseColor("#CC475569")
                         : (own >= 3 ? Color.parseColor("#DD059669") : Color.parseColor("#DD0284C7"));
                 TextView tvOwn = makeBadge(activity, ownLabel, ownBg, Color.WHITE);
                 FrameLayout.LayoutParams olp = new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                         Gravity.BOTTOM | Gravity.END);
-                olp.setMargins(0, 0, dp(activity, 3), dp(activity, 3));
+                olp.setMargins(0, 0, dp(activity, 2), dp(activity, 2));
                 tvOwn.setLayoutParams(olp);
                 frame.addView(tvOwn);
 
                 TextView tvName = new TextView(activity);
                 tvName.setText(card.getDisplayName());
                 tvName.setTextColor(own > 0 ? Color.parseColor("#E2E8F0") : Color.parseColor("#64748B"));
-                tvName.setTextSize(10.5f);
+                tvName.setTextSize(9.5f);
                 tvName.setMaxLines(2);
                 tvName.setEllipsize(TextUtils.TruncateAt.END);
                 tvName.setGravity(Gravity.CENTER_HORIZONTAL);
-                tvName.setPadding(dp(activity, 2), dp(activity, 3), dp(activity, 2), 0);
+                tvName.setPadding(dp(activity, 1), dp(activity, 2), dp(activity, 1), 0);
 
                 tile.addView(frame);
                 tile.addView(tvName);
-                tile.setOnClickListener(v -> showCardDetailDialog(activity, catalog, profile, card));
+
+                PoolTileHolder holder = new PoolTileHolder(card.id, tile, bg, normalStrokeC, normalStrokeW);
+                holderByCardId.put(card.id, holder);
+
+                tile.setOnClickListener(v -> selectCard.accept(card));
                 grid.addView(tile);
+            }
+
+            gridScroll.scrollTo(0, 0);
+            if (currentStillVisible && selectedCardRef[0] != null) {
+                selectCard.accept(selectedCardRef[0]);
+            } else {
+                selectCard.accept(firstVisible);
             }
         };
 
-        for (final String f : filters) {
+        for (int i = 0; i < filterKeys.length; i++) {
+            final String fKey = filterKeys[i];
             Button fb = new Button(activity);
-            fb.setTag(f);
-            fb.setText(f);
+            fb.setTag(fKey);
+            fb.setText(filterLabels[i]);
             fb.setTextSize(11f);
             fb.setAllCaps(false);
             fb.setTextColor(Color.WHITE);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 32));
+                    ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 28));
             lp.setMarginEnd(dp(activity, 6));
             fb.setLayoutParams(lp);
             fb.setPadding(dp(activity, 10), 0, dp(activity, 10), 0);
+            fb.setMinHeight(0);
+            fb.setMinWidth(0);
             fb.setOnClickListener(v -> {
-                activeFilter[0] = f;
+                activeFilter[0] = fKey;
                 renderPoolGrid.run();
             });
             filterButtons.add(fb);
@@ -549,17 +816,8 @@ public final class RpgPackVisualDialogs {
         }
         renderPoolGrid.run();
 
-        LinearLayout bottomRow = new LinearLayout(activity);
-        bottomRow.setOrientation(LinearLayout.HORIZONTAL);
-        bottomRow.setGravity(Gravity.END);
-        bottomRow.setPadding(0, dp(activity, 8), 0, 0);
-        Button btnClose = makeDialogButton(activity, "关闭", "#475569");
-        btnClose.setOnClickListener(v -> dialog.dismiss());
-        bottomRow.addView(btnClose);
-        root.addView(bottomRow);
-
         dialog.setContentView(root);
-        sizeDialogToScreen(activity, dialog, 0.96f, 0.90f);
+        sizeDialogToScreen(activity, dialog, 0.97f, 0.94f);
         dialog.show();
     }
 
