@@ -265,6 +265,7 @@ public class RpgAiDuelState {
     public final int eraEstimatedFaceDownDef;
     public final int eraWallDefThreshold;
     public final int eraHighThreatAtk;
+    public final int eraBossAtk;
 
     public int myProtocolPlayer = 1;
     public int duelRule = 1;
@@ -293,6 +294,10 @@ public class RpgAiDuelState {
     public boolean lastWillActivatedThisTurn = false;
     public boolean changeOfHeartUsedThisTurn = false;
     public int lastSummonedCodeThisTurn = 0;
+    public int lastOppSummonedCode = 0;
+    public int lastOppSummonedAtk = 0;
+    public int lastOppSummonedLevel = 0;
+    public int lastOppSummonedSeq = -1;
 
     public RpgAiDuelState(RpgCatalog catalog, OcgRuleSet ruleSet, String currentTimelineDate) {
         this.catalog = catalog;
@@ -304,30 +309,35 @@ public class RpgAiDuelState {
         this.eraEstimatedFaceDownDef = bench[2];
         this.eraWallDefThreshold = bench[3];
         this.eraHighThreatAtk = bench[4];
+        this.eraBossAtk = bench[5];
     }
 
     private static int[] computeEraBenchmarks(RpgCatalog catalog, String date) {
         // Fallback defaults for late-1999 if catalog is unavailable in synthetic tests
         if (catalog == null) {
-            return new int[]{1200, 1500, 1200, 1600, 1800};
+            return new int[]{1200, 1500, 1200, 1600, 1800, 2000};
         }
         List<RpgCard> released = cn.garymb.ygomobile.rpg.engine.TimelineEngine.getReleasedCards(catalog, date);
         List<Integer> lv4Atks = new ArrayList<>();
         List<Integer> lv4Defs = new ArrayList<>();
+        List<Integer> lv5Atks = new ArrayList<>();
         List<Integer> allAtks = new ArrayList<>();
         for (RpgCard c : released) {
             if (c == null || !c.isMonster() || c.isExtraDeckCard()) continue;
             if (c.level <= 4) {
                 lv4Atks.add(Math.max(0, c.atk));
                 lv4Defs.add(Math.max(0, c.def));
+            } else {
+                lv5Atks.add(Math.max(0, c.atk));
             }
             allAtks.add(Math.max(0, c.atk));
         }
         if (lv4Atks.isEmpty()) {
-            return new int[]{1200, 1500, 1200, 1600, 1800};
+            return new int[]{1200, 1500, 1200, 1600, 1800, 2000};
         }
         java.util.Collections.sort(lv4Atks);
         java.util.Collections.sort(lv4Defs);
+        java.util.Collections.sort(lv5Atks);
         java.util.Collections.sort(allAtks);
 
         int typicalLower = Math.max(800, percentile(lv4Atks, 0.80));
@@ -335,7 +345,9 @@ public class RpgAiDuelState {
         int estFdDef = Math.max(700, Math.min(1400, percentile(lv4Defs, 0.70)));
         int wallDef = Math.max(950, percentile(lv4Defs, 0.92));
         int highThreat = Math.max(1200, percentile(allAtks, 0.90));
-        return new int[]{typicalLower, topLower, estFdDef, wallDef, highThreat};
+        int lv5P75 = lv5Atks.isEmpty() ? (topLower + 500) : percentile(lv5Atks, 0.75);
+        int bossAtk = Math.min(2200, Math.max(topLower + 500, lv5P75));
+        return new int[]{typicalLower, topLower, estFdDef, wallDef, highThreat, bossAtk};
     }
 
     private static int percentile(List<Integer> sorted, double ratio) {
@@ -412,6 +424,10 @@ public class RpgAiDuelState {
         lastWillActivatedThisTurn = false;
         changeOfHeartUsedThisTurn = false;
         lastSummonedCodeThisTurn = 0;
+        lastOppSummonedCode = 0;
+        lastOppSummonedAtk = 0;
+        lastOppSummonedLevel = 0;
+        lastOppSummonedSeq = -1;
         lastAttackerLocalCtrl = -1;
         lastAttackerSeq = -1;
         lastDefenderLocalCtrl = -1;
@@ -604,6 +620,37 @@ public class RpgAiDuelState {
             if (m.isFaceUp() && m.isAttackPos() && m.atk > 0) sum += m.atk;
         }
         return sum;
+    }
+
+    public int getStrongestFaceUpDef(int localPlayer) {
+        int best = 0;
+        for (CardSlot m : getMonsters(localPlayer)) {
+            if (m.isFaceUp() && m.isDefensePos()) {
+                best = Math.max(best, Math.max(0, m.def));
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Returns the highest ATK among monsters currently in AI's hand that can be Normal Summoned
+     * on the next turn without requiring unavailable tributes.
+     */
+    public int getBestPlayableHandMonsterAtk() {
+        int myFieldCount = getMonsters(0).size();
+        int best = 0;
+        for (CardSlot c : hand[0]) {
+            if (c == null || c.code <= 0) continue;
+            RpgCard card = lookupCard(c.code);
+            boolean isMon = c.isMonster() || (card != null && card.isMonster());
+            if (!isMon) continue;
+            int lv = c.level > 0 ? c.level : (card != null ? card.level : 0);
+            int tributes = tributesNeededForLevel(lv);
+            if (tributes > myFieldCount) continue;
+            int atk = Math.max(c.atk, Math.max(c.baseAtk, card != null ? card.atk : 0));
+            if (atk > best) best = atk;
+        }
+        return best;
     }
 
     public boolean hasFaceUpCardOnField(int localPlayer, int code) {
@@ -901,15 +948,28 @@ public class RpgAiDuelState {
     }
 
     public void onSummoning(ByteBuffer buf) {
+        onSummoning(buf, true);
+    }
+
+    public void onSummoning(ByteBuffer buf, boolean isNormalSummon) {
         if (buf.remaining() < 8) return;
         int code = buf.getInt();
         int ctrl = localPlayer(buf.get() & 0xFF);
-        buf.get(); // loc
-        buf.get(); // seq
+        int loc = buf.get() & 0xFF;
+        int seq = buf.get() & 0xFF;
         buf.get(); // pos
         if (ctrl == 0) {
-            normalSummonedThisTurn = true;
-            lastSummonedCodeThisTurn = code;
+            if (isNormalSummon) {
+                normalSummonedThisTurn = true;
+                lastSummonedCodeThisTurn = code;
+            }
+        } else {
+            lastOppSummonedCode = code;
+            lastOppSummonedSeq = seq;
+            CardSlot slot = (loc == LOC_MZONE && seq >= 0 && seq < 7) ? mzone[1][seq] : null;
+            int baseAtk = getCardBaseAtk(code);
+            lastOppSummonedAtk = (slot != null && slot.atk > 0) ? Math.max(slot.atk, baseAtk) : baseAtk;
+            lastOppSummonedLevel = getCardLevel(code);
         }
     }
 

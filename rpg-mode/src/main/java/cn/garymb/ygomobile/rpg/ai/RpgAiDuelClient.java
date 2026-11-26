@@ -79,6 +79,8 @@ public class RpgAiDuelClient {
     private static final int MSG_SET                 = 54;
     private static final int MSG_SWAP                = 55;
     private static final int MSG_SUMMONING           = 60;
+    private static final int MSG_SPSUMMONING         = 62;
+    private static final int MSG_FLIPSUMMONING       = 64;
     private static final int MSG_CHAINING            = 70;
     private static final int MSG_CHAIN_END           = 74;
     private static final int MSG_DRAW                = 90;
@@ -445,7 +447,11 @@ public class RpgAiDuelClient {
                 state.onSwap(buf);
                 break;
             case MSG_SUMMONING:
-                state.onSummoning(buf);
+                state.onSummoning(buf, true);
+                break;
+            case MSG_SPSUMMONING:
+            case MSG_FLIPSUMMONING:
+                state.onSummoning(buf, false);
                 break;
             case MSG_CHAINING:
                 state.onChaining(buf);

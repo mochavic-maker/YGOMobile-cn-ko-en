@@ -364,6 +364,89 @@ public class RpgAiStrategyTest {
                 (0 << 16) + 1, strategy.chooseBattleCmd(bp));
     }
 
+    @Test
+    public void trapHoleHoldsForBossWhenBoardOrHandHandlesLowerSummonAndFiresOnBossOrThreat() {
+        final int MAMMOTH_GRAVEYARD = 40374923; // 1200/800 Lv3
+        final int GAIA = 6368038;               // 2300/2100 Lv7
+
+        RpgAiDuelState vol1State = new RpgAiDuelState(catalog, noTributeRule, "1999-02-04");
+        vol1State.myProtocolPlayer = 1;
+        vol1State.turnPlayer = 1;
+        vol1State.phase = RpgAiDuelState.PHASE_MAIN1;
+        vol1State.lp[0] = 8000;
+        RpgAiStrategy strategy = new RpgAiStrategy(vol1State, null, "NO_TRIBUTE_BEAT");
+
+        // Case 1: AI already controls Dark Magician (2500) -> opponent summons Mammoth (1200) -> HOLD Trap Hole (-1)!
+        placeMonster(vol1State, 0, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        simulateOppSummon(vol1State, MAMMOTH_GRAVEYARD, 2, 1200, 800);
+        assertEquals("Should HOLD Trap Hole against 1200 Mammoth when we already control 2500 Dark Magician",
+                -1, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        // Case 2: AI board empty, healthy LP (8000), holds Dark Magician (2500) in hand -> opponent summons Mammoth (1200) -> HOLD (-1)!
+        vol1State.mzone[0][2] = null;
+        vol1State.mzone[1][2] = null;
+        vol1State.hand[0].clear();
+        addHandCard(vol1State, RpgAiCardKnowledge.DARK_MAGICIAN);
+        simulateOppSummon(vol1State, MAMMOTH_GRAVEYARD, 2, 1200, 800);
+        assertEquals("Should HOLD Trap Hole against 1200 Mammoth when holding 2500 Dark Magician at 8000 LP",
+                -1, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        // Case 3: Opponent summons Gaia (2300) or Dark Magician (2500) -> ALWAYS FIRE Trap Hole (0)!
+        vol1State.mzone[1][2] = null;
+        placeMonster(vol1State, 0, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        simulateOppSummon(vol1State, GAIA, 2, 2300, 2100);
+        assertEquals("Should FIRE Trap Hole immediately on boss Gaia (2300)",
+                0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        // Case 4: AI board empty & NO stronger monster in hand -> opponent summons Mammoth (1200) -> FIRE (0)!
+        vol1State.mzone[0][2] = null;
+        vol1State.mzone[1][2] = null;
+        vol1State.hand[0].clear();
+        addHandCard(vol1State, 9159938); // 800 ATK monster
+        simulateOppSummon(vol1State, MAMMOTH_GRAVEYARD, 2, 1200, 800);
+        assertEquals("Should FIRE Trap Hole on 1200 Mammoth when we have no stronger field/hand answer",
+                0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        // Case 5: AI holds Dark Magician in hand, but LP is low (2500) -> opponent summons Mammoth (1200) -> FIRE (0)!
+        vol1State.mzone[1][2] = null;
+        vol1State.hand[0].clear();
+        addHandCard(vol1State, RpgAiCardKnowledge.DARK_MAGICIAN);
+        vol1State.lp[0] = 2500;
+        simulateOppSummon(vol1State, MAMMOTH_GRAVEYARD, 2, 1200, 800);
+        assertEquals("Should FIRE Trap Hole on 1200 Mammoth when LP is low (2500)",
+                0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        // Case 6: Late-1999 Tribute Era — HOLD Trap Hole on Sangan (1000) to avoid free search, FIRE on Cannon Soldier (1400)!
+        RpgAiDuelState lateState = new RpgAiDuelState(catalog, tributeRule, "1999-11-18");
+        lateState.myProtocolPlayer = 1;
+        lateState.turnPlayer = 1;
+        lateState.phase = RpgAiDuelState.PHASE_MAIN1;
+        lateState.lp[0] = 8000;
+        RpgAiStrategy lateStrategy = new RpgAiStrategy(lateState, null, "GOOD_STUFF");
+
+        simulateOppSummon(lateState, RpgAiCardKnowledge.SANGAN, 2, 1000, 600);
+        assertEquals("Should HOLD Trap Hole on Sangan at healthy LP to avoid triggering opponent's search",
+                -1, lateStrategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        lateState.mzone[1][2] = null;
+        placeMonster(lateState, 0, 2, RpgAiCardKnowledge.BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
+        simulateOppSummon(lateState, RpgAiCardKnowledge.CANNON_SOLDIER, 2, 1400, 1300);
+        assertEquals("Should ALWAYS FIRE Trap Hole on Cannon Soldier even when controlling Blue-Eyes",
+                0, lateStrategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+    }
+
+    private void simulateOppSummon(RpgAiDuelState state, int code, int seq, int atk, int def) {
+        placeMonster(state, 1, seq, code, RpgAiDuelState.POS_FACEUP_ATTACK, atk, def);
+        ByteBuffer b = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
+        b.putInt(code)
+                .put((byte) state.protoPlayer(1))
+                .put((byte) RpgAiDuelState.LOC_MZONE)
+                .put((byte) seq)
+                .put((byte) RpgAiDuelState.POS_FACEUP_ATTACK);
+        b.flip();
+        state.onSummoning(b, true);
+    }
+
     private ByteBuffer buildSingleChainPrompt(int trapCode) {
         ByteBuffer b = ByteBuffer.allocate(11 + 14).order(ByteOrder.LITTLE_ENDIAN);
         b.put((byte) 1).put((byte) 1).put((byte) 0).putInt(0).putInt(0);

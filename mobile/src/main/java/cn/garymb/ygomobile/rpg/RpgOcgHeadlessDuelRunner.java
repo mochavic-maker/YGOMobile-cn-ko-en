@@ -682,7 +682,11 @@ public final class RpgOcgHeadlessDuelRunner {
                     states[p].onSwap(b);
                     break;
                 case MSG_SUMMONING:
-                    states[p].onSummoning(b);
+                    states[p].onSummoning(b, true);
+                    break;
+                case MSG_SPSUMMONING:
+                case MSG_FLIPSUMMONING:
+                    states[p].onSummoning(b, false);
                     break;
                 case MSG_CHAINING:
                     states[p].onChaining(b);

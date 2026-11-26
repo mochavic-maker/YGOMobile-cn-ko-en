@@ -1236,6 +1236,97 @@ public class RpgAiStrategy {
         return c != null && "trap".equalsIgnoreCase(c.frameType);
     }
 
+    private boolean isMustTrapHoleEffectMonster(int code) {
+        return code == RpgAiCardKnowledge.CANNON_SOLDIER
+                || code == RpgAiCardKnowledge.CYBER_STEIN
+                || code == RpgAiCardKnowledge.TIME_WIZARD
+                || code == RpgAiCardKnowledge.WALL_OF_ILLUSION;
+    }
+
+    /**
+     * Tactically evaluates whether to fire Trap Hole immediately on the opponent's just-summoned
+     * monster or hold it for a bigger future boss (e.g. Dark Magician / Gaia / Blue-Eyes / Summoned Skull).
+     */
+    private int scoreTrapHoleActivation() {
+        int targetCode = state.lastOppSummonedCode;
+        // Fallback when summon event wasn't observed (e.g. synthetic unit prompt)
+        if (targetCode == 0) return 850;
+
+        int targetAtk = state.lastOppSummonedAtk > 0
+                ? state.lastOppSummonedAtk
+                : state.getCardBaseAtk(targetCode);
+        int targetLv = state.lastOppSummonedLevel > 0
+                ? state.lastOppSummonedLevel
+                : state.getCardLevel(targetCode);
+
+        // Compute opponent's total attacking power including the newly summoned monster
+        int oppTotalAtk = state.getTotalFaceUpAtk(1);
+        RpgAiDuelState.CardSlot summonedSlot = (state.lastOppSummonedSeq >= 0 && state.lastOppSummonedSeq < 7)
+                ? state.mzone[1][state.lastOppSummonedSeq] : null;
+        if (summonedSlot == null || summonedSlot.code != targetCode || !summonedSlot.isAttackPos()) {
+            oppTotalAtk += targetAtk;
+        }
+
+        // 1. Always stop immediate lethal or dangerous field/ignition effect monsters!
+        if (oppTotalAtk >= state.lp[0]) return 920;
+        if (isMustTrapHoleEffectMonster(targetCode)) return 900;
+
+        // 2. Avoid wasting Trap Hole on Sangan / Witch (triggers their free deck search) unless LP is critical
+        if (RpgAiCardKnowledge.isSearcherMonster(targetCode) && state.lp[0] > targetAtk + 1500) {
+            return 0;
+        }
+
+        // 3. Always fire on era boss-tier monsters (e.g. Dark Magician 2500, Gaia 2300, Blue-Eyes 3000, Summoned Skull 2500)
+        //    or any Tribute-Summoned Lv5+ monster (massive 2-for-1 / 3-for-1 tempo swing!)
+        if (targetAtk >= state.eraBossAtk
+                || (state.isTributeSummonEnabled() && targetLv >= 5)) {
+            return 900;
+        }
+
+        int myBestFieldAtk = state.getStrongestAtk(0);
+        int myBestFieldDef = state.getStrongestFaceUpDef(0);
+        int myBestHandAtk = state.getBestPlayableHandMonsterAtk();
+        boolean myBoardEmpty = state.getMonsters(0).isEmpty();
+        int oppOtherMaxAtk = 0;
+        for (RpgAiDuelState.CardSlot m : state.getMonsters(1)) {
+            if (m.sequence == state.lastOppSummonedSeq && m.code == targetCode) continue;
+            if (m.isFaceUp() && m.isAttackPos()) {
+                oppOtherMaxAtk = Math.max(oppOtherMaxAtk, m.atk);
+            }
+        }
+
+        // 4. If we ALREADY control a strictly stronger face-up monster on field (e.g. Dark Magician 2500 vs Mammoth 1200)
+        //    and opponent can't break our field monster with another attacker -> HOLD Trap Hole for their boss!
+        if (myBestFieldAtk > targetAtk && oppOtherMaxAtk <= myBestFieldAtk) {
+            return 0;
+        }
+
+        // 5. If we control a solid face-up Defense Wall that blocks this monster and opponent has no bigger attacker,
+        //    HOLD Trap Hole (if they tribute it later, Trap Hole punishes their boss 2-for-1!)
+        if (myBestFieldDef > targetAtk && oppOtherMaxAtk <= myBestFieldDef && state.lp[0] > 2000) {
+            return 0;
+        }
+
+        // 6. Stall/combo styles (Exodia / Burn) don't rely on battle beatdowns: clear incoming attackers!
+        if (isExodiaStyle() || isBurnStyle()) {
+            return 850;
+        }
+
+        // 7. If opponent only has this single lower monster, our LP is healthy, and we hold a clearly stronger
+        //    playable monster in hand (e.g. Dark Magician 2500 / Gaia 2300 in Vol.1 vs Mammoth 1200, or an 1800
+        //    beater vs a 1200 monster in late 1999) that will beat over it next turn for free +1 card advantage,
+        //    HOLD Trap Hole to snipe their real boss!
+        int potentialDamage = myBoardEmpty ? oppTotalAtk : Math.max(0, oppTotalAtk - myBestFieldAtk);
+        boolean lpSafe = (state.lp[0] - potentialDamage >= 3000) && (potentialDamage <= state.lp[0] / 3);
+        if (lpSafe && oppOtherMaxAtk == 0
+                && myBestHandAtk >= targetAtk + 400
+                && targetAtk <= state.eraTopLowerAtk) {
+            return 0;
+        }
+
+        return 850;
+    }
+
     private int scoreChainItem(ChainItem it) {
         int code = it.code;
         RpgAiDuelState.ChainLink top = state.currentChain.isEmpty()
@@ -1259,15 +1350,22 @@ public class RpgAiStrategy {
                 return 950;
 
             case RpgAiCardKnowledge.TRAP_HOLE:
-            case RpgAiCardKnowledge.ACID_TRAP_HOLE:
-                // Never waste a second Trap Hole / Acid Trap Hole on the same summon when ours is already resolving!
+                // Never waste a second Trap Hole on the same summon when ours is already resolving!
                 if (hasActiveUnnegatedMyChain(
                         RpgAiCardKnowledge.TRAP_HOLE,
                         RpgAiCardKnowledge.ACID_TRAP_HOLE,
                         RpgAiCardKnowledge.CRUSH_CARD_VIRUS)) {
                     return 0;
                 }
-                // Great disruption on opponent's summon/flip
+                return scoreTrapHoleActivation();
+
+            case RpgAiCardKnowledge.ACID_TRAP_HOLE:
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.TRAP_HOLE,
+                        RpgAiCardKnowledge.ACID_TRAP_HOLE,
+                        RpgAiCardKnowledge.CRUSH_CARD_VIRUS)) {
+                    return 0;
+                }
                 return 850;
 
             case RpgAiCardKnowledge.SOLEMN_JUDGMENT:
@@ -1276,8 +1374,13 @@ public class RpgAiStrategy {
                     return state.lp[0] >= 1000 ? 900 : 0;
                 }
                 if (!state.isMyTurn() && state.currentChain.isEmpty()) {
-                    // Negating a big monster summon (calibrated to current era's high-threat threshold)
-                    if (state.getStrongestAtk(1) >= state.eraHighThreatAtk || state.lp[0] <= 2500) {
+                    // Negating a big monster summon (calibrated to boss/high-threat threshold)
+                    int summonCode = state.lastOppSummonedCode;
+                    int summonAtk = summonCode != 0 ? state.lastOppSummonedAtk : state.getStrongestAtk(1);
+                    if (summonAtk >= state.eraBossAtk
+                            || isMustTrapHoleEffectMonster(summonCode)
+                            || (summonAtk >= state.eraHighThreatAtk && summonAtk > state.getStrongestAtk(0) && state.lp[0] <= 4000)
+                            || state.lp[0] <= 2500) {
                         return 750;
                     }
                 }
