@@ -783,4 +783,42 @@ public class RpgEnginesTest {
         assertFalse(back.isRange);
         assertEquals(1, back.ruleChanges.size());
     }
+
+    @Test
+    public void timelineEventDatesStepperAndYearMonthHelpersWork() {
+        List<AiOpponent> opps = AiDeckGenerator.getDemoOpponents();
+        List<String> eventDates = TimelineEngine.getTimelineEventDates(catalog, opps);
+        assertFalse(eventDates.isEmpty());
+        assertEquals("1999-02-04", eventDates.get(0));
+        // Empty filler date 1999-12-31 has no OCG events and must NOT appear in event-only picker
+        assertFalse("1999-12-31 has no events and should not be selectable", eventDates.contains("1999-12-31"));
+        assertTrue("1999-12-20 Sangan errata must be selectable", eventDates.contains("1999-12-20"));
+
+        // Every returned event date must actually have >= 1 real historical change
+        for (String d : eventDates) {
+            TimelineEngine.TimelineDigest digest = TimelineEngine.buildDigestAtDate(catalog, opps, d);
+            assertTrue("Event date " + d + " must have at least 1 change", digest.getTotalChangeCount() > 0);
+        }
+
+        // Prev / Next stepper navigation
+        assertNull(TimelineEngine.getPreviousEventDate(eventDates, eventDates.get(0)));
+        assertEquals(eventDates.get(1), TimelineEngine.getNextEventDate(eventDates, eventDates.get(0)));
+        assertEquals(eventDates.get(0), TimelineEngine.getPreviousEventDate(eventDates, eventDates.get(1)));
+        assertNull(TimelineEngine.getNextEventDate(eventDates, eventDates.get(eventDates.size() - 1)));
+        // Even if an old save sits on a non-event date (e.g., 1999-12-31), prev cleanly lands on the latest event
+        assertEquals(eventDates.get(eventDates.size() - 1),
+                TimelineEngine.getPreviousEventDate(eventDates, "1999-12-31"));
+
+        // Year & Month grouping helpers
+        List<String> years = TimelineEngine.getEventYears(eventDates);
+        assertEquals(1, years.size());
+        assertEquals("1999", years.get(0));
+        List<String> months = TimelineEngine.getEventMonthsForYear(eventDates, "1999");
+        assertTrue(months.contains("02"));
+        assertTrue(months.contains("03"));
+        assertTrue(months.contains("08"));
+        assertTrue(months.contains("12"));
+        assertFalse("January 1999 had no OCG events", months.contains("01"));
+        assertFalse("April 1999 had no OCG events", months.contains("04"));
+    }
 }

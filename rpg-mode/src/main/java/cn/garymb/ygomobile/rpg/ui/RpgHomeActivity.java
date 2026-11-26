@@ -93,7 +93,10 @@ public class RpgHomeActivity extends AppCompatActivity {
     private Button btnActiveBanlist;
     private TextView tvActiveBanlist;
     private TextView tvActiveRule;
-    private LinearLayout layoutMilestones;
+    private Button btnPrevMilestone;
+    private TextView tvCurrentMilestone;
+    private Button btnNextMilestone;
+    private List<String> timelineEventDates = new ArrayList<>();
     private LinearLayout layoutTabActions;
     private LinearLayout layoutContent;
     private TabLayout tabLayout;
@@ -134,13 +137,26 @@ public class RpgHomeActivity extends AppCompatActivity {
         btnActiveBanlist = findViewById(R.id.btn_active_banlist);
         tvActiveBanlist = findViewById(R.id.tv_active_banlist);
         tvActiveRule = findViewById(R.id.tv_active_rule);
-        layoutMilestones = findViewById(R.id.layout_milestones);
+        btnPrevMilestone = findViewById(R.id.btn_prev_milestone);
+        tvCurrentMilestone = findViewById(R.id.tv_current_milestone);
+        btnNextMilestone = findViewById(R.id.btn_next_milestone);
         layoutTabActions = findViewById(R.id.layout_tab_actions);
         layoutContent = findViewById(R.id.layout_rpg_content);
         tabLayout = findViewById(R.id.tab_rpg_nav);
 
+        timelineEventDates = TimelineEngine.getTimelineEventDates(catalog, AiDeckGenerator.getDemoOpponents());
+
         findViewById(R.id.btn_rpg_back).setOnClickListener(v -> finish());
         findViewById(R.id.btn_pick_date).setOnClickListener(v -> openDatePicker());
+        tvCurrentMilestone.setOnClickListener(v -> openDatePicker());
+        btnPrevMilestone.setOnClickListener(v -> {
+            String prev = TimelineEngine.getPreviousEventDate(timelineEventDates, profile.currentTimelineDate);
+            if (prev != null) selectTimelineDate(prev);
+        });
+        btnNextMilestone.setOnClickListener(v -> {
+            String next = TimelineEngine.getNextEventDate(timelineEventDates, profile.currentTimelineDate);
+            if (next != null) selectTimelineDate(next);
+        });
         btnTimelineDigest.setOnClickListener(v -> openTimelineDigestDialog());
         tvTimelineDigestBanner.setOnClickListener(v -> openTimelineDigestDialog());
         btnActiveBanlist.setOnClickListener(v -> openActiveBanlistDialog());
@@ -175,7 +191,6 @@ public class RpgHomeActivity extends AppCompatActivity {
         currentTimelineDigest = TimelineEngine.buildDigestAtDate(
                 catalog, AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
         applyInitialTabFromIntent(getIntent());
-        renderMilestones();
         refreshAll();
     }
 
@@ -371,7 +386,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         OcgRuleSet ruleSet = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
         tvActiveRule.setText("当前规则（随时间轴自动锁定）: " + ruleSet.name + " — " + ruleSet.description);
         updateTimelineDigestBanner();
-        highlightActiveMilestone();
+        updateMilestoneStepper();
         renderCurrentTab();
     }
 
@@ -420,59 +435,263 @@ public class RpgHomeActivity extends AppCompatActivity {
         refreshAll();
     }
 
-    private void highlightActiveMilestone() {
-        if (layoutMilestones == null) return;
-        for (int i = 0; i < layoutMilestones.getChildCount(); i++) {
-            View child = layoutMilestones.getChildAt(i);
-            if (child instanceof Button) {
-                boolean active = profile.currentTimelineDate.equals(child.getTag());
-                child.setBackgroundColor(Color.parseColor(active ? "#D97706" : "#334155"));
-            }
-        }
+    private void updateMilestoneStepper() {
+        if (tvCurrentMilestone == null || btnPrevMilestone == null || btnNextMilestone == null) return;
+        String cur = profile.currentTimelineDate;
+        int total = timelineEventDates.size();
+        int idx = timelineEventDates.indexOf(cur);
+        String label = idx >= 0
+                ? ("📅 " + cur + " (" + (idx + 1) + "/" + total + ")")
+                : ("📅 " + cur);
+        tvCurrentMilestone.setText(label);
+
+        GradientDrawable labelBg = new GradientDrawable();
+        labelBg.setColor(Color.parseColor("#0F172A"));
+        labelBg.setCornerRadius(dp(6));
+        labelBg.setStroke(dp(1), Color.parseColor("#D97706"));
+        tvCurrentMilestone.setBackground(labelBg);
+
+        boolean hasPrev = TimelineEngine.getPreviousEventDate(timelineEventDates, cur) != null;
+        boolean hasNext = TimelineEngine.getNextEventDate(timelineEventDates, cur) != null;
+        btnPrevMilestone.setEnabled(hasPrev);
+        btnPrevMilestone.setAlpha(hasPrev ? 1.0f : 0.4f);
+        btnNextMilestone.setEnabled(hasNext);
+        btnNextMilestone.setAlpha(hasNext ? 1.0f : 0.4f);
     }
 
-    private void renderMilestones() {
-        layoutMilestones.removeAllViews();
-        List<String> milestones = TimelineEngine.getTimelineMilestones(catalog);
-        for (final String date : milestones) {
-            Button btn = new Button(this);
-            btn.setTag(date);
-            btn.setText(date);
-            btn.setTextSize(11f);
-            btn.setTextColor(Color.WHITE);
-            btn.setAllCaps(false);
-            btn.setBackgroundColor(Color.parseColor(
-                    date.equals(profile.currentTimelineDate) ? "#D97706" : "#334155"));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, dp(30));
-            lp.setMarginEnd(dp(6));
-            btn.setLayoutParams(lp);
-            btn.setPadding(dp(10), 0, dp(10), 0);
-            btn.setOnClickListener(v -> selectTimelineDate(date));
-            layoutMilestones.addView(btn);
-        }
-    }
-
+    /**
+     * Opens a Year + Month filterable OCG event-date picker dialog that restricts selection strictly
+     * to dates with actual OCG historical events (packs, promos, rules, banlists, errata, AI shifts).
+     */
     private void openDatePicker() {
-        int y = 1999, m = 1, d = 4;
-        try {
-            String[] parts = profile.currentTimelineDate.split("-");
-            y = Integer.parseInt(parts[0]);
-            m = Integer.parseInt(parts[1]) - 1;
-            d = Integer.parseInt(parts[2]);
-        } catch (Exception ignored) {}
+        final List<AiOpponent> allOpponents = AiDeckGenerator.getDemoOpponents();
+        if (timelineEventDates == null || timelineEventDates.isEmpty()) {
+            timelineEventDates = TimelineEngine.getTimelineEventDates(catalog, allOpponents);
+        }
+        final List<String> allEventDates = timelineEventDates;
+        final List<String> years = TimelineEngine.getEventYears(allEventDates);
+        if (years.isEmpty()) {
+            Toast.makeText(this, "暂无可选历史事件时间点", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        DatePickerDialog dlg = new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
-            String picked = String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, dayOfMonth);
-            selectTimelineDate(picked);
-        }, y, m, d);
-        Calendar minCal = Calendar.getInstance();
-        minCal.set(1999, Calendar.FEBRUARY, 4, 0, 0, 0);
-        Calendar maxCal = Calendar.getInstance();
-        maxCal.set(1999, Calendar.DECEMBER, 31, 23, 59, 59);
-        dlg.getDatePicker().setMinDate(minCal.getTimeInMillis());
-        dlg.getDatePicker().setMaxDate(maxCal.getTimeInMillis());
-        dlg.show();
+        String curYear = (profile.currentTimelineDate != null && profile.currentTimelineDate.length() >= 4)
+                ? profile.currentTimelineDate.substring(0, 4) : years.get(0);
+        if (!years.contains(curYear)) {
+            curYear = years.get(0);
+        }
+
+        final String[] selectedYear = new String[]{curYear};
+        final String[] selectedMonth = new String[]{"ALL"}; // "ALL" or "02".."12"
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.parseColor("#0F172A"));
+        root.setPadding(dp(14), dp(12), dp(14), dp(10));
+
+        // Year dropdown row (scales cleanly from 1 year to 25+ years)
+        LinearLayout yearRow = new LinearLayout(this);
+        yearRow.setOrientation(LinearLayout.HORIZONTAL);
+        yearRow.setGravity(Gravity.CENTER_VERTICAL);
+        yearRow.setPadding(0, 0, 0, dp(8));
+
+        TextView tvYearLabel = makeTitleText("年份：");
+        tvYearLabel.setTextSize(13f);
+        yearRow.addView(tvYearLabel);
+
+        final List<String> yearKeys = new ArrayList<>();
+        final List<String> yearLabels = new ArrayList<>();
+        if (years.size() > 1) {
+            yearKeys.add("ALL");
+            yearLabels.add("全部年份 (" + allEventDates.size() + "节点)");
+        }
+        for (String y : years) {
+            int cnt = 0;
+            for (String d : allEventDates) {
+                if (d.startsWith(y + "-")) cnt++;
+            }
+            yearKeys.add(y);
+            yearLabels.add(y + " 年 (" + cnt + "节点)");
+        }
+
+        android.widget.Spinner spYear = new android.widget.Spinner(this);
+        LinearLayout.LayoutParams spLp = new LinearLayout.LayoutParams(0, dp(38), 1f);
+        spLp.setMarginEnd(dp(8));
+        spYear.setLayoutParams(spLp);
+        GradientDrawable spBg = new GradientDrawable();
+        spBg.setColor(Color.parseColor("#1E293B"));
+        spBg.setCornerRadius(dp(6));
+        spBg.setStroke(dp(1), Color.parseColor("#475569"));
+        spYear.setBackground(spBg);
+        android.widget.ArrayAdapter<String> yearAdapter = new android.widget.ArrayAdapter<String>(
+                this, android.R.layout.simple_spinner_item, yearLabels) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, convertView, parent);
+                tv.setTextColor(Color.parseColor("#F8FAFC"));
+                tv.setTextSize(13f);
+                tv.setPadding(dp(10), dp(6), dp(10), dp(6));
+                return tv;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView tv = (TextView) super.getDropDownView(position, convertView, parent);
+                tv.setBackgroundColor(Color.parseColor("#1E293B"));
+                tv.setTextColor(Color.parseColor("#F8FAFC"));
+                tv.setTextSize(13f);
+                tv.setPadding(dp(12), dp(10), dp(12), dp(10));
+                return tv;
+            }
+        };
+        spYear.setAdapter(yearAdapter);
+        int initYearPos = Math.max(0, yearKeys.indexOf(curYear));
+        spYear.setSelection(initYearPos);
+        yearRow.addView(spYear);
+
+        final TextView tvMatchCount = makeSubtleText("");
+        tvMatchCount.setTextColor(Color.parseColor("#38BDF8"));
+        yearRow.addView(tvMatchCount);
+        root.addView(yearRow);
+
+        // Quick 1-tap Month pill bar for the selected year
+        android.widget.HorizontalScrollView monthScroll = new android.widget.HorizontalScrollView(this);
+        monthScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout.LayoutParams msLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        msLp.bottomMargin = dp(8);
+        monthScroll.setLayoutParams(msLp);
+        final LinearLayout monthRow = new LinearLayout(this);
+        monthRow.setOrientation(LinearLayout.HORIZONTAL);
+        monthScroll.addView(monthRow);
+        root.addView(monthScroll);
+
+        // Scrollable filtered event-date list
+        android.widget.ScrollView listScroll = new android.widget.ScrollView(this);
+        int maxListH = Math.round(getResources().getDisplayMetrics().heightPixels * 0.48f);
+        listScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, maxListH));
+        final LinearLayout listContainer = new LinearLayout(this);
+        listContainer.setOrientation(LinearLayout.VERTICAL);
+        listScroll.addView(listContainer);
+        root.addView(listScroll);
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("📅 选择 OCG 历史事件时间点")
+                .setView(root)
+                .setNegativeButton("关闭", null)
+                .create();
+
+        final Runnable[] renderEventListRef = new Runnable[1];
+        final Runnable renderMonthChips = () -> {
+            monthRow.removeAllViews();
+            if ("ALL".equals(selectedYear[0])) {
+                selectedMonth[0] = "ALL";
+                monthScroll.setVisibility(View.GONE);
+                return;
+            }
+            monthScroll.setVisibility(View.VISIBLE);
+            List<String> months = TimelineEngine.getEventMonthsForYear(allEventDates, selectedYear[0]);
+            if (!"ALL".equals(selectedMonth[0]) && !months.contains(selectedMonth[0])) {
+                selectedMonth[0] = "ALL";
+            }
+            List<String> keys = new ArrayList<>();
+            keys.add("ALL");
+            keys.addAll(months);
+            for (final String mKey : keys) {
+                Button mb = new Button(this);
+                boolean active = mKey.equals(selectedMonth[0]);
+                String mLabel = "ALL".equals(mKey) ? "全部月份" : (Integer.parseInt(mKey) + "月");
+                mb.setText(mLabel);
+                mb.setTextSize(11.5f);
+                mb.setAllCaps(false);
+                mb.setTextColor(Color.WHITE);
+                mb.setMinWidth(0);
+                mb.setMinHeight(0);
+                mb.setPadding(dp(10), 0, dp(10), 0);
+                GradientDrawable bg = new GradientDrawable();
+                bg.setColor(Color.parseColor(active ? "#0284C7" : "#1E293B"));
+                bg.setCornerRadius(dp(6));
+                mb.setBackground(bg);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, dp(30));
+                lp.setMarginEnd(dp(6));
+                mb.setLayoutParams(lp);
+                mb.setOnClickListener(v -> {
+                    selectedMonth[0] = mKey;
+                    if (renderEventListRef[0] != null) renderEventListRef[0].run();
+                });
+                monthRow.addView(mb);
+            }
+        };
+
+        renderEventListRef[0] = () -> {
+            renderMonthChips.run();
+            listContainer.removeAllViews();
+            List<String> filtered = new ArrayList<>();
+            for (String d : allEventDates) {
+                if (!"ALL".equals(selectedYear[0]) && !d.startsWith(selectedYear[0] + "-")) continue;
+                if (!"ALL".equals(selectedMonth[0]) && !d.startsWith(selectedYear[0] + "-" + selectedMonth[0] + "-")) continue;
+                filtered.add(d);
+            }
+            tvMatchCount.setText("共 " + filtered.size() + " 项");
+
+            for (final String date : filtered) {
+                boolean isCur = date.equals(profile.currentTimelineDate);
+                TimelineEngine.TimelineDigest digest = TimelineEngine.buildDigestAtDate(catalog, allOpponents, date);
+                String rawSummary = digest.buildShortSummary();
+                String prefix = "📰 " + date + "：";
+                String cleanSummary = rawSummary.startsWith(prefix)
+                        ? rawSummary.substring(prefix.length()) : rawSummary;
+
+                LinearLayout rowCard = new LinearLayout(this);
+                rowCard.setOrientation(LinearLayout.VERTICAL);
+                GradientDrawable cbg = new GradientDrawable();
+                cbg.setColor(Color.parseColor(isCur ? "#1E3A5F" : "#1E293B"));
+                cbg.setCornerRadius(dp(8));
+                cbg.setStroke(dp(isCur ? 2 : 1), Color.parseColor(isCur ? "#F59E0B" : "#334155"));
+                rowCard.setBackground(cbg);
+                rowCard.setPadding(dp(10), dp(8), dp(10), dp(8));
+                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                rlp.bottomMargin = dp(6);
+                rowCard.setLayoutParams(rlp);
+
+                TextView tvDate = makeTitleText((isCur ? "▶ [当前] " : "📅 ") + date);
+                tvDate.setTextSize(13.5f);
+                tvDate.setTextColor(Color.parseColor(isCur ? "#FBBF24" : "#F8FAFC"));
+                rowCard.addView(tvDate);
+
+                TextView tvDesc = makeSubtleText(cleanSummary);
+                tvDesc.setTextColor(Color.parseColor(isCur ? "#FDE68A" : "#CBD5E1"));
+                rowCard.addView(tvDesc);
+
+                rowCard.setOnClickListener(v -> {
+                    dialog.dismiss();
+                    selectTimelineDate(date);
+                });
+                listContainer.addView(rowCard);
+            }
+            listScroll.scrollTo(0, 0);
+        };
+
+        spYear.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                String yk = yearKeys.get(position);
+                if (!yk.equals(selectedYear[0])) {
+                    selectedYear[0] = yk;
+                    selectedMonth[0] = "ALL";
+                }
+                renderEventListRef[0].run();
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+
+        renderEventListRef[0].run();
+        dialog.show();
     }
 
     private void renderCurrentTab() {

@@ -187,6 +187,112 @@ public final class TimelineEngine {
         return new ArrayList<>(dates);
     }
 
+    /**
+     * Returns sorted distinct dates within [minTimelineDate, maxTimelineDate] that actually have
+     * at least one OCG event (pack release, promo event, banlist change, rule shift, card errata,
+     * or AI opponent unlock/deck evolution). Excludes empty filler dates like year-end if nothing happened.
+     */
+    public static List<String> getTimelineEventDates(RpgCatalog catalog, List<AiOpponent> opponents) {
+        TreeSet<String> dates = new TreeSet<>();
+        if (catalog == null) return new ArrayList<>();
+        String minD = catalog.minTimelineDate;
+        String maxD = catalog.maxTimelineDate;
+        if (catalog.packs != null) {
+            for (OcgPack p : catalog.packs) {
+                addIfInRange(dates, p != null ? p.releaseDate : null, minD, maxD);
+            }
+        }
+        if (catalog.events != null) {
+            for (OcgEvent e : catalog.events) {
+                addIfInRange(dates, e != null ? e.releaseDate : null, minD, maxD);
+            }
+        }
+        if (catalog.banlists != null) {
+            for (OcgBanlist b : catalog.banlists) {
+                addIfInRange(dates, b != null ? b.effectiveDate : null, minD, maxD);
+            }
+        }
+        if (catalog.rules != null) {
+            for (OcgRuleSet r : catalog.rules) {
+                addIfInRange(dates, r != null ? r.effectiveDate : null, minD, maxD);
+            }
+        }
+        for (String ed : CardErrataEngine.getErrataMilestonesInRange(catalog)) {
+            addIfInRange(dates, ed, minD, maxD);
+        }
+        if (opponents != null) {
+            for (AiOpponent opp : opponents) {
+                if (opp == null) continue;
+                addIfInRange(dates, opp.unlockDate, minD, maxD);
+                if (opp.deckEvolutions != null) {
+                    for (AiOpponent.EraDeckProfile ep : opp.deckEvolutions) {
+                        if (ep != null) addIfInRange(dates, ep.effectiveDate, minD, maxD);
+                    }
+                }
+            }
+        }
+        return new ArrayList<>(dates);
+    }
+
+    private static void addIfInRange(TreeSet<String> out, String date, String minD, String maxD) {
+        if (date == null || date.length() < 10) return;
+        if (minD != null && !minD.isEmpty() && date.compareTo(minD) < 0) return;
+        if (maxD != null && !maxD.isEmpty() && date.compareTo(maxD) > 0) return;
+        out.add(date);
+    }
+
+    /** Returns the latest event date strictly earlier than {@code currentDate}, or {@code null} if none. */
+    public static String getPreviousEventDate(List<String> eventDates, String currentDate) {
+        if (eventDates == null || eventDates.isEmpty() || currentDate == null) return null;
+        String prev = null;
+        for (String d : eventDates) {
+            if (d.compareTo(currentDate) < 0) {
+                prev = d;
+            } else {
+                break;
+            }
+        }
+        return prev;
+    }
+
+    /** Returns the earliest event date strictly later than {@code currentDate}, or {@code null} if none. */
+    public static String getNextEventDate(List<String> eventDates, String currentDate) {
+        if (eventDates == null || eventDates.isEmpty() || currentDate == null) return null;
+        for (String d : eventDates) {
+            if (d.compareTo(currentDate) > 0) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    /** Returns sorted distinct 4-digit years (e.g. "1999", "2000") that contain at least one event date. */
+    public static List<String> getEventYears(List<String> eventDates) {
+        TreeSet<String> years = new TreeSet<>();
+        if (eventDates != null) {
+            for (String d : eventDates) {
+                if (d != null && d.length() >= 4) {
+                    years.add(d.substring(0, 4));
+                }
+            }
+        }
+        return new ArrayList<>(years);
+    }
+
+    /** Returns sorted distinct 2-digit months (e.g. "02", "03") with events in {@code year}. */
+    public static List<String> getEventMonthsForYear(List<String> eventDates, String year) {
+        TreeSet<String> months = new TreeSet<>();
+        if (eventDates != null && year != null && year.length() == 4) {
+            String prefix = year + "-";
+            for (String d : eventDates) {
+                if (d != null && d.length() >= 7 && d.startsWith(prefix)) {
+                    months.add(d.substring(5, 7));
+                }
+            }
+        }
+        return new ArrayList<>(months);
+    }
+
     /** Filters AI opponents unlocked on or before currentDate. */
     public static List<AiOpponent> getAvailableOpponents(List<AiOpponent> all, String currentDate) {
         List<AiOpponent> out = new ArrayList<>();
