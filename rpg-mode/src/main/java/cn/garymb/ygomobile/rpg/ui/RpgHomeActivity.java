@@ -833,6 +833,8 @@ public class RpgHomeActivity extends AppCompatActivity {
         });
         Button saveDeckBtn = makeActionButton("💾 保存卡组", "#0284C7");
         saveDeckBtn.setOnClickListener(v -> showSaveDeckDialog());
+        Button loadDeckBtn = makeActionButton("📂 读取卡组", "#0D9488");
+        loadDeckBtn.setOnClickListener(v -> showLoadDeckDialog());
         Button clearBtn = makeActionButton("清空卡组", "#475569");
         clearBtn.setOnClickListener(v -> {
             profile.activeDeckMain.clear();
@@ -840,10 +842,21 @@ public class RpgHomeActivity extends AppCompatActivity {
             saveProfileSafe();
             refreshAll();
         });
-        layoutTabActions.addView(nativeEditorBtn);
-        layoutTabActions.addView(autoBtn);
-        layoutTabActions.addView(saveDeckBtn);
-        layoutTabActions.addView(clearBtn);
+
+        android.widget.HorizontalScrollView actionScroll = new android.widget.HorizontalScrollView(this);
+        actionScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        actionScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout actionRow = new LinearLayout(this);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionRow.setGravity(Gravity.CENTER_VERTICAL);
+        actionRow.addView(nativeEditorBtn);
+        actionRow.addView(autoBtn);
+        actionRow.addView(saveDeckBtn);
+        actionRow.addView(loadDeckBtn);
+        actionRow.addView(clearBtn);
+        actionScroll.addView(actionRow);
+        layoutTabActions.addView(actionScroll);
 
         DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
         LinearLayout statusCard = makeCardContainer();
@@ -1056,6 +1069,36 @@ public class RpgHomeActivity extends AppCompatActivity {
                     saveProfileSafe();
                     Toast.makeText(this, "已保存卡组「" + saved.name + "」", Toast.LENGTH_SHORT).show();
                     refreshAll();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void showLoadDeckDialog() {
+        List<RpgProfile.SavedDeck> savedList = profile.savedDecks;
+        if (savedList == null || savedList.isEmpty()) {
+            Toast.makeText(this, "暂无已保存卡组，请先点击「💾 保存卡组」", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels = new String[savedList.size()];
+        for (int i = 0; i < savedList.size(); i++) {
+            RpgProfile.SavedDeck sd = savedList.get(i);
+            boolean isCur = sd.id != null && sd.id.equals(profile.activeDeckId);
+            int mSize = sd.main != null ? sd.main.size() : 0;
+            int eSize = sd.extra != null ? sd.extra.size() : 0;
+            labels[i] = (isCur ? "▶ [当前] " : "") + sd.name
+                    + "（主 " + mSize + " / 额外 " + eSize
+                    + (sd.savedAtDate != null ? " · " + sd.savedAtDate : "") + "）";
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("📂 读取已保存卡组（共 " + savedList.size() + " 套）")
+                .setItems(labels, (dialog, which) -> {
+                    RpgProfile.SavedDeck sd = savedList.get(which);
+                    if (sd != null && profile.loadSavedDeck(sd.id)) {
+                        saveProfileSafe();
+                        Toast.makeText(this, "已读取卡组「" + sd.name + "」", Toast.LENGTH_SHORT).show();
+                        refreshAll();
+                    }
                 })
                 .setNegativeButton("取消", null)
                 .show();
