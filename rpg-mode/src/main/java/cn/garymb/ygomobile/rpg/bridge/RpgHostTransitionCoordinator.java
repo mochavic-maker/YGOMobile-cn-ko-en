@@ -2,6 +2,8 @@ package cn.garymb.ygomobile.rpg.bridge;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import cn.garymb.ygomobile.rpg.util.RpgDiagLog;
+
 /**
  * Coordinates foreground Activity transitions between {@code RpgHomeActivity} and {@code YGOProActivity}
  * for the three native-host scenes prone to bouncing back to {@code MainMenuDialog}:
@@ -82,7 +84,9 @@ public final class RpgHostTransitionCoordinator {
      * inside the recreated host's {@code onCreate()} until the pending scene hands off.
      */
     public long markPendingHostRecreate(ActiveScene scene) {
-        return beginSceneTransition(scene != null ? scene : ActiveScene.NONE);
+        long gen = beginSceneTransition(scene != null ? scene : ActiveScene.NONE);
+        RpgDiagLog.log("Coord", "markPendingHostRecreate scene=" + activeScene + " gen=" + gen);
+        return gen;
     }
 
     /** Cancels all pending foreground waits, safeguards, and return watchers. */
@@ -91,7 +95,9 @@ public final class RpgHostTransitionCoordinator {
         activeScene = ActiveScene.NONE;
         activeReturnGen = -1L;
         activeReturnCallback = null;
-        return transitionGen.incrementAndGet();
+        long gen = transitionGen.incrementAndGet();
+        RpgDiagLog.log("Coord", "invalidatePendingTransitions -> gen=" + gen);
+        return gen;
     }
 
     /**
@@ -132,6 +138,8 @@ public final class RpgHostTransitionCoordinator {
     public boolean onMainMenuShown(final HostSurface host) {
         if (host == null || !host.isAlive()) return false;
         if (shouldBlockMainMenu(host)) {
+            RpgDiagLog.log("Coord", "onMainMenuShown SUPPRESSED scene=" + activeScene
+                    + " inProgress=" + transitionInProgress + " gen=" + transitionGen.get());
             host.hideMainMenu();
             return true;
         }
@@ -142,6 +150,8 @@ public final class RpgHostTransitionCoordinator {
             boolean stillInReplay = activeScene == ActiveScene.REPLAY && host.isReplaySessionActive();
             if (!stillInDeckEditor && !stillInReplay) {
                 if (transitionGen.compareAndSet(rGen, rGen + 1)) {
+                    RpgDiagLog.log("Coord", "onMainMenuShown -> trigger returnToRpg gen=" + rGen
+                            + " prevScene=" + activeScene);
                     activeScene = ActiveScene.NONE;
                     activeReturnGen = -1L;
                     activeReturnCallback = null;
@@ -150,6 +160,8 @@ public final class RpgHostTransitionCoordinator {
                 }
             }
         }
+        RpgDiagLog.log("Coord", "onMainMenuShown -> normal menu prevScene=" + activeScene
+                + " gen=" + transitionGen.get() + " hasReturnCb=" + (rCb != null));
         activeScene = ActiveScene.NONE;
         return false;
     }
@@ -162,9 +174,12 @@ public final class RpgHostTransitionCoordinator {
                                        final Runnable restoreOverridesAndSeatName) {
         if (host == null || !host.isAlive()) return -1L;
         final long gen = beginSceneTransition(ActiveScene.WAITING_ROOM);
+        RpgDiagLog.log("Coord", "launchWaitingRoomScene gen=" + gen
+                + " focused=" + host.isForegroundFocused() + " menu=" + host.isMainMenuShowing());
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
+            RpgDiagLog.log("Coord", "launchWaitingRoomScene body start gen=" + gen);
             try {
                 host.hideMainMenu();
                 if (startSceneBody != null) {
@@ -180,13 +195,18 @@ public final class RpgHostTransitionCoordinator {
                 if (host.isEngineDisconnectedOrIdle() || host.isDuelActiveOrStarted()) {
                     return;
                 }
-                if (host.isMainMenuShowing()) {
+                boolean menu = host.isMainMenuShowing();
+                boolean wait = host.isWaitingDialogShowing();
+                if (menu || !wait) {
+                    RpgDiagLog.log("Coord", "verifyWaiting HEAL gen=" + gen + " menu=" + menu + " wait=" + wait);
+                }
+                if (menu) {
                     host.hideMainMenu();
                 }
                 if (restoreOverridesAndSeatName != null) {
                     restoreOverridesAndSeatName.run();
                 }
-                if (!host.isWaitingDialogShowing()) {
+                if (!wait) {
                     host.showWaitingDialog();
                     if (restoreOverridesAndSeatName != null) {
                         host.postDelayed(() -> {
@@ -212,9 +232,12 @@ public final class RpgHostTransitionCoordinator {
                                   final Runnable restoreAvatarOverrides) {
         if (host == null || !host.isAlive()) return -1L;
         final long gen = beginSceneTransition(ActiveScene.REPLAY);
+        RpgDiagLog.log("Coord", "launchReplayScene gen=" + gen
+                + " focused=" + host.isForegroundFocused() + " menu=" + host.isMainMenuShowing());
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
+            RpgDiagLog.log("Coord", "launchReplayScene body start gen=" + gen);
             try {
                 host.hideMainMenu();
                 if (restoreAvatarOverrides != null) {
@@ -228,16 +251,31 @@ public final class RpgHostTransitionCoordinator {
                     transitionInProgress = false;
                 }
             }
+            RpgDiagLog.log("Coord", "launchReplayScene body done gen=" + gen
+                    + " replayActive=" + host.isReplaySessionActive()
+                    + " gameUi=" + host.isGameUiVisible()
+                    + " menu=" + host.isMainMenuShowing());
             Runnable verifyReplay = () -> {
                 if (!isCurrentAndAlive(host, gen)) return;
-                if (!host.isReplaySessionActive()) return;
-                if (host.isMainMenuShowing()) {
+                boolean replayActive = host.isReplaySessionActive();
+                boolean menu = host.isMainMenuShowing();
+                boolean gameUi = host.isGameUiVisible();
+                if (!replayActive) {
+                    RpgDiagLog.log("Coord", "verifyReplay skip gen=" + gen
+                            + " replayActive=false menu=" + menu + " gameUi=" + gameUi);
+                    return;
+                }
+                if (menu || !gameUi) {
+                    RpgDiagLog.log("Coord", "verifyReplay HEAL gen=" + gen
+                            + " menu=" + menu + " gameUi=" + gameUi);
+                }
+                if (menu) {
                     host.hideMainMenu();
                 }
                 if (restoreAvatarOverrides != null) {
                     restoreAvatarOverrides.run();
                 }
-                if (!host.isGameUiVisible()) {
+                if (!gameUi) {
                     host.enterReplayUi();
                 }
             };
@@ -257,9 +295,12 @@ public final class RpgHostTransitionCoordinator {
                                       final Runnable onReturnToRpgMenu) {
         if (host == null || !host.isAlive()) return -1L;
         final long gen = beginSceneTransition(ActiveScene.DECK_EDITOR);
+        RpgDiagLog.log("Coord", "launchDeckEditorScene gen=" + gen
+                + " focused=" + host.isForegroundFocused() + " menu=" + host.isMainMenuShowing());
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
+            RpgDiagLog.log("Coord", "launchDeckEditorScene body start gen=" + gen);
             try {
                 host.hideMainMenu();
                 if (openEditorBody != null) {
@@ -278,10 +319,16 @@ public final class RpgHostTransitionCoordinator {
             }
             Runnable verifyDeckEditor = () -> {
                 if (!isCurrentAndAlive(host, gen)) return;
-                if (host.isMainMenuShowing()) {
+                boolean menu = host.isMainMenuShowing();
+                boolean deckVis = host.isDeckEditorVisible();
+                if (menu || !deckVis) {
+                    RpgDiagLog.log("Coord", "verifyDeckEditor HEAL gen=" + gen
+                            + " menu=" + menu + " deckVis=" + deckVis);
+                }
+                if (menu) {
                     host.hideMainMenu();
                 }
-                if (!host.isDeckEditorVisible()) {
+                if (!deckVis) {
                     host.showDeckEditor();
                     if (loadDeckIntoEditorBody != null) {
                         host.postDelayed(() -> {
@@ -312,6 +359,7 @@ public final class RpgHostTransitionCoordinator {
         transitionInProgress = false;
         activeScene = ActiveScene.NONE;
         final long gen = transitionGen.incrementAndGet();
+        RpgDiagLog.log("Coord", "scheduleReturnToRpg gen=" + gen + " menu=" + host.isMainMenuShowing());
         armReturnToRpg(host, gen, onReturnToRpgMenu, !host.isMainMenuShowing());
         return gen;
     }
@@ -339,6 +387,7 @@ public final class RpgHostTransitionCoordinator {
                 // popup rather than an exit — suppress it and keep editing!
                 if (activeScene == ActiveScene.DECK_EDITOR && host.isDeckEditorVisible()) {
                     if (host.isMainMenuShowing()) {
+                        RpgDiagLog.log("Coord", "returnWatcher suppressed stray menu during DECK_EDITOR gen=" + gen);
                         host.hideMainMenu();
                     }
                     sawMenuHidden[0] = true;
@@ -356,6 +405,7 @@ public final class RpgHostTransitionCoordinator {
                     return;
                 }
                 if (transitionGen.compareAndSet(gen, gen + 1)) {
+                    RpgDiagLog.log("Coord", "returnWatcher firing returnToRpg gen=" + gen);
                     activeScene = ActiveScene.NONE;
                     activeReturnGen = -1L;
                     activeReturnCallback = null;
@@ -377,18 +427,28 @@ public final class RpgHostTransitionCoordinator {
     }
 
     private void waitForForegroundThenRun(final HostSurface host, final long gen, final Runnable task) {
-        final long deadlineMs = host.nowMs() + FOCUS_WAIT_TIMEOUT_MS;
+        final long startMs = host.nowMs();
+        final long deadlineMs = startMs + FOCUS_WAIT_TIMEOUT_MS;
         final Runnable poll = new Runnable() {
             @Override
             public void run() {
-                if (!isCurrentAndAlive(host, gen)) return;
+                if (!isCurrentAndAlive(host, gen)) {
+                    RpgDiagLog.log("Coord", "waitForForeground aborted gen=" + gen
+                            + " curGen=" + transitionGen.get()
+                            + " alive=" + (host != null && host.isAlive()));
+                    return;
+                }
                 if (host.isMainMenuShowing()) {
                     host.hideMainMenu();
                 }
-                if (!host.isForegroundFocused() && host.nowMs() < deadlineMs) {
+                boolean focused = host.isForegroundFocused();
+                if (!focused && host.nowMs() < deadlineMs) {
                     host.postDelayed(this, FOCUS_POLL_INTERVAL_MS);
                     return;
                 }
+                long elapsed = host.nowMs() - startMs;
+                RpgDiagLog.log("Coord", "waitForForeground ready gen=" + gen
+                        + " focused=" + focused + " elapsedMs=" + elapsed);
                 host.postDelayed(() -> {
                     if (isCurrentAndAlive(host, gen)) {
                         task.run();

@@ -58,6 +58,7 @@ import cn.garymb.ygomobile.rpg.model.OcgBanlist;
 import cn.garymb.ygomobile.rpg.model.OcgCanonDuel;
 import cn.garymb.ygomobile.rpg.model.OcgCardErrata;
 import cn.garymb.ygomobile.rpg.model.OcgEvent;
+import cn.garymb.ygomobile.rpg.util.RpgDiagLog;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.model.Rarity;
@@ -156,6 +157,9 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "旧存档多余卡(>3张)已自动分解：" + legacySurplus.message, Toast.LENGTH_LONG).show();
         }
 
+        RpgDiagLog.init(this);
+        RpgDiagLog.log("Home", "onCreate intentTab=" + (getIntent() != null ? getIntent().getIntExtra(EXTRA_INITIAL_TAB, -1) : -1));
+
         scrollRpgBody = findViewById(R.id.scroll_rpg_body);
         tvTokens = findViewById(R.id.tv_rpg_tokens);
         tvDust = findViewById(R.id.tv_rpg_dust);
@@ -174,7 +178,14 @@ public class RpgHomeActivity extends AppCompatActivity {
 
         timelineEventDates = TimelineEngine.getTimelineEventDates(catalog, AiDeckGenerator.getDemoOpponents());
 
-        findViewById(R.id.btn_rpg_back).setOnClickListener(v -> finish());
+        findViewById(R.id.btn_rpg_back).setOnClickListener(v -> {
+            RpgDiagLog.log("Home", "btn_rpg_back -> finish()");
+            finish();
+        });
+        View diagLogBtn = findViewById(R.id.btn_rpg_diag_log);
+        if (diagLogBtn != null) {
+            diagLogBtn.setOnClickListener(v -> openDiagLogDialog());
+        }
         findViewById(R.id.btn_pick_date).setOnClickListener(v -> openDatePicker());
         tvCurrentMilestone.setOnClickListener(v -> openDatePicker());
         btnPrevMilestone.setOnClickListener(v -> {
@@ -199,6 +210,61 @@ public class RpgHomeActivity extends AppCompatActivity {
                 catalog, AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
         applyInitialTabFromIntent(getIntent());
         refreshAll();
+    }
+
+    private void openDiagLogDialog() {
+        RpgDiagLog.init(this);
+        final String logText = RpgDiagLog.getRecentLogsText(200);
+        final String filePath = RpgDiagLog.getLogFilePath();
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(12);
+        root.setPadding(pad, dp(8), pad, dp(4));
+
+        TextView pathTv = new TextView(this);
+        pathTv.setText("日志文件：" + filePath);
+        pathTv.setTextColor(Color.parseColor("#38BDF8"));
+        pathTv.setTextSize(11f);
+        pathTv.setPadding(0, 0, 0, dp(8));
+        root.addView(pathTv);
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(340));
+        scroll.setLayoutParams(slp);
+        scroll.setBackgroundColor(Color.parseColor("#0B1120"));
+
+        TextView logTv = new TextView(this);
+        logTv.setText(logText);
+        logTv.setTextColor(Color.parseColor("#E2E8F0"));
+        logTv.setTextSize(10.5f);
+        logTv.setTypeface(android.graphics.Typeface.MONOSPACE);
+        logTv.setTextIsSelectable(true);
+        logTv.setPadding(dp(8), dp(8), dp(8), dp(8));
+        scroll.addView(logTv);
+        root.addView(scroll);
+
+        scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+
+        new AlertDialog.Builder(this)
+                .setTitle("📋 RPG 诊断日志（最近 200 条）")
+                .setView(root)
+                .setPositiveButton("一键复制", (d, w) -> {
+                    android.content.ClipboardManager cm =
+                            (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    if (cm != null) {
+                        String payload = "=== RPG Diag Log ===\nPath: " + filePath + "\n\n" + logText;
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("rpg_debug_log", payload));
+                        Toast.makeText(this, "已复制最近诊断日志到剪贴板，直接粘贴发送即可", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNeutralButton("清空日志", (d, w) -> {
+                    RpgDiagLog.clear();
+                    Toast.makeText(this, "已清空诊断日志", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("关闭", null)
+                .show();
     }
 
     private void setupDraggableNavTabs() {
@@ -2285,6 +2351,8 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
         String p0Name = report.sideAFirst ? report.sideAName : report.sideBName;
         String p1Name = report.sideAFirst ? report.sideBName : report.sideAName;
+        RpgDiagLog.log("Home", "launchNative3dReplay file=" + replayFile.getName()
+                + " size=" + replayFile.length() + " returnTab=" + returnTab + " -> startRpgReplay + finish()");
         bridge.startRpgReplay(this, report.replayFilePath, p0Name, p1Name, returnTab);
         finish();
     }

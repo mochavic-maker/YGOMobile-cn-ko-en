@@ -22,6 +22,7 @@ import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.ui.RpgHomeActivity;
+import cn.garymb.ygomobile.rpg.util.RpgDiagLog;
 import cn.garymb.ygomobile.ui.dialogs.lobby.PlayerWaitingDialog;
 
 /**
@@ -40,6 +41,9 @@ public final class RpgIntegration {
      */
     public static void attachMainMenuButton(final YGOProActivity activity, View mainMenuRoot) {
         if (activity == null || mainMenuRoot == null) return;
+        RpgDiagLog.init(activity);
+        RpgDiagLog.log("Host", "attachMainMenuButton act=@" + Integer.toHexString(System.identityHashCode(activity))
+                + " hasPendingTask=" + (sPendingHostTask != null));
         sHostActivity = activity;
         sAppContext = activity.getApplicationContext();
         registerBridge(activity);
@@ -176,10 +180,15 @@ public final class RpgIntegration {
                                        java.util.function.Consumer<YGOProActivity> task) {
         if (task == null) return;
         YGOProActivity host = sHostActivity;
-        if (host != null && !host.isFinishing() && !host.isDestroyed()) {
+        boolean alive = host != null && !host.isFinishing() && !host.isDestroyed();
+        RpgDiagLog.log("Host", "dispatchOnHost scene=" + scene + " hostAlive=" + alive
+                + (host != null ? (" act=@" + Integer.toHexString(System.identityHashCode(host))
+                + " finishing=" + host.isFinishing() + " destroyed=" + host.isDestroyed()) : " host=null"));
+        if (alive) {
             sPendingHostTask = null;
             host.runOnUiThread(() -> {
                 if (host.isFinishing() || host.isDestroyed()) {
+                    RpgDiagLog.log("Host", "dispatchOnHost host died before UI run -> queueForRecreatedHost scene=" + scene);
                     queueForRecreatedHost(callerContext, scene, task);
                     return;
                 }
@@ -193,6 +202,7 @@ public final class RpgIntegration {
     private static void queueForRecreatedHost(Context callerContext,
                                               cn.garymb.ygomobile.rpg.bridge.RpgHostTransitionCoordinator.ActiveScene scene,
                                               java.util.function.Consumer<YGOProActivity> task) {
+        RpgDiagLog.log("Host", "queueForRecreatedHost scene=" + scene);
         sPendingHostTask = task;
         sTransitionCoordinator.markPendingHostRecreate(scene);
         Context launchCtx = callerContext != null ? callerContext : sAppContext;
@@ -204,7 +214,8 @@ public final class RpgIntegration {
             }
             try {
                 launchCtx.startActivity(intent);
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
+                RpgDiagLog.log("Host", "queueForRecreatedHost startActivity failed: " + t);
             }
         }
     }
@@ -212,6 +223,8 @@ public final class RpgIntegration {
     private static void consumePendingHostTaskIfAny(final YGOProActivity activity) {
         java.util.function.Consumer<YGOProActivity> pending = sPendingHostTask;
         if (pending != null && activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
+            RpgDiagLog.log("Host", "consumePendingHostTaskIfAny executing on act=@"
+                    + Integer.toHexString(System.identityHashCode(activity)));
             sPendingHostTask = null;
             pending.accept(activity);
         }
@@ -228,11 +241,13 @@ public final class RpgIntegration {
         if (returnTab < 0 || activity == null) {
             return false;
         }
+        RpgDiagLog.log("Replay", "handleRpgReplayQuit -> returnTab=" + returnTab);
         returnToRpgFromReplay(activity, returnTab);
         return true;
     }
 
     private static void returnToRpgFromReplay(final YGOProActivity activity, final int returnTab) {
+        RpgDiagLog.log("Replay", "returnToRpgFromReplay tab=" + returnTab);
         sActiveRpgReplayReturnTab = -1;
         sRpgReplayEndDialogShowing = false;
         sTransitionCoordinator.invalidatePendingTransitions();
@@ -315,7 +330,14 @@ public final class RpgIntegration {
      */
     public static boolean shouldBlockMainMenu(YGOProActivity activity) {
         if (activity == null) return false;
-        return sTransitionCoordinator.shouldBlockMainMenu(asHostSurface(activity));
+        boolean blocked = sTransitionCoordinator.shouldBlockMainMenu(asHostSurface(activity));
+        RpgDiagLog.logWithCallerStack("Menu",
+                "shouldBlockMainMenu=" + blocked
+                        + " scene=" + sTransitionCoordinator.getActiveScene()
+                        + " gen=" + sTransitionCoordinator.getCurrentGeneration()
+                        + " replayActive=" + (activity.isReplaySessionActive() || sRpgReplayEndDialogShowing),
+                4);
+        return blocked;
     }
 
     /**
@@ -324,6 +346,10 @@ public final class RpgIntegration {
      * exit (even after long editing sessions), and clears RPG overrides when returning to normal menu.
      */
     public static void onMainMenuShown(YGOProActivity activity) {
+        RpgDiagLog.logWithCallerStack("Menu",
+                "onMainMenuShown scene=" + sTransitionCoordinator.getActiveScene()
+                        + " gen=" + sTransitionCoordinator.getCurrentGeneration(),
+                4);
         if (activity != null && sTransitionCoordinator.onMainMenuShown(asHostSurface(activity))) {
             return;
         }
@@ -1182,6 +1208,7 @@ public final class RpgIntegration {
             public void startRpgReplay(Context context, String replayFilePath,
                                        String player0Name, String player1Name, int returnTab) {
                 if (replayFilePath == null || replayFilePath.isEmpty()) {
+                    RpgDiagLog.log("Replay", "startRpgReplay aborted: empty path");
                     if (context != null) {
                         sMainHandler.post(() -> Toast.makeText(context, "录像文件不存在", Toast.LENGTH_SHORT).show());
                     }
@@ -1189,11 +1216,14 @@ public final class RpgIntegration {
                 }
                 File f = new File(replayFilePath);
                 if (!f.exists()) {
+                    RpgDiagLog.log("Replay", "startRpgReplay aborted: missing file " + replayFilePath);
                     if (context != null) {
                         sMainHandler.post(() -> Toast.makeText(context, "录像文件已丢失：" + replayFilePath, Toast.LENGTH_SHORT).show());
                     }
                     return;
                 }
+                RpgDiagLog.log("Replay", "startRpgReplay file=" + f.getName() + " size=" + f.length()
+                        + " returnTab=" + returnTab + " p0=" + player0Name + " p1=" + player1Name);
                 final String p0Avatar = resolveOpponentIdByName(player0Name);
                 final String p1Avatar = resolveOpponentIdByName(player1Name);
                 dispatchOnHost(context,
@@ -1223,6 +1253,8 @@ public final class RpgIntegration {
                                                    final String replayPath,
                                                    final int returnTab) {
         final cn.garymb.ygomobile.game.replay.ReplayPlayer player = activity.getReplayPlayer();
+        RpgDiagLog.log("Replay", "launchNative3dReplayForRpg playerReady=" + (player != null)
+                + " file=" + new File(replayPath).getName());
         if (player == null) {
             Toast.makeText(activity, "3D 回放播放器尚未就绪，已返回 RPG 模式", Toast.LENGTH_SHORT).show();
             returnToRpgFromReplay(activity, returnTab);
@@ -1243,10 +1275,13 @@ public final class RpgIntegration {
         player.setListener(new cn.garymb.ygomobile.game.replay.ReplayPlayer.Listener() {
             @Override
             public void onReplayStateChanged(cn.garymb.ygomobile.game.replay.ReplayPlayer.State state) {
+                RpgDiagLog.log("Replay", "state=" + state + " step=" + player.getCurrentStep()
+                        + (player.getLastErrorMessage() != null ? (" err=" + player.getLastErrorMessage()) : ""));
                 activity.runOnUiThread(() -> {
                     switch (state) {
                         case PLAYING:
                             if (activity.getMainMenuDialog() != null && activity.getMainMenuDialog().isShowing()) {
+                                RpgDiagLog.log("Replay", "PLAYING hid lingering MainMenuDialog");
                                 activity.getMainMenuDialog().hideMainMenu();
                             }
                             activity.getCardDetailPanel().showReplayControls();
@@ -1291,9 +1326,11 @@ public final class RpgIntegration {
 
             @Override
             public void onReplayFinished(int winner, int reason) {
+                RpgDiagLog.log("Replay", "onReplayFinished winner=" + winner + " reason=" + reason);
                 activity.runOnUiThread(() -> activity.showReplayResult(winner, reason));
             }
         });
         player.loadAndPlay(replayPath, 1);
+        RpgDiagLog.log("Replay", "loadAndPlay called; isReplaySessionActive=" + activity.isReplaySessionActive());
     }
 }

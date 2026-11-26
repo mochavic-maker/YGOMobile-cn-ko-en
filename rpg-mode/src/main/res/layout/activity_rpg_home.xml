@@ -54,6 +54,20 @@
             android:textColor="#38BDF8"
             android:textSize="13sp"
             android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_rpg_diag_log"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:layout_marginStart="6dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="0dp"
+            android:text="日志"
+            android:textColor="#94A3B8"
+            android:textSize="11sp" />
     </LinearLayout>
 
     <!-- Full-page scrollable body so header controls never crush content in landscape -->
