@@ -92,30 +92,34 @@
 3. **规则与限表追加**：按 `yugioh-wiki.net` 规则页与禁限卡表页，在 `ocg_demo_catalog.json` 中追加新 `RuleSetVersion` 与 `BanlistVersion`。
 4. **勘误时间点核对**：对照 `yugioh-wiki.net/?%A5%A8%A5%E9%A5%C3%A5%BF`，更新 `ocg_errata_history.json` 中落入新时间段的勘误生效日（如 `2000-04-20` 黑森林魔女首次改版、`2000-07-13` 三魔神改版等）。
 5. **AI 卡组进化线扩展**：参考 `yugioh-history.com` 对应世代年表，在 `AiDeckGenerator.java` 中为既有 AI 追加新 `EraDeckProfile` 并新增时代代表对手，运行 `:rpg-mode:testDebugUnitTest` 校验全时间节点的 40 张合法构筑。
-6. **【强制】新卡池诞生新流派时同步提供对应专属 AI 系统**：每当延长时间线引入的新卡池诞生了新的主流/特色卡组流派（例如削手三神器、卡组破坏、仪式、特殊胜利、墓地除外、同调/超量/灵摆/连接等），**必须为其补齐一整套对应的纯 Java 专属 AI 系统**——包括单卡知识登记、专属流派战术大脑、新规则/新盘面状态评估、玩家自选卡组自动流派识别（`inferStyleFromDeck`）以及战术单元测试，严禁复用通用强攻或盲出 AI（详见第 8 节）。
+6. **【强制】参考环境史优化 AI 博弈细节，并为新卡池诞生的新流派提供专属 AI 系统**：每当延长时间线引入新卡包/新规则/新限表时，**必须参考对应时期的游戏王环境史**（如 `yugioh-history.com` 环境编年史与卡组年表）：
+   - 对照该时期环境史中的经典打法、关键单卡交互与心理博弈（例如第 1 期的落穴留牌/踩坑试探、地割/黑洞/雷击克制留牌、装备防 1 换 2、虚张声势盖魔、锁链飞镖/圣防/死毒/反转怪兽交互等；第 2 期后的削手顺序、旋风盖伏时机、墓地资源管理、大岚/激流葬防踩坑等），同步迭代 AI 的全局战术与单卡逻辑；
+   - 若新卡池诞生了新的主流/特色卡组流派（例如削手三神器、卡组破坏、仪式、特殊胜利、墓地除外、同调/超量/灵摆/连接等），**必须为其补齐一整套对应的纯 Java 专属 AI 系统**——包括单卡知识登记、专属流派战术大脑、新规则/新盘面状态评估、玩家自选卡组自动流派识别（`inferStyleFromDeck`）以及战术单元测试，严禁复用通用强攻或盲出 AI（详见第 8 节）。
 
 ---
 
-## 8. 新增 AI 对手 / 新流派卡组的专属 AI 系统强制规范
+## 8. 新增 AI 对手 / 新流派卡组 / 环境史 AI 优化强制规范
 
 本项目 RPG 人机对战、AI 托管快战、锦标赛与 3D 观战均已彻底移除 WindBot 通用随机脚本（`Deck=Lucky`）和近似模拟器，全部由真实 `ocgcore` 引擎 + 纯 Java 战术大脑 [`RpgAiStrategy`](../src/main/java/cn/garymb/ygomobile/rpg/ai/RpgAiStrategy.java) 驱动。
 
-**每次延长时间线出现新卡池流派、在 `AiDeckGenerator.java` 中新增 AI 对手，或给已有对手添加新卡组/新核心卡时，必须按以下 5 步同步落实专属 AI 系统：**
+**每次延长时间线、参考环境史推进新时期、在 `AiDeckGenerator.java` 中新增 AI 对手，或给已有对手添加新卡组/新核心卡时，必须按以下 6 步同步落实 AI 优化：**
 
-1. **登记新卡知识（`RpgAiCardKnowledge.java`）**
-   - 将新卡组/新流派中的关键魔法、陷阱、反转/诱发/检索/斩杀/终端怪兽、装备适用条件、直伤数值、高威胁反击对象、墓地回收优先级登记到 `RpgAiCardKnowledge`。
-2. **构建新流派专属策略与规则评估（`RpgAiStrategy.java` + `RpgAiDuelState.java`）**
+1. **考据环境史核心打法与博弈（`yugioh-history.com` / 遊戯王環境史）**
+   - 查阅该时间段的环境史文章与代表卡组，提炼该时代特有的战术共识、核心单卡克制关系、资源交换纪律与防踩坑博弈（如防清场、防反击、踩坑试探、虚张声势盖牌、先战破小怪再解大怪、墓地防苏生等），将其转化为明确的规则化启发式逻辑。
+2. **登记新卡知识（`RpgAiCardKnowledge.java`）**
+   - 将新卡组/新流派及该时代泛用强卡的关键魔法、陷阱、反转/诱发/检索/斩杀/终端怪兽、装备适用条件、直伤数值、高威胁反击对象、安全虚张声势盖牌列表与墓地回收优先级登记到 `RpgAiCardKnowledge`。
+3. **构建新流派专属策略与规则/卡池基准评估（`RpgAiStrategy.java` + `RpgAiDuelState.java`）**
    - 若新卡池诞生新流派（`fillStyle`），必须在 `RpgAiStrategy.SUPPORTED_STYLES` 中显式注册并补充中文展示名 `getStyleDisplayName`（否则单元测试守卫会自动报错）。
-   - 为新流派/新卡编写专属决策逻辑：
+   - 为新流派/新卡与该时代环境博弈编写专属决策逻辑：
      - 先后攻偏好（`chooseGoFirst`，结合当前规则的先攻抽卡设定）；
-     - 主阶段出牌先后序、核心 Combo 展开链与防自爆逻辑（例如清场/削手/抽滤先于通召、绝不先招主力再黑洞/大岚炸自己、不盲目献祭主力）；
+     - 主阶段出牌先后序、核心 Combo 展开链、资源克制与防自爆逻辑（例如清场/削手/抽滤先于通召、不乱交地割/黑洞/雷击/装备卡、先用下级试探对手盖牌、虚张声势盖魔、绝不先招主力再黑洞/大岚炸自己）；
      - 选目标/弃牌/检索/苏生/解放/表示形式优先级（`chooseSelectCard` / `chooseSelectTribute` / `choosePosition`）；
-     - 陷阱与速攻连锁时机（`chooseChain` / `chooseEffectYn`，如战斗阶段陷阱不在主阶乱开、反击陷阱只康高价值目标）；
-     - 若新时期引入新规则或新召唤/胜利机制（如抽干直接判负、仪式/同调/超量/灵摆/连接、手控削手等），同步扩展 `RpgAiDuelState` 的规则与盘面状态评估。
-3. **同步扩展玩家自选卡组流派自动识别（`RpgAiStrategy.inferStyleFromDeck`）**
+     - 陷阱与速攻连锁时机（`chooseChain` / `chooseEffectYn`，如防同效果陷阱重复叠连锁、按目标威胁与己方解场能力判断落穴/神宣/角笛交留、战斗陷阱不在主阶乱开）；
+     - 校验 `RpgAiDuelState` 的动态时代卡池基准（`computeEraBenchmarks`）与新规则/新召唤/新胜利机制评估（如抽干直接判负、仪式/同调/超量/灵摆/连接、手控削手等）。
+4. **同步扩展玩家自选卡组流派自动识别（`RpgAiStrategy.inferStyleFromDeck`）**
    - 确保玩家自己在 RPG 组卡中构筑同类新流派卡组时，AI 托管快战、AI 对决与 3D 观战也能自动识别并调用这套新流派专属 AI。
-4. **补充战术单元测试（`RpgAiStrategyTest.java`）**
-   - 为新流派的核心展开 Combo、关键单卡先后序、防低级失误场景及 `inferStyleFromDeck` 自动分类补充单元测试。
-5. **执行自动化守卫校验**
+5. **补充战术单元测试（`RpgAiStrategyTest.java`）**
+   - 为该时期环境史的关键博弈场景、新流派核心展开 Combo、防低级失误场景及 `inferStyleFromDeck` 自动分类补充单元测试。
+6. **执行自动化守卫校验**
    - 运行 `./gradlew :rpg-mode:testDebugUnitTest`，确认全部卡组构筑校验、战术单测及 `allAiOpponentDeckStylesHaveDedicatedStrategySupport` 守卫测试全部通过。
 

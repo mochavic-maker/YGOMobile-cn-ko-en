@@ -39,28 +39,51 @@ public final class RpgAiCardKnowledge {
     public static final int HINOTAMA = 46130346;               // 火球 (500)
     public static final int RAIMEI = 56260110;                 // 雷鸣 (300)
     public static final int SPARKS = 76103675;                 // 火星 (200)
+    public static final int BLUE_MEDICINE = 20871001;          // 蓝色药剂 (+400)
     public static final int RED_MEDICINE = 38199696;           // 红色药剂 (+500)
     public static final int GOBLINS_SECRET_REMEDY = 11868825;  // 哥布林的秘药 (+600)
+    public static final int SOUL_OF_THE_PURE = 47852924;       // 天使的鲜血 (+800)
     public static final int DIAN_KETO = 84257639;              // 治疗之神 迪安·凯特 (+1000)
+
+    // ===== Utility / Backrow / Combo Spells =====
+    public static final int DE_SPELL = 19159413;               // 魔法除去 (Vol.2)
+    public static final int REMOVE_TRAP = 51482758;            // 陷阱拆除 (Starter Box)
+    public static final int FLUTE_OF_SUMMONING_DRAGON = 43973174; // 呼龙笛 (EX)
 
     // ===== Equip Spells =====
     public static final int SWORD_OF_DARK_DESTRUCTION = 37120512; // 暗之破神剑 (DARK +400/-200)
     public static final int ELFS_LIGHT = 39897277;             // 精灵之光 (LIGHT +400/-200)
     public static final int INVIGORATION = 98374133;           // 觉醒 (EARTH +400/-200)
+    public static final int BURNING_SPEAR = 18937875;          // 灼热之枪 (FIRE +400/-200)
+    public static final int STEEL_SHELL = 2370081;             // 钢甲壳 (WATER +400/-200)
+    public static final int GUST_FAN = 55321970;               // 突风之扇 (WIND +400/-200)
     public static final int LEGENDARY_SWORD = 61854111;        // 传说之剑 (Warrior +300/+300)
     public static final int BEAST_FANGS = 46009906;            // 猛兽之齿 (Beast +300/+300)
     public static final int BOOK_OF_SECRET_ARTS = 91595718;    // 秘术之书 (Spellcaster +300/+300)
     public static final int DARK_ENERGY = 4614116;             // 暗能量 (Fiend +300/+300)
     public static final int VIOLET_CRYSTAL = 15052462;         // 紫水晶 (Zombie +300/+300)
     public static final int LASER_CANNON_ARMOR = 77007920;     // 激光炮机甲 (Insect +300/+300)
-    public static final int VILE_GERMS = 39774685;             // 猛兽之牙/植物装备 (Plant +300/+300)
+    public static final int VILE_GERMS = 39774685;             // 魔菌 (Plant +300/+300)
     public static final int POWER_OF_KAISHIN = 77027445;       // 波塞冬之力 (Aqua +300/+300)
+    public static final int MACHINE_CONVERSION_FACTORY = 25769732; // 机械改造工厂 (Machine +300/+300)
+    public static final int RAISE_BODY_HEAT = 51267887;        // 体温上升 (Dinosaur +300/+300)
+    public static final int DRAGON_TREASURE = 1435851;         // 龙之秘宝 (Dragon +300/+300)
+    public static final int SILVER_BOW_AND_ARROW = 1557499;    // 银之弓矢 (Fairy +300/+300)
+    public static final int ELECTRO_WHIP = 37820550;           // 电击鞭 (Thunder +300/+300)
+    public static final int MYSTICAL_MOON = 36607978;          // 魔性之月 (Beast-Warrior +300/+300)
+    public static final int FOLLOW_WIND = 98252586;            // 随风翼 (Winged Beast +300/+300)
+    public static final int SALAMANDRA = 32268901;             // 飞龙炎 (FIRE +700)
+    public static final int INSECT_ARMOR_WITH_LASER_CANNON = 3492538; // 附火器的机甲铠 (Insect +700)
     public static final int BLACK_PENDANT = 65169794;          // 黑项坠 (+500)
 
     // ===== Traps =====
     public static final int TRAP_HOLE = 4206964;               // 落穴
     public static final int ACID_TRAP_HOLE = 41356845;         // 蓄积硫酸的落穴
     public static final int CRUSH_CARD_VIRUS = 57728570;       // 死之卡组破坏病毒
+    public static final int KUNAI_WITH_CHAIN = 37390589;       // 附锁链的回力镖 (DM2 1999-07-08)
+    public static final int CASTLE_WALLS = 44209392;           // 城壁 (Booster 3)
+    public static final int JUST_DESSERTS = 24068492;          // 自业自得 (Booster 5)
+    public static final int HORN_OF_HEAVEN = 98069388;         // 升天之角笛 (Vol.6)
     public static final int SOLEMN_JUDGMENT = 41420027;        // 神之宣告
     public static final int SEVEN_TOOLS = 3819470;             // 盗贼的七道具
     public static final int WABOKU = 12607053;                 // 和睦的使者
@@ -87,9 +110,12 @@ public final class RpgAiCardKnowledge {
     public static final int PENGUIN_SOLDIER = 93920745;        // 企鹅士兵
     public static final int SKELENGEL = 60694662;              // 骸骨天使
     public static final int ARMED_NINJA = 9076207;             // 青衣忍者
+    public static final int REAPER_OF_THE_CARDS = 33066139;    // 猎卡死神 (Vol.3)
+    public static final int TRAP_MASTER = 46461247;            // 陷阱大师 (Booster 5)
     public static final int MORPHING_JAR = 33508719;           // 变形壶
     public static final int NEEDLE_WORM = 81843628;            // 针虫
     public static final int WALL_OF_ILLUSION = 13945283;       // 幻影壁
+    public static final int LORD_OF_D = 17985575;              // 龙之支配者 (EX)
     public static final int CANNON_SOLDIER = 11384280;         // 加农炮兵
     public static final int CYBER_STEIN = 69015963;            // 恶魔科学怪人
     public static final int TIME_WIZARD = 71625222;            // 时间魔术师
@@ -111,7 +137,7 @@ public final class RpgAiCardKnowledge {
 
     public static final Set<Integer> FLIP_MONSTERS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             MAGICIAN_OF_FAITH, MASK_OF_DARKNESS, MAN_EATER_BUG, HANE_HANE, PENGUIN_SOLDIER,
-            SKELENGEL, ARMED_NINJA, MORPHING_JAR, NEEDLE_WORM
+            SKELENGEL, ARMED_NINJA, REAPER_OF_THE_CARDS, TRAP_MASTER, MORPHING_JAR, NEEDLE_WORM
     )));
 
     public static final Set<Integer> SEARCHER_MONSTERS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
@@ -123,9 +149,11 @@ public final class RpgAiCardKnowledge {
     )));
 
     public static final Set<Integer> EQUIP_SPELLS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-            SWORD_OF_DARK_DESTRUCTION, ELFS_LIGHT, INVIGORATION, LEGENDARY_SWORD,
-            BEAST_FANGS, BOOK_OF_SECRET_ARTS, DARK_ENERGY, VIOLET_CRYSTAL,
-            LASER_CANNON_ARMOR, VILE_GERMS, POWER_OF_KAISHIN, BLACK_PENDANT
+            SWORD_OF_DARK_DESTRUCTION, ELFS_LIGHT, INVIGORATION, BURNING_SPEAR, STEEL_SHELL, GUST_FAN,
+            LEGENDARY_SWORD, BEAST_FANGS, BOOK_OF_SECRET_ARTS, DARK_ENERGY, VIOLET_CRYSTAL,
+            LASER_CANNON_ARMOR, VILE_GERMS, POWER_OF_KAISHIN, MACHINE_CONVERSION_FACTORY,
+            RAISE_BODY_HEAT, DRAGON_TREASURE, SILVER_BOW_AND_ARROW, ELECTRO_WHIP, MYSTICAL_MOON,
+            FOLLOW_WIND, SALAMANDRA, INSECT_ARMOR_WITH_LASER_CANNON, BLACK_PENDANT
     )));
 
     public static final Set<Integer> HIGH_THREAT_SPELLS_TO_NEGATE = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
@@ -168,10 +196,13 @@ public final class RpgAiCardKnowledge {
         TRAP_RECOVERY_PRIORITY.put(MIRROR_FORCE, 95);
         TRAP_RECOVERY_PRIORITY.put(SOLEMN_JUDGMENT, 90);
         TRAP_RECOVERY_PRIORITY.put(TRAP_HOLE, 85);
+        TRAP_RECOVERY_PRIORITY.put(KUNAI_WITH_CHAIN, 83);
         TRAP_RECOVERY_PRIORITY.put(WABOKU, 80);
         TRAP_RECOVERY_PRIORITY.put(METALMORPH, 78);
+        TRAP_RECOVERY_PRIORITY.put(HORN_OF_HEAVEN, 76);
         TRAP_RECOVERY_PRIORITY.put(ROYAL_DECREE, 72);
         TRAP_RECOVERY_PRIORITY.put(SEVEN_TOOLS, 70);
+        TRAP_RECOVERY_PRIORITY.put(JUST_DESSERTS, 68);
         TRAP_RECOVERY_PRIORITY.put(ACID_TRAP_HOLE, 65);
     }
 
@@ -197,7 +228,9 @@ public final class RpgAiCardKnowledge {
     }
 
     public static boolean isHealSpell(int code) {
-        return code == RED_MEDICINE || code == GOBLINS_SECRET_REMEDY || code == DIAN_KETO;
+        return code == BLUE_MEDICINE || code == RED_MEDICINE
+                || code == GOBLINS_SECRET_REMEDY || code == SOUL_OF_THE_PURE
+                || code == DIAN_KETO;
     }
 
     public static int getSpellRecoveryScore(int code, String style, int oppLp) {
@@ -225,6 +258,7 @@ public final class RpgAiCardKnowledge {
     public static int getTrapRecoveryScore(int code, String style) {
         if ("DARK_VIRUS".equals(style) && code == CRUSH_CARD_VIRUS) return 150;
         if ("EXODIA_DRAW".equals(style) && code == WABOKU) return 120;
+        if ("BURN_WALL".equals(style) && code == JUST_DESSERTS) return 115;
         Integer base = TRAP_RECOVERY_PRIORITY.get(code);
         return base != null ? base : 30;
     }
@@ -234,30 +268,47 @@ public final class RpgAiCardKnowledge {
         // YGOPro attribute bitmasks: EARTH=0x1, WATER=0x2, FIRE=0x4, WIND=0x8, LIGHT=0x10, DARK=0x20
         // YGOPro race bitmasks: Warrior=0x1, Spellcaster=0x2, Fairy=0x4, Fiend=0x8, Zombie=0x10,
         // Machine=0x20, Aqua=0x40, Pyro=0x80, Rock=0x100, WingedBeast=0x200, Plant=0x400,
-        // Insect=0x800, Thunder=0x1000, Dragon=0x2000, Beast=0x4000, BeastWarrior=0x8000
+        // Insect=0x800, Thunder=0x1000, Dragon=0x2000, Beast=0x4000, BeastWarrior=0x8000, Dinosaur=0x10000
         switch (equipCode) {
-            case SWORD_OF_DARK_DESTRUCTION: return (attribute & 0x20) != 0;
-            case ELFS_LIGHT:                return (attribute & 0x10) != 0;
-            case INVIGORATION:              return (attribute & 0x01) != 0;
-            case LEGENDARY_SWORD:           return (race & 0x01) != 0;
-            case BOOK_OF_SECRET_ARTS:       return (race & 0x02) != 0;
-            case DARK_ENERGY:               return (race & 0x08) != 0;
-            case VIOLET_CRYSTAL:            return (race & 0x10) != 0;
-            case VILE_GERMS:                return (race & 0x400) != 0;
-            case LASER_CANNON_ARMOR:        return (race & 0x800) != 0;
-            case BEAST_FANGS:               return (race & 0x4000) != 0;
-            case POWER_OF_KAISHIN:          return (race & 0x40) != 0;
-            default:                        return true;
+            case SWORD_OF_DARK_DESTRUCTION:      return (attribute & 0x20) != 0;
+            case ELFS_LIGHT:                     return (attribute & 0x10) != 0;
+            case INVIGORATION:                   return (attribute & 0x01) != 0;
+            case STEEL_SHELL:                    return (attribute & 0x02) != 0;
+            case BURNING_SPEAR:
+            case SALAMANDRA:                     return (attribute & 0x04) != 0;
+            case GUST_FAN:                       return (attribute & 0x08) != 0;
+            case LEGENDARY_SWORD:                return (race & 0x01) != 0;
+            case BOOK_OF_SECRET_ARTS:            return (race & 0x02) != 0;
+            case SILVER_BOW_AND_ARROW:           return (race & 0x04) != 0;
+            case DARK_ENERGY:                    return (race & 0x08) != 0;
+            case VIOLET_CRYSTAL:                 return (race & 0x10) != 0;
+            case MACHINE_CONVERSION_FACTORY:     return (race & 0x20) != 0;
+            case POWER_OF_KAISHIN:               return (race & 0x40) != 0;
+            case FOLLOW_WIND:                    return (race & 0x200) != 0;
+            case VILE_GERMS:                     return (race & 0x400) != 0;
+            case LASER_CANNON_ARMOR:
+            case INSECT_ARMOR_WITH_LASER_CANNON: return (race & 0x800) != 0;
+            case ELECTRO_WHIP:                   return (race & 0x1000) != 0;
+            case DRAGON_TREASURE:                return (race & 0x2000) != 0;
+            case BEAST_FANGS:                    return (race & 0x4000) != 0;
+            case MYSTICAL_MOON:                  return (race & 0x8000) != 0;
+            case RAISE_BODY_HEAT:                return (race & 0x10000) != 0;
+            default:                             return true;
         }
     }
 
     /** Returns ATK bonus granted by a known 1999 equip spell (used for summoning & combat planning). */
     public static int getEquipAtkBonus(int equipCode) {
         switch (equipCode) {
+            case SALAMANDRA:
+            case INSECT_ARMOR_WITH_LASER_CANNON: return 700;
             case BLACK_PENDANT: return 500;
             case SWORD_OF_DARK_DESTRUCTION:
             case ELFS_LIGHT:
-            case INVIGORATION: return 400;
+            case INVIGORATION:
+            case BURNING_SPEAR:
+            case STEEL_SHELL:
+            case GUST_FAN: return 400;
             case LEGENDARY_SWORD:
             case BOOK_OF_SECRET_ARTS:
             case DARK_ENERGY:
@@ -265,6 +316,13 @@ public final class RpgAiCardKnowledge {
             case VILE_GERMS:
             case LASER_CANNON_ARMOR:
             case POWER_OF_KAISHIN:
+            case MACHINE_CONVERSION_FACTORY:
+            case RAISE_BODY_HEAT:
+            case DRAGON_TREASURE:
+            case SILVER_BOW_AND_ARROW:
+            case ELECTRO_WHIP:
+            case MYSTICAL_MOON:
+            case FOLLOW_WIND:
             case BEAST_FANGS: return 300;
             default: return 0;
         }
@@ -278,6 +336,8 @@ public final class RpgAiCardKnowledge {
     public static boolean isSafeBluffSpell(int code) {
         return isEquipSpell(code)
                 || code == STOP_DEFENSE
+                || code == DE_SPELL
+                || code == REMOVE_TRAP
                 || isHealSpell(code)
                 || code == SPARKS;
     }

@@ -442,7 +442,35 @@ public class RpgAiStrategy {
         if (storm != null && oppBackrow > myBackrow && oppBackrow >= 1) {
             return activateIdle(storm);
         }
+        // De-Spell (Vol.2): snipe opponent's face-up Spell (e.g. Swords of Revealing Light / Equip)
+        CmdEntry deSpell = findActivatable(p, RpgAiCardKnowledge.DE_SPELL);
+        if (deSpell != null && hasFaceUpSpellOnField(1)) {
+            return activateIdle(deSpell);
+        }
+        // Remove Trap (Starter Box): snipe opponent's face-up Trap (e.g. Royal Decree / Dragon Capture Jar)
+        CmdEntry removeTrap = findActivatable(p, RpgAiCardKnowledge.REMOVE_TRAP);
+        if (removeTrap != null && hasFaceUpTrapOnField(1)) {
+            return activateIdle(removeTrap);
+        }
         return null;
+    }
+
+    private boolean hasFaceUpSpellOnField(int localPlayer) {
+        for (RpgAiDuelState.CardSlot s : state.getSpellTraps(localPlayer)) {
+            if (s.isFaceUp() && (s.isSpell() || (state.lookupCard(s.code) != null && "spell".equalsIgnoreCase(state.lookupCard(s.code).frameType)))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasFaceUpTrapOnField(int localPlayer) {
+        for (RpgAiDuelState.CardSlot s : state.getSpellTraps(localPlayer)) {
+            if (s.isFaceUp() && (s.isTrap() || isLikelyTrapCode(s.code))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -629,7 +657,9 @@ public class RpgAiStrategy {
                 if (oppMons >= 1) return reposIdle(e);
                 continue;
             }
-            if (code == RpgAiCardKnowledge.ARMED_NINJA) {
+            if (code == RpgAiCardKnowledge.ARMED_NINJA
+                    || code == RpgAiCardKnowledge.REAPER_OF_THE_CARDS
+                    || code == RpgAiCardKnowledge.TRAP_MASTER) {
                 if (oppBackrow >= 1) return reposIdle(e);
                 continue;
             }
@@ -649,7 +679,7 @@ public class RpgAiStrategy {
             }
             // Normal face-down monster: flip to ATK in Main 1 if it can profitably attack
             int atk = state.getCardBaseAtk(code);
-            if (!state.isMain2() && p.canBattle && atk >= 1400 && canMonsterAttackProfitably(atk)) {
+            if (!state.isMain2() && p.canBattle && atk >= state.eraTypicalLowerAtk && canMonsterAttackProfitably(atk)) {
                 return reposIdle(e);
             }
         }
@@ -665,19 +695,25 @@ public class RpgAiStrategy {
             }
         }
 
-        // 2) Polymerization (融合)
+        // 2) Flute of Summoning Dragon (呼龙笛, EX): drop Blue-Eyes / Dragons from hand when Lord of D. is out!
+        CmdEntry flute = findActivatable(p, RpgAiCardKnowledge.FLUTE_OF_SUMMONING_DRAGON);
+        if (flute != null && state.getFreeMainMzoneCount(0) > 0 && hasDragonInHand()) {
+            return activateIdle(flute);
+        }
+
+        // 3) Polymerization (融合)
         CmdEntry poly = findActivatable(p, RpgAiCardKnowledge.POLYMERIZATION);
         if (poly != null && state.getFreeMainMzoneCount(0) > 0) {
             return activateIdle(poly);
         }
 
-        // 3) Any intrinsic Special Summon (spSummonable)
+        // 4) Any intrinsic Special Summon (spSummonable)
         if (!p.spSummonable.isEmpty()) {
             CmdEntry bestSp = pickHighestAtkEntry(p.spSummonable);
             if (bestSp != null) return (bestSp.index << 16) + 1;
         }
 
-        // 4) Monster Reborn (死者苏生)
+        // 5) Monster Reborn (死者苏生)
         CmdEntry reborn = findActivatable(p, RpgAiCardKnowledge.MONSTER_REBORN);
         if (reborn != null && state.getFreeMainMzoneCount(0) > 0) {
             int bestGraveAtk = state.getBestGraveMonsterAtk();
@@ -685,8 +721,8 @@ public class RpgAiStrategy {
                     || hasCodeInMyGrave(RpgAiCardKnowledge.WITCH_OF_BLACK_FOREST);
             boolean hasSteinInGrave = isFusionStyle() && state.lp[0] > 5000
                     && hasCodeInMyGrave(RpgAiCardKnowledge.CYBER_STEIN);
-            boolean worthIt = bestGraveAtk >= 1500
-                    || (bestGraveAtk >= 1200 && state.getMonsters(0).isEmpty())
+            boolean worthIt = bestGraveAtk >= state.eraTopLowerAtk
+                    || (bestGraveAtk >= state.eraTypicalLowerAtk && state.getMonsters(0).isEmpty())
                     || hasSteinInGrave
                     || ((isExodiaStyle() || isDarkVirusStyle() || isBurnStyle()) && hasSearcherInGrave);
             if (worthIt) {
@@ -694,6 +730,15 @@ public class RpgAiStrategy {
             }
         }
         return null;
+    }
+
+    private boolean hasDragonInHand() {
+        for (RpgAiDuelState.CardSlot c : state.hand[0]) {
+            if (c == null) continue;
+            int race = c.race != 0 ? c.race : state.getCardRaceMask(c.code);
+            if ((race & 0x2000) != 0) return true; // Dragon
+        }
+        return false;
     }
 
     private Integer tryNormalSummonOrSet(IdleCmdPrompt p) {
@@ -711,6 +756,17 @@ public class RpgAiStrategy {
         if (isFusionStyle() && state.lp[0] > 5000 && !state.isMain2() && state.getFreeMainMzoneCount(0) >= 2) {
             for (CmdEntry e : p.summonable) {
                 if (e.code == RpgAiCardKnowledge.CYBER_STEIN) {
+                    return e.index << 16;
+                }
+            }
+        }
+
+        // Special case: EX Kaiba combo — Lord of D. + Flute of Summoning Dragon + Dragon in hand!
+        if (state.hasCardInHand(RpgAiCardKnowledge.FLUTE_OF_SUMMONING_DRAGON)
+                && hasDragonInHand()
+                && state.getFreeMainMzoneCount(0) >= 2) {
+            for (CmdEntry e : p.summonable) {
+                if (e.code == RpgAiCardKnowledge.LORD_OF_D) {
                     return e.index << 16;
                 }
             }
@@ -1616,11 +1672,92 @@ public class RpgAiStrategy {
                 }
                 return 0;
 
+            case RpgAiCardKnowledge.KUNAI_WITH_CHAIN:
+                // Iconic 1999 DM2 battle trap: stop opponent's attack (switch to DEF) and/or buff +500 ATK!
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.KUNAI_WITH_CHAIN,
+                        RpgAiCardKnowledge.METALMORPH,
+                        RpgAiCardKnowledge.REINFORCEMENTS,
+                        RpgAiCardKnowledge.MIRROR_FORCE,
+                        RpgAiCardKnowledge.WABOKU)) {
+                    return 0;
+                }
+                if (state.isBattlePhase()) {
+                    if (!state.isMyTurn() && state.lastAttackerLocalCtrl == 1) {
+                        return 830;
+                    }
+                    if (state.isMyTurn() && !state.getMonsters(0).isEmpty() && !state.getMonsters(1).isEmpty()) {
+                        return 770;
+                    }
+                }
+                return 0;
+
+            case RpgAiCardKnowledge.CASTLE_WALLS:
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.CASTLE_WALLS,
+                        RpgAiCardKnowledge.MIRROR_FORCE,
+                        RpgAiCardKnowledge.WABOKU)) {
+                    return 0;
+                }
+                // Only use +500 DEF when opponent is attacking one of our Defense monsters
+                if (!state.isMyTurn() && state.isBattlePhase()
+                        && state.lastAttackerLocalCtrl == 1
+                        && state.lastDefenderLocalCtrl == 0
+                        && state.lastDefenderSeq >= 0 && state.lastDefenderSeq < 7) {
+                    RpgAiDuelState.CardSlot defSlot = state.mzone[0][state.lastDefenderSeq];
+                    if (defSlot != null && defSlot.isDefensePos()) {
+                        return 720;
+                    }
+                }
+                return 0;
+
+            case RpgAiCardKnowledge.JUST_DESSERTS: {
+                if (hasActiveUnnegatedMyChain(RpgAiCardKnowledge.JUST_DESSERTS)) return 0;
+                int oppCount = state.getMonsters(1).size();
+                if (oppCount == 0) return 0;
+                int burn = oppCount * 500;
+                if (burn >= state.lp[1]) return 960; // immediate lethal!
+                if (oppCount >= 2) return 780;
+                if (oppTopChain && (top.code == RpgAiCardKnowledge.HARPIES_FEATHER_DUSTER
+                        || top.code == RpgAiCardKnowledge.HEAVY_STORM)) {
+                    return 720; // chain before destruction for free 500 burn
+                }
+                return 0;
+            }
+
+            case RpgAiCardKnowledge.HORN_OF_HEAVEN: {
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.HORN_OF_HEAVEN,
+                        RpgAiCardKnowledge.SOLEMN_JUDGMENT)) {
+                    return 0;
+                }
+                // Tribute 1 monster to negate a summon: only worth it against a real Boss/threat
+                // when we have a weaker/expendable monster (or Sangan/Witch) to tribute!
+                if (!state.isMyTurn() && state.currentChain.isEmpty() && !state.getMonsters(0).isEmpty()) {
+                    int summonCode = state.lastOppSummonedCode;
+                    int summonAtk = summonCode != 0 ? state.lastOppSummonedAtk : state.getStrongestAtk(1);
+                    int weakestMyVal = Integer.MAX_VALUE;
+                    boolean hasSearcher = false;
+                    for (RpgAiDuelState.CardSlot m : state.getMonsters(0)) {
+                        if (RpgAiCardKnowledge.isSearcherMonster(m.code)) hasSearcher = true;
+                        weakestMyVal = Math.min(weakestMyVal, m.effectiveCombatValue(state.eraEstimatedFaceDownDef));
+                    }
+                    boolean worthNegating = summonAtk >= state.eraBossAtk
+                            || isMustTrapHoleEffectMonster(summonCode)
+                            || (summonAtk >= state.eraTopLowerAtk && (hasSearcher || weakestMyVal + 400 <= summonAtk));
+                    if (worthNegating && (hasSearcher || weakestMyVal < summonAtk)) {
+                        return 790;
+                    }
+                }
+                return 0;
+            }
+
             case RpgAiCardKnowledge.METALMORPH:
             case RpgAiCardKnowledge.REINFORCEMENTS:
                 if (hasActiveUnnegatedMyChain(
                         RpgAiCardKnowledge.METALMORPH,
                         RpgAiCardKnowledge.REINFORCEMENTS,
+                        RpgAiCardKnowledge.KUNAI_WITH_CHAIN,
                         RpgAiCardKnowledge.MIRROR_FORCE,
                         RpgAiCardKnowledge.WABOKU)) {
                     return 0;
@@ -1662,6 +1799,8 @@ public class RpgAiStrategy {
             case RpgAiCardKnowledge.PENGUIN_SOLDIER:
                 return !state.getMonsters(1).isEmpty() ? 860 : 0;
             case RpgAiCardKnowledge.ARMED_NINJA:
+            case RpgAiCardKnowledge.REAPER_OF_THE_CARDS:
+            case RpgAiCardKnowledge.TRAP_MASTER:
                 return !state.getSpellTraps(1).isEmpty() ? 840 : 0;
             case RpgAiCardKnowledge.MORPHING_JAR:
                 if (isExodiaStyle() && state.getUniqueExodiaPiecesInHand().size() >= 2) return 0;
@@ -2448,6 +2587,10 @@ public class RpgAiStrategy {
         return code == RpgAiCardKnowledge.TRAP_HOLE
                 || code == RpgAiCardKnowledge.ACID_TRAP_HOLE
                 || code == RpgAiCardKnowledge.CRUSH_CARD_VIRUS
+                || code == RpgAiCardKnowledge.KUNAI_WITH_CHAIN
+                || code == RpgAiCardKnowledge.CASTLE_WALLS
+                || code == RpgAiCardKnowledge.JUST_DESSERTS
+                || code == RpgAiCardKnowledge.HORN_OF_HEAVEN
                 || code == RpgAiCardKnowledge.SOLEMN_JUDGMENT
                 || code == RpgAiCardKnowledge.SEVEN_TOOLS
                 || code == RpgAiCardKnowledge.WABOKU

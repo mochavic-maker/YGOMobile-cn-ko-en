@@ -595,6 +595,63 @@ public class RpgAiStrategyTest {
                 7, strategy.chooseIdleCmd(pBluff));
     }
 
+    @Test
+    public void postVol1HistoricalCardsFollow1999MetagameLogic() {
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-12-16");
+        state.myProtocolPlayer = 1;
+        state.turnPlayer = 1;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "GOOD_STUFF");
+
+        // 1) Kunai with Chain (1999-07-08 DM2): PASS in Main 1, ACTIVATE on opponent's Battle Phase attack!
+        assertEquals("Kunai with Chain should NOT waste itself in Main Phase 1",
+                -1, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.KUNAI_WITH_CHAIN)));
+        state.phase = RpgAiDuelState.PHASE_BATTLE_STEP;
+        state.lastAttackerLocalCtrl = 1;
+        assertEquals("Kunai with Chain SHOULD activate when opponent attacks in Battle Phase",
+                0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.KUNAI_WITH_CHAIN)));
+
+        // 2) Just Desserts (Booster 5): hold at 1 monster (500 dmg) when non-lethal, fire at 2+ monsters (1000+ dmg)!
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        placeMonster(state, 1, 2, RpgAiCardKnowledge.SUMMONED_SKULL, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 1200);
+        assertEquals("Just Desserts should hold against a single opponent monster when non-lethal",
+                -1, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.JUST_DESSERTS)));
+        placeMonster(state, 1, 1, 76184692, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 1000);
+        assertEquals("Just Desserts should fire against 2+ opponent monsters (1000+ burn)",
+                0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.JUST_DESSERTS)));
+
+        // 3) Horn of Heaven (Vol.6): do NOT tribute Blue-Eyes (3000) for a 1200 monster, DO tribute Sangan for Summoned Skull!
+        state.mzone[1][1] = null;
+        state.mzone[1][2] = null;
+        placeMonster(state, 0, 2, RpgAiCardKnowledge.BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
+        simulateOppSummon(state, 76184692, 2, 1200, 1000);
+        assertEquals("Horn of Heaven must NOT tribute Blue-Eyes to negate a 1200 monster",
+                -1, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.HORN_OF_HEAVEN)));
+        placeMonster(state, 0, 1, RpgAiCardKnowledge.SANGAN, RpgAiDuelState.POS_FACEDOWN_DEFENSE, 1000, 600);
+        simulateOppSummon(state, RpgAiCardKnowledge.SUMMONED_SKULL, 2, 2500, 1200);
+        assertEquals("Horn of Heaven SHOULD tribute Sangan to negate Summoned Skull",
+                0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.HORN_OF_HEAVEN)));
+
+        // 4) EX Kaiba Combo: Lord of D. + Flute of Summoning Dragon + Blue-Eyes -> summon Lord of D. first, then Flute!
+        state.reset();
+        state.turnCount = 3;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        addHandCard(state, RpgAiCardKnowledge.LORD_OF_D);
+        addHandCard(state, RpgAiCardKnowledge.FLUTE_OF_SUMMONING_DRAGON);
+        addHandCard(state, RpgAiCardKnowledge.BLUE_EYES);
+        addHandCard(state, 76184692); // 1200 beater
+        RpgAiStrategy.IdleCmdPrompt pKaiba = new RpgAiStrategy.IdleCmdPrompt();
+        pKaiba.summonable.add(new RpgAiStrategy.CmdEntry(76184692, 0, 0, RpgAiDuelState.LOC_HAND, 3, 0, 0, 0));
+        pKaiba.summonable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.LORD_OF_D, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 1));
+        pKaiba.canBattle = true;
+        pKaiba.canEnd = true;
+        assertEquals("Should prioritize summoning Lord of D. (index 1) when holding Flute + Blue-Eyes!",
+                1 << 16, strategy.chooseIdleCmd(pKaiba));
+    }
+
     private void placeSetBackrow(RpgAiDuelState state, int localPlayer, int seq) {
         RpgAiDuelState.CardSlot s = new RpgAiDuelState.CardSlot();
         s.code = 0;
