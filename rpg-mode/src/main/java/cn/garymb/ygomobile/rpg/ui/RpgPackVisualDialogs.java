@@ -391,6 +391,8 @@ public final class RpgPackVisualDialogs {
                 pack.id,
                 null,
                 pack.fixedContents,
+                false,
+                null,
                 pack.cards);
     }
 
@@ -410,7 +412,51 @@ public final class RpgPackVisualDialogs {
                 null,
                 extraNote,
                 false,
+                false,
+                null,
                 event.rewardCards);
+    }
+
+    public static void showBanlistVisualDialog(final Activity activity,
+                                               final RpgCatalog catalog,
+                                               final RpgProfile profile,
+                                               final OcgBanlist banlist) {
+        OcgBanlist resolved = banlist != null
+                ? banlist
+                : TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+        List<RpgCard> banCards = new ArrayList<>();
+        Set<Integer> added = new LinkedHashSet<>();
+        if (resolved != null) {
+            appendBanlistCards(catalog, resolved.forbidden, added, banCards);
+            appendBanlistCards(catalog, resolved.limited, added, banCards);
+            appendBanlistCards(catalog, resolved.semiLimited, added, banCards);
+        }
+        String name = resolved != null && resolved.name != null ? resolved.name : "当前禁限表";
+        String desc = resolved != null && resolved.description != null ? resolved.description : null;
+        showCardPoolSplitDialog(
+                activity,
+                catalog,
+                profile,
+                "🚫 禁限卡表 · ",
+                name,
+                null,
+                desc,
+                false,
+                true,
+                resolved,
+                banCards);
+    }
+
+    private static void appendBanlistCards(RpgCatalog catalog, List<Integer> ids,
+                                           Set<Integer> added, List<RpgCard> out) {
+        if (ids == null || catalog == null) return;
+        for (Integer id : ids) {
+            if (id == null || !added.add(id)) continue;
+            RpgCard card = catalog.findCard(id);
+            if (card != null) {
+                out.add(card);
+            }
+        }
     }
 
     private static void showCardPoolSplitDialog(final Activity activity,
@@ -421,11 +467,16 @@ public final class RpgPackVisualDialogs {
                                                 final String packCoverIdOrNull,
                                                 final String extraSubtitleNote,
                                                 final boolean showBoxQuantity,
+                                                final boolean banlistMode,
+                                                final OcgBanlist explicitBanlist,
                                                 final List<RpgCard> rawCards) {
         final Dialog dialog = createFullWidthDialog(activity);
         final boolean landscape = isLandscape(activity);
         final int cols = landscape ? 6 : 4;
         final int cardWidthPx = computeCardWidthPx(activity, cols, 36);
+        final OcgBanlist activeBanlist = explicitBanlist != null
+                ? explicitBanlist
+                : TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
 
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -445,6 +496,9 @@ public final class RpgPackVisualDialogs {
         int highRarityCount = 0;
         int rareCount = 0;
         int normalCount = 0;
+        int forbiddenCount = 0;
+        int limitedCount = 0;
+        int semiLimitedCount = 0;
         if (rawCards != null) {
             for (RpgCard c : rawCards) {
                 if (c != null && seenIds.add(c.id)) {
@@ -457,11 +511,15 @@ public final class RpgPackVisualDialogs {
                     if (rr == Rarity.UR || rr == Rarity.SR || rr == Rarity.SCR) highRarityCount++;
                     else if (rr == Rarity.R) rareCount++;
                     else if (rr == Rarity.N) normalCount++;
+                    int maxCopies = activeBanlist != null ? activeBanlist.getMaxCopies(c.id) : 3;
+                    if (maxCopies == 0) forbiddenCount++;
+                    else if (maxCopies == 1) limitedCount++;
+                    else if (maxCopies == 2) semiLimitedCount++;
                 }
             }
         }
 
-        // Compact header bar with pack cover (or first promo card thumbnail), title, progress, and inline Close button
+        // Compact header bar with pack cover (or first card thumbnail), title, progress, and inline Close button
         LinearLayout poolHeader = new LinearLayout(activity);
         poolHeader.setOrientation(LinearLayout.HORIZONTAL);
         poolHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -494,10 +552,21 @@ public final class RpgPackVisualDialogs {
         pHeaderText.addView(tvTitle);
 
         TextView tvSub = new TextView(activity);
-        tvSub.setText("共 " + uniqueCards.size() + " 种 · 已解锁 " + unlockedCount + "/" + uniqueCards.size()
-                + " · 满3张 " + playset3Count + "/" + uniqueCards.size()
-                + (extraSubtitleNote != null ? extraSubtitleNote : ""));
-        tvSub.setTextColor(Color.parseColor("#38BDF8"));
+        if (banlistMode) {
+            if (uniqueCards.isEmpty()) {
+                tvSub.setText("当前时间点无禁限卡片（全卡最多可投入 3 张）");
+            } else {
+                String eff = activeBanlist != null && activeBanlist.effectiveDate != null
+                        ? (" · 生效日 " + activeBanlist.effectiveDate) : "";
+                tvSub.setText("禁止 " + forbiddenCount + " · 限制 " + limitedCount
+                        + " · 准限 " + semiLimitedCount + eff);
+            }
+        } else {
+            tvSub.setText("共 " + uniqueCards.size() + " 种 · 已解锁 " + unlockedCount + "/" + uniqueCards.size()
+                    + " · 满3张 " + playset3Count + "/" + uniqueCards.size()
+                    + (extraSubtitleNote != null ? extraSubtitleNote : ""));
+        }
+        tvSub.setTextColor(Color.parseColor(banlistMode ? "#FCA5A5" : "#38BDF8"));
         tvSub.setTextSize(11f);
         tvSub.setSingleLine(true);
         tvSub.setEllipsize(TextUtils.TruncateAt.END);
@@ -629,21 +698,35 @@ public final class RpgPackVisualDialogs {
         gridScroll.addView(grid);
         root.addView(gridScroll);
 
-        final OcgBanlist activeBanlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
         final RpgCard[] selectedCardRef = new RpgCard[1];
         final PoolTileHolder[] selectedHolderRef = new PoolTileHolder[1];
         final Map<Integer, PoolTileHolder> holderByCardId = new LinkedHashMap<>();
+        final int finalUnlockedCount = unlockedCount;
+        final int finalForbiddenCount = forbiddenCount;
+        final int finalLimitedCount = limitedCount;
+        final int finalSemiLimitedCount = semiLimitedCount;
 
         final Runnable clearDetailEmpty = () -> {
             selectedCardRef[0] = null;
             selectedHolderRef[0] = null;
             ivDetailArt.setImageDrawable(RpgCardArtLoader.createCardBackDrawable());
+            ivDetailArt.setOnClickListener(null);
             detailArtBg.setStroke(dp(activity, 1), Color.parseColor("#334155"));
-            tvDetailName.setText("当前筛选条件下暂无卡片");
-            tvDetailName.setTextColor(Color.parseColor("#94A3B8"));
-            tvDetailStats.setText("请切换下方筛选标签查看本包收录卡片");
-            tvDetailMeta.setText("");
-            tvDetailDesc.setText("");
+            if (banlistMode && uniqueCards.isEmpty()) {
+                tvDetailName.setText("当前时间点无禁限卡片");
+                tvDetailName.setTextColor(Color.parseColor("#34D399"));
+                tvDetailStats.setText(extraSubtitleNote != null && !extraSubtitleNote.isEmpty()
+                        ? extraSubtitleNote
+                        : "当前环境所有已发售卡片均可投入最多 3 张");
+                tvDetailMeta.setText("推进时间轴至 1999-08-26 及以后可查看历次禁限卡表");
+                tvDetailDesc.setText("");
+            } else {
+                tvDetailName.setText("当前筛选条件下暂无卡片");
+                tvDetailName.setTextColor(Color.parseColor("#94A3B8"));
+                tvDetailStats.setText("请切换下方筛选标签查看其余卡片");
+                tvDetailMeta.setText("");
+                tvDetailDesc.setText("");
+            }
         };
 
         final java.util.function.Consumer<RpgCard> selectCard = card -> {
@@ -675,7 +758,7 @@ public final class RpgPackVisualDialogs {
             Rarity rarity = card.getRarityEnum();
             int rarityColor = parseRarityColor(rarity);
             int owned = profile.getOwnedCount(card.id);
-            String limitBadge = activeBanlist.getLimitBadge(card.id);
+            String limitBadge = activeBanlist != null ? activeBanlist.getLimitBadge(card.id) : "";
             String errataBadge = CardErrataEngine.getVersionBadge(catalog, card.id, profile.currentTimelineDate);
             String effectiveDesc = CardErrataEngine.getEffectiveDescCn(catalog, card, profile.currentTimelineDate);
 
@@ -704,6 +787,10 @@ public final class RpgPackVisualDialogs {
 
             String ownStr = owned <= 0 ? "未拥有" : (owned >= 3 ? "已满3 (×" + owned + ")" : "已有 ×" + owned);
             StringBuilder metaSb = new StringBuilder();
+            if (banlistMode && activeBanlist != null) {
+                int maxC = activeBanlist.getMaxCopies(card.id);
+                metaSb.append(maxC == 0 ? "禁止投入" : ("最多投入 " + maxC + " 张")).append(" · ");
+            }
             metaSb.append(ownStr);
             if (showBoxQuantity && card.quantity > 1) {
                 metaSb.append(" · 盒内×").append(card.quantity);
@@ -715,8 +802,9 @@ public final class RpgPackVisualDialogs {
                 metaSb.append(" · ⟪").append(errataBadge).append("⟫");
             }
             tvDetailMeta.setText(metaSb.toString());
-            tvDetailMeta.setTextColor(owned >= 3 ? Color.parseColor("#34D399")
-                    : (owned > 0 ? Color.parseColor("#38BDF8") : Color.parseColor("#94A3B8")));
+            tvDetailMeta.setTextColor(banlistMode ? Color.parseColor("#FCA5A5")
+                    : (owned >= 3 ? Color.parseColor("#34D399")
+                    : (owned > 0 ? Color.parseColor("#38BDF8") : Color.parseColor("#94A3B8"))));
 
             tvDetailDesc.setText(!effectiveDesc.isEmpty() ? effectiveDesc : "（无效果文本）");
             tvDetailDesc.setTextColor(errataBadge.isEmpty()
@@ -725,14 +813,24 @@ public final class RpgPackVisualDialogs {
             detailDescScroll.scrollTo(0, 0);
         };
 
-        final String[] filterKeys = new String[]{"全部", "未拥有", "高罕", "R", "N"};
-        final String[] filterLabels = new String[]{
-                "全部(" + uniqueCards.size() + ")",
-                "未拥有(" + unownedCount + ")",
-                "高罕(" + highRarityCount + ")",
-                "R(" + rareCount + ")",
-                "N(" + normalCount + ")"
-        };
+        final String[] filterKeys = banlistMode
+                ? new String[]{"全部", "禁止", "限制", "准限", "已拥有"}
+                : new String[]{"全部", "未拥有", "高罕", "R", "N"};
+        final String[] filterLabels = banlistMode
+                ? new String[]{
+                        "全部(" + uniqueCards.size() + ")",
+                        "禁止(" + finalForbiddenCount + ")",
+                        "限制(" + finalLimitedCount + ")",
+                        "准限(" + finalSemiLimitedCount + ")",
+                        "已拥有(" + finalUnlockedCount + ")"
+                }
+                : new String[]{
+                        "全部(" + uniqueCards.size() + ")",
+                        "未拥有(" + unownedCount + ")",
+                        "高罕(" + highRarityCount + ")",
+                        "R(" + rareCount + ")",
+                        "N(" + normalCount + ")"
+                };
         final String[] activeFilter = new String[]{"全部"};
         final List<Button> filterButtons = new ArrayList<>();
 
@@ -743,7 +841,7 @@ public final class RpgPackVisualDialogs {
             for (Button fb : filterButtons) {
                 boolean sel = activeFilter[0].equals(fb.getTag());
                 GradientDrawable fbg = new GradientDrawable();
-                fbg.setColor(Color.parseColor(sel ? "#0284C7" : "#1E293B"));
+                fbg.setColor(Color.parseColor(sel ? (banlistMode ? "#DC2626" : "#0284C7") : "#1E293B"));
                 fbg.setCornerRadius(dp(activity, 6));
                 fb.setBackground(fbg);
             }
@@ -752,11 +850,19 @@ public final class RpgPackVisualDialogs {
             for (final RpgCard card : uniqueCards) {
                 int own = profile.getOwnedCount(card.id);
                 Rarity r = card.getRarityEnum();
-                if ("未拥有".equals(activeFilter[0]) && own > 0) continue;
-                if ("高罕".equals(activeFilter[0])
-                        && !(r == Rarity.UR || r == Rarity.SR || r == Rarity.SCR)) continue;
-                if ("R".equals(activeFilter[0]) && r != Rarity.R) continue;
-                if ("N".equals(activeFilter[0]) && r != Rarity.N) continue;
+                int maxCopies = activeBanlist != null ? activeBanlist.getMaxCopies(card.id) : 3;
+                if (banlistMode) {
+                    if ("禁止".equals(activeFilter[0]) && maxCopies != 0) continue;
+                    if ("限制".equals(activeFilter[0]) && maxCopies != 1) continue;
+                    if ("准限".equals(activeFilter[0]) && maxCopies != 2) continue;
+                    if ("已拥有".equals(activeFilter[0]) && own <= 0) continue;
+                } else {
+                    if ("未拥有".equals(activeFilter[0]) && own > 0) continue;
+                    if ("高罕".equals(activeFilter[0])
+                            && !(r == Rarity.UR || r == Rarity.SR || r == Rarity.SCR)) continue;
+                    if ("R".equals(activeFilter[0]) && r != Rarity.R) continue;
+                    if ("N".equals(activeFilter[0]) && r != Rarity.N) continue;
+                }
 
                 if (firstVisible == null) firstVisible = card;
                 if (selectedCardRef[0] != null && selectedCardRef[0].id == card.id) {
@@ -764,8 +870,11 @@ public final class RpgPackVisualDialogs {
                 }
 
                 int rarityColor = parseRarityColor(r);
-                int normalStrokeW = dp(activity, own > 0 ? 2 : 1);
-                int normalStrokeC = own > 0 ? rarityColor : Color.parseColor("#334155");
+                int limitBorderColor = maxCopies == 0 ? Color.parseColor("#EF4444")
+                        : (maxCopies == 1 ? Color.parseColor("#F97316") : Color.parseColor("#EAB308"));
+                int normalStrokeW = dp(activity, (banlistMode || own > 0) ? 2 : 1);
+                int normalStrokeC = banlistMode ? limitBorderColor
+                        : (own > 0 ? rarityColor : Color.parseColor("#334155"));
 
                 LinearLayout tile = new LinearLayout(activity);
                 tile.setOrientation(LinearLayout.VERTICAL);
@@ -791,17 +900,26 @@ public final class RpgPackVisualDialogs {
                 iv.setLayoutParams(new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                 iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                iv.setAlpha(own > 0 ? 1.0f : 0.45f);
+                iv.setAlpha((banlistMode || own > 0) ? 1.0f : 0.45f);
                 RpgCardArtLoader.loadInto(iv, card.id, innerArtW);
                 frame.addView(iv);
 
-                TextView tvRarity = makeBadge(activity, r.code, rarityColor, Color.parseColor("#0F172A"));
+                final TextView tvTopLeft;
+                if (banlistMode) {
+                    String badgeText = maxCopies == 0 ? "禁止" : (maxCopies == 1 ? "限制" : "准限");
+                    int badgeBg = maxCopies == 0 ? Color.parseColor("#DC2626")
+                            : (maxCopies == 1 ? Color.parseColor("#EA580C") : Color.parseColor("#CA8A04"));
+                    int badgeFg = maxCopies == 2 ? Color.parseColor("#0F172A") : Color.WHITE;
+                    tvTopLeft = makeBadge(activity, badgeText, badgeBg, badgeFg);
+                } else {
+                    tvTopLeft = makeBadge(activity, r.code, rarityColor, Color.parseColor("#0F172A"));
+                }
                 FrameLayout.LayoutParams rlp = new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                         Gravity.TOP | Gravity.START);
                 rlp.setMargins(dp(activity, 2), dp(activity, 2), 0, 0);
-                tvRarity.setLayoutParams(rlp);
-                frame.addView(tvRarity);
+                tvTopLeft.setLayoutParams(rlp);
+                frame.addView(tvTopLeft);
 
                 String ownLabel = own <= 0 ? "未拥有" : (own >= 3 ? "满3" : "×" + own);
                 int ownBg = own <= 0 ? Color.parseColor("#CC475569")
@@ -816,7 +934,7 @@ public final class RpgPackVisualDialogs {
 
                 TextView tvName = new TextView(activity);
                 tvName.setText(card.getDisplayName());
-                tvName.setTextColor(own > 0 ? Color.parseColor("#E2E8F0") : Color.parseColor("#64748B"));
+                tvName.setTextColor((banlistMode || own > 0) ? Color.parseColor("#E2E8F0") : Color.parseColor("#64748B"));
                 tvName.setTextSize(9.5f);
                 tvName.setMaxLines(2);
                 tvName.setEllipsize(TextUtils.TruncateAt.END);

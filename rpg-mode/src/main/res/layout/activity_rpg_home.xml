@@ -60,7 +60,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Timeline Controls -->
+        <!-- Timeline Controls: wide progress text on left, stacked action buttons on right -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -72,31 +72,62 @@
                 android:id="@+id/tv_timeline_date"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
+                android:lineSpacingExtra="2dp"
                 android:text="当前时间轴: 1999-02-04"
                 android:textColor="#CBD5E1"
-                android:textSize="13sp" />
+                android:textSize="12.5sp" />
 
-            <Button
-                android:id="@+id/btn_timeline_digest"
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:layout_marginEnd="6dp"
-                android:backgroundTint="#0284C7"
-                android:paddingHorizontal="10dp"
-                android:text="📰 当期动态"
-                android:textColor="#F8FAFC"
-                android:textSize="11.5sp" />
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
-            <Button
-                android:id="@+id/btn_pick_date"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:backgroundTint="#334155"
-                android:paddingHorizontal="10dp"
-                android:text="移动时间点"
-                android:textColor="#F8FAFC"
-                android:textSize="11.5sp" />
+                <Button
+                    android:id="@+id/btn_pick_date"
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:backgroundTint="#334155"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="0dp"
+                    android:text="📅 移动时间点"
+                    android:textColor="#F8FAFC"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_timeline_digest"
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="4dp"
+                    android:backgroundTint="#0284C7"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="0dp"
+                    android:text="📰 当期动态"
+                    android:textColor="#F8FAFC"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_active_banlist"
+                    android:layout_width="match_parent"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="4dp"
+                    android:backgroundTint="#991B1B"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="0dp"
+                    android:text="🚫 当期禁限表"
+                    android:textColor="#F8FAFC"
+                    android:textSize="11sp" />
+            </LinearLayout>
         </LinearLayout>
 
         <HorizontalScrollView

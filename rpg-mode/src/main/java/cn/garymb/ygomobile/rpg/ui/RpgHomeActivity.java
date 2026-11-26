@@ -90,6 +90,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     private TextView tvTimelineDate;
     private TextView tvTimelineDigestBanner;
     private Button btnTimelineDigest;
+    private Button btnActiveBanlist;
     private TextView tvActiveBanlist;
     private TextView tvActiveRule;
     private LinearLayout layoutMilestones;
@@ -99,7 +100,6 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     private int activeTab = 0;
     private boolean collectionOnlyOwned = false;
-    private boolean errataOnly1999 = true;
     private String showdownKeyA = "current";
     private String showdownKeyB = null;
     private RpgAiAutoDuelModels.BatchResult lastShowdownReport = null;
@@ -131,6 +131,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         tvTimelineDate = findViewById(R.id.tv_timeline_date);
         tvTimelineDigestBanner = findViewById(R.id.tv_timeline_digest_banner);
         btnTimelineDigest = findViewById(R.id.btn_timeline_digest);
+        btnActiveBanlist = findViewById(R.id.btn_active_banlist);
         tvActiveBanlist = findViewById(R.id.tv_active_banlist);
         tvActiveRule = findViewById(R.id.tv_active_rule);
         layoutMilestones = findViewById(R.id.layout_milestones);
@@ -142,6 +143,8 @@ public class RpgHomeActivity extends AppCompatActivity {
         findViewById(R.id.btn_pick_date).setOnClickListener(v -> openDatePicker());
         btnTimelineDigest.setOnClickListener(v -> openTimelineDigestDialog());
         tvTimelineDigestBanner.setOnClickListener(v -> openTimelineDigestDialog());
+        btnActiveBanlist.setOnClickListener(v -> openActiveBanlistDialog());
+        tvActiveBanlist.setOnClickListener(v -> openActiveBanlistDialog());
 
         tabLayout.setTabMode(TabLayout.MODE_SCROLLABLE);
         tabLayout.addTab(tabLayout.newTab().setText("卡包商店"));
@@ -351,17 +354,31 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
         int preErrataCnt = CardErrataEngine.getRequiredPreErrataScriptIds(catalog, profile.currentTimelineDate).size();
         tvTimelineDate.setText("当前时间轴: " + profile.currentTimelineDate
-                + "（已收集卡片 " + ownedRelCards + "/" + relCards.size()
-                + " 种 · 已购商品 " + openedAvailPacks + "/" + availPacks.size()
-                + " 款 · 旧版勘误卡 " + preErrataCnt + " 张）");
+                + "\n已收集卡片: " + ownedRelCards + " / " + relCards.size() + " 种"
+                + "\n已购商品: " + openedAvailPacks + " / " + availPacks.size() + " 款"
+                + " · 旧版勘误卡: " + preErrataCnt + " 张");
 
         OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+        int banCount = (banlist.forbidden != null ? banlist.forbidden.size() : 0)
+                + (banlist.limited != null ? banlist.limited.size() : 0)
+                + (banlist.semiLimited != null ? banlist.semiLimited.size() : 0);
         tvActiveBanlist.setText("当前禁限表: " + banlist.name + " — " + banlist.description);
+        if (btnActiveBanlist != null) {
+            btnActiveBanlist.setText(banCount > 0 ? ("🚫 当期禁限表(" + banCount + ")") : "🚫 当期禁限表(无)");
+            btnActiveBanlist.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    Color.parseColor(banCount > 0 ? "#B91C1C" : "#334155")));
+        }
         OcgRuleSet ruleSet = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
         tvActiveRule.setText("当前规则（随时间轴自动锁定）: " + ruleSet.name + " — " + ruleSet.description);
         updateTimelineDigestBanner();
         highlightActiveMilestone();
         renderCurrentTab();
+    }
+
+    private void openActiveBanlistDialog() {
+        if (catalog == null) return;
+        OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+        RpgPackVisualDialogs.showBanlistVisualDialog(this, catalog, profile, banlist);
     }
 
     private void updateTimelineDigestBanner() {
@@ -378,7 +395,8 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
         if (btnTimelineDigest != null) {
             btnTimelineDigest.setText(total > 0 ? ("📰 当期动态(" + total + ")") : "📰 当期动态");
-            btnTimelineDigest.setBackgroundColor(Color.parseColor(total > 0 ? "#D97706" : "#334155"));
+            btnTimelineDigest.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    Color.parseColor(total > 0 ? "#D97706" : "#334155")));
         }
     }
 
@@ -1358,59 +1376,156 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     // ==================== TAB 6: OFFICIAL OCG ERRATA ARCHIVE ====================
     private void renderErrataTab() {
-        int totalErrata = catalog.getErrataRecords().size();
-        int cnt1999 = 0;
-        for (OcgCardErrata r : catalog.getErrataRecords()) {
-            if (r.in1999Catalog) cnt1999++;
+        String curDate = profile.currentTimelineDate;
+        java.util.TreeMap<String, List<TimelineEngine.ErrataChange>> groupsByDate =
+                new java.util.TreeMap<>(java.util.Collections.reverseOrder());
+        int totalChanges = 0;
+
+        for (OcgCardErrata rec : catalog.getErrataRecords()) {
+            if (rec == null || rec.revisions == null || rec.revisions.size() < 2) continue;
+            for (int i = 1; i < rec.revisions.size(); i++) {
+                OcgCardErrata.Revision rev = rec.revisions.get(i);
+                if (rev == null || rev.versionIndex < 2 || rev.effectiveDate == null) continue;
+                if (rev.effectiveDate.compareTo(curDate) <= 0) {
+                    List<TimelineEngine.ErrataChange> list = groupsByDate.get(rev.effectiveDate);
+                    if (list == null) {
+                        list = new ArrayList<>();
+                        groupsByDate.put(rev.effectiveDate, list);
+                    }
+                    list.add(new TimelineEngine.ErrataChange(rec, rev, rec.revisions.get(i - 1)));
+                    totalChanges++;
+                }
+            }
         }
 
-        Button scopeBtn = makeActionButton(
-                errataOnly1999 ? "范围: 仅1999卡池 (" + cnt1999 + "张)" : "范围: 全OCG历次勘误 (" + totalErrata + "张)",
-                "#7C3AED");
-        scopeBtn.setOnClickListener(v -> {
-            errataOnly1999 = !errataOnly1999;
-            renderCurrentTab();
-        });
-        layoutTabActions.addView(scopeBtn);
+        if (groupsByDate.isEmpty()) {
+            layoutTabActions.addView(makeSubtleText(
+                    "📜 截至 " + curDate + " 尚未发生官方卡片效果勘误"));
+            LinearLayout emptyCard = makeCardContainer();
+            emptyCard.addView(makeTitleText("📅 截至 " + curDate + " 暂无已生效的效果勘误"));
+            emptyCard.addView(makeSubtleText(
+                    "本页仅展示当前时间点及之前已实施的官方效果勘误（按日期降序分组，不剧透未来版本）。\n"
+                            + "将时间轴推进至 1999-05-05（地割/落穴/光之护封剑修正）或 1999-12-20（三眼怪初次勘误）后即可查看对应勘误记录。"));
+            layoutContent.addView(emptyCard);
+            return;
+        }
 
-        TextView info = makeSubtleText("随当前时间轴 (" + profile.currentTimelineDate + ") 自动切换卡片生效版本，点击任意卡片可查看完整历次修改史。");
-        layoutContent.addView(info);
+        layoutTabActions.addView(makeSubtleText(
+                "📜 截至 " + curDate + " 共 " + groupsByDate.size() + " 个勘误日期 · "
+                        + totalChanges + " 条效果变更（按日期降序）"));
 
-        for (final OcgCardErrata rec : catalog.getErrataRecords()) {
-            if (errataOnly1999 && !rec.in1999Catalog) continue;
-            OcgCardErrata.Revision active = CardErrataEngine.getActiveRevision(rec, profile.currentTimelineDate);
-            boolean preErrata = CardErrataEngine.isPreErrataAt(catalog, rec.cardId, profile.currentTimelineDate);
+        for (Map.Entry<String, List<TimelineEngine.ErrataChange>> entry : groupsByDate.entrySet()) {
+            String date = entry.getKey();
+            List<TimelineEngine.ErrataChange> items = entry.getValue();
 
-            LinearLayout box = makeCardContainer();
-            String badge = active != null ? ("⟪" + active.effectiveDate.replace("-", ".") + " v" + active.versionIndex + "/" + rec.revisions.size() + "⟫") : "";
-            TextView tvTitle = makeTitleText(rec.getDisplayName() + "  (" + rec.nameJp + ")  " + badge);
-            tvTitle.setTextColor(Color.parseColor(preErrata ? "#FBBF24" : "#34D399"));
-            box.addView(tvTitle);
-            box.addView(makeSubtleText(rec.era + " · " + rec.getCategoryLabelCn()
-                    + " · 共 " + rec.revisions.size() + " 个版本"
-                    + (rec.in1999Catalog ? " · ★1999卡池收录" : " · 后续世代存档")));
-            if (active != null) {
-                box.addView(makeSubtleText("当前生效: " + active.descCn));
+            LinearLayout dateCard = makeCardContainer();
+            TextView tvDateHeader = makeTitleText("📅 " + date + "  ·  " + items.size() + " 张卡片效果勘误");
+            tvDateHeader.setTextColor(Color.parseColor("#FBBF24"));
+            tvDateHeader.setTextSize(15f);
+            dateCard.addView(tvDateHeader);
+
+            for (final TimelineEngine.ErrataChange ch : items) {
+                View divider = new View(this);
+                LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, dp(1));
+                dlp.setMargins(0, dp(8), 0, dp(8));
+                divider.setLayoutParams(dlp);
+                divider.setBackgroundColor(Color.parseColor("#334155"));
+                dateCard.addView(divider);
+
+                LinearLayout itemHeader = new LinearLayout(this);
+                itemHeader.setOrientation(LinearLayout.HORIZONTAL);
+                itemHeader.setGravity(Gravity.CENTER_VERTICAL);
+
+                ImageView ivArt = new ImageView(this);
+                LinearLayout.LayoutParams artLp = new LinearLayout.LayoutParams(dp(44), dp(64));
+                artLp.setMarginEnd(dp(10));
+                ivArt.setLayoutParams(artLp);
+                ivArt.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                RpgCardArtLoader.loadInto(ivArt, ch.errata.cardId, dp(44));
+                final RpgCard catalogCard = catalog.findCard(ch.errata.cardId);
+                if (catalogCard != null) {
+                    ivArt.setOnClickListener(v ->
+                            RpgPackVisualDialogs.showCardDetailDialog(this, catalog, profile, catalogCard));
+                }
+                itemHeader.addView(ivArt);
+
+                LinearLayout infoCol = new LinearLayout(this);
+                infoCol.setOrientation(LinearLayout.VERTICAL);
+                infoCol.setLayoutParams(new LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+                String verRange = (ch.previousRevision != null
+                        ? ("v" + ch.previousRevision.versionIndex + " → ") : "")
+                        + "v" + ch.revision.versionIndex;
+                TextView tvCardTitle = makeTitleText(
+                        ch.errata.getDisplayName() + "  (" + ch.errata.nameJp + ")  [" + verRange + "]");
+                tvCardTitle.setTextColor(Color.parseColor("#F8FAFC"));
+                infoCol.addView(tvCardTitle);
+
+                infoCol.addView(makeSubtleText(
+                        ch.errata.getCategoryLabelCn()
+                                + (ch.revision.sourceLabel != null && !ch.revision.sourceLabel.isEmpty()
+                                ? " · " + ch.revision.sourceLabel : "")));
+
+                if (ch.revision.summary != null && !ch.revision.summary.isEmpty()) {
+                    TextView tvSum = makeSubtleText("变更要点：" + ch.revision.summary);
+                    tvSum.setTextColor(Color.parseColor("#38BDF8"));
+                    infoCol.addView(tvSum);
+                }
+                itemHeader.addView(infoCol);
+                dateCard.addView(itemHeader);
+
+                if (ch.previousRevision != null && ch.previousRevision.descCn != null
+                        && !ch.previousRevision.descCn.isEmpty()) {
+                    TextView tvBefore = makeSubtleText(
+                            "修改前 (v" + ch.previousRevision.versionIndex + " · "
+                                    + ch.previousRevision.effectiveDate + ")：" + ch.previousRevision.descCn);
+                    tvBefore.setTextColor(Color.parseColor("#94A3B8"));
+                    tvBefore.setPadding(0, dp(4), 0, 0);
+                    dateCard.addView(tvBefore);
+                }
+
+                if (ch.revision.descCn != null && !ch.revision.descCn.isEmpty()) {
+                    TextView tvAfter = makeSubtleText(
+                            "修改后 (v" + ch.revision.versionIndex + " · "
+                                    + ch.revision.effectiveDate + ")：" + ch.revision.descCn);
+                    tvAfter.setTextColor(Color.parseColor("#E2E8F0"));
+                    tvAfter.setPadding(0, dp(3), 0, 0);
+                    dateCard.addView(tvAfter);
+                }
+
+                Button detailBtn = makeActionButton("查看该卡历史版本", "#334155");
+                detailBtn.setOnClickListener(v -> showErrataHistoryDialog(ch.errata));
+                dateCard.addView(makeEqualWeightButtonRow(6, detailBtn));
             }
 
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, dp(6), 0, 0);
-            Button detailBtn = makeActionButton("查看全部 " + rec.revisions.size() + " 次变更对比", "#334155");
-            detailBtn.setOnClickListener(v -> showErrataHistoryDialog(rec));
-            row.addView(detailBtn);
-            box.addView(row);
-            layoutContent.addView(box);
+            layoutContent.addView(dateCard);
         }
     }
 
     private void showErrataHistoryDialog(OcgCardErrata rec) {
-        OcgCardErrata.Revision active = CardErrataEngine.getActiveRevision(rec, profile.currentTimelineDate);
+        String curDate = profile.currentTimelineDate;
+        OcgCardErrata.Revision active = CardErrataEngine.getActiveRevision(rec, curDate);
+        List<OcgCardErrata.Revision> visibleRevs = new ArrayList<>();
+        if (rec.revisions != null) {
+            for (OcgCardErrata.Revision rev : rec.revisions) {
+                if (rev.effectiveDate != null && rev.effectiveDate.compareTo(curDate) <= 0) {
+                    visibleRevs.add(rev);
+                }
+            }
+            if (visibleRevs.isEmpty() && !rec.revisions.isEmpty()) {
+                visibleRevs.add(rec.revisions.get(0));
+            }
+        }
+        // Descending chronological order (newest revision first)
+        java.util.Collections.reverse(visibleRevs);
+
         StringBuilder sb = new StringBuilder();
         sb.append("日文名：").append(rec.nameJp).append("\n")
                 .append("分类：").append(rec.era).append(" · ").append(rec.getCategoryLabelCn()).append("\n")
-                .append("当前时间轴：").append(profile.currentTimelineDate).append("\n\n");
-        for (OcgCardErrata.Revision rev : rec.revisions) {
+                .append("当前时间轴：").append(curDate).append("（仅显示截至当前时间点的版本）\n\n");
+        for (OcgCardErrata.Revision rev : visibleRevs) {
             boolean isCurrent = active != null && rev.versionIndex == active.versionIndex;
             sb.append(isCurrent ? "▶ [当前生效] " : "• ")
                     .append("v").append(rev.versionIndex).append(" (").append(rev.effectiveDate).append(") ")
