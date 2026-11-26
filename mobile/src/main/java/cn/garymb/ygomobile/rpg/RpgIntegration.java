@@ -361,156 +361,184 @@ public final class RpgIntegration {
         return counts;
     }
 
+    private static final cn.garymb.ygomobile.rpg.bridge.RpgHostTransitionCoordinator sTransitionCoordinator =
+            new cn.garymb.ygomobile.rpg.bridge.RpgHostTransitionCoordinator();
+
+    private static cn.garymb.ygomobile.rpg.bridge.RpgHostTransitionCoordinator.HostSurface asHostSurface(
+            final YGOProActivity act) {
+        return new cn.garymb.ygomobile.rpg.bridge.RpgHostTransitionCoordinator.HostSurface() {
+            @Override
+            public boolean isAlive() {
+                return act != null && !act.isFinishing() && !act.isDestroyed();
+            }
+
+            @Override
+            public boolean isForegroundFocused() {
+                View decor = act.getWindow() != null ? act.getWindow().getDecorView() : null;
+                return act.hasWindowFocus() && decor != null && decor.getWindowToken() != null;
+            }
+
+            @Override
+            public boolean isMainMenuShowing() {
+                return act.getMainMenuDialog() != null && act.getMainMenuDialog().isShowing();
+            }
+
+            @Override
+            public void hideMainMenu() {
+                if (act.getMainMenuDialog() != null) {
+                    act.getMainMenuDialog().hideMainMenu();
+                }
+            }
+
+            @Override
+            public void dismissStaleWaitingDialogSilently() {
+                if (act.getPlayerWaitingDialog() != null) {
+                    try {
+                        act.getPlayerWaitingDialog().setOnDismissListener(null);
+                        act.getPlayerWaitingDialog().dismiss();
+                    } catch (Throwable ignored) {
+                    }
+                    act.setPlayerWaitingDialog(null);
+                }
+            }
+
+            @Override
+            public void dismissStaleReplayDialogSilently() {
+                cn.garymb.ygomobile.ui.dialogs.replay.ReplayModeDialog showing = act.getReplayModeDialog();
+                if (showing != null && showing.isShowing()) {
+                    try {
+                        showing.setOnDismissListener(null);
+                        showing.dismiss();
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+
+            @Override
+            public void stopActiveAiClients() {
+                cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.stopActive();
+            }
+
+            @Override
+            public boolean isEngineConnected() {
+                GameEngine engine = act.getEngine();
+                return engine != null && engine.getClient() != null && engine.getClient().isConnected();
+            }
+
+            @Override
+            public void disconnectStaleEngine() {
+                GameEngine engine = act.getEngine();
+                if (engine != null) {
+                    engine.disconnect();
+                }
+            }
+
+            @Override
+            public boolean isEngineDisconnectedOrIdle() {
+                GameEngine engine = act.getEngine();
+                if (engine == null) return true;
+                GameEngine.GameState st = engine.getState();
+                return st == GameEngine.GameState.DISCONNECTED || st == GameEngine.GameState.IDLE;
+            }
+
+            @Override
+            public boolean isDuelActiveOrStarted() {
+                GameEngine engine = act.getEngine();
+                return engine != null && (engine.getState() == GameEngine.GameState.DUELING || engine.isStarted());
+            }
+
+            @Override
+            public boolean isWaitingDialogShowing() {
+                return act.getPlayerWaitingDialog() != null && act.getPlayerWaitingDialog().isShowing();
+            }
+
+            @Override
+            public void showWaitingDialog() {
+                PlayerWaitingDialog.showPlayerWaitingForBotHost(act);
+            }
+
+            @Override
+            public boolean isReplaySessionActive() {
+                return act.isReplaySessionActive();
+            }
+
+            @Override
+            public boolean isGameUiVisible() {
+                View v = act.findViewById(R.id.layout_game_right);
+                return v != null && v.getVisibility() == View.VISIBLE;
+            }
+
+            @Override
+            public void enterReplayUi() {
+                act.enterReplayUI();
+            }
+
+            @Override
+            public boolean isDeckEditorVisible() {
+                View v = act.findViewById(R.id.layout_deck_editor);
+                return v != null && v.getVisibility() == View.VISIBLE;
+            }
+
+            @Override
+            public void showDeckEditor() {
+                act.showDeckEditorView();
+            }
+
+            @Override
+            public void postDelayed(Runnable action, long delayMs) {
+                View decor = act.getWindow() != null ? act.getWindow().getDecorView() : null;
+                if (decor != null) {
+                    decor.postDelayed(action, delayMs);
+                } else {
+                    act.runOnUiThread(action);
+                }
+            }
+
+            @Override
+            public long nowMs() {
+                return System.currentTimeMillis();
+            }
+        };
+    }
+
+    private static Runnable buildReturnToRpgAction(final YGOProActivity activity,
+                                                   final int targetTab,
+                                                   final File editedYdkToSyncBack) {
+        return () -> {
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
+            sRpgDeckAllowedCaps = null;
+            sRpgDeckCurrentCounts = null;
+            if (editedYdkToSyncBack != null && editedYdkToSyncBack.exists()) {
+                parseAndPublishEditedDeck(editedYdkToSyncBack);
+            }
+            if (editedYdkToSyncBack == null && targetTab == RpgHomeActivity.TAB_AI_DUEL) {
+                File playerRpgDeck = new File(new File(AppsSettings.get().getDeckDir(), "RPG"), "rpg_player_active.ydk");
+                if (playerRpgDeck.exists()) {
+                    String p = playerRpgDeck.getAbsolutePath();
+                    AppsSettings.get().setLastDeckPath(p);
+                    AppsSettings.get().saveSettings("lastdeckpath", p);
+                    AppsSettings.get().saveSettings("lastdeck", "rpg_player_active");
+                }
+            }
+            Intent intent = new Intent(activity, RpgHomeActivity.class);
+            intent.putExtra(RpgHomeActivity.EXTRA_INITIAL_TAB, targetTab);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            activity.startActivity(intent);
+        };
+    }
+
     /**
      * Watches for YGOProActivity's MainMenuDialog to reappear (after duel end or native deck editor exit),
      * optionally parses the edited .ydk back into RpgSessionManager, and reopens RpgHomeActivity on targetTab.
+     * Automatically cancelled if any new RPG scene launches in the meantime.
      */
     private static void scheduleReturnToRpg(final YGOProActivity activity,
                                             final int targetTab,
                                             final File editedYdkToSyncBack) {
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
-        final View decor = activity.getWindow() != null ? activity.getWindow().getDecorView() : null;
-        if (decor == null) return;
-
-        final long deadlineMs = System.currentTimeMillis() + 600_000L; // up to 10 min for deck editing / replay save
-        final boolean[] sawMenuHidden = new boolean[]{!activity.getMainMenuDialog().isShowing()};
-        final Runnable watcher = new Runnable() {
-            @Override
-            public void run() {
-                if (activity.isFinishing() || activity.isDestroyed()) {
-                    sRpgDeckAllowedCaps = null;
-                    sRpgDeckCurrentCounts = null;
-                    return;
-                }
-                if (System.currentTimeMillis() > deadlineMs) {
-                    sRpgDeckAllowedCaps = null;
-                    sRpgDeckCurrentCounts = null;
-                    return;
-                }
-
-                boolean menuShowing = activity.getMainMenuDialog() != null
-                        && activity.getMainMenuDialog().isShowing();
-                if (!menuShowing) {
-                    sawMenuHidden[0] = true;
-                    decor.postDelayed(this, 250L);
-                    return;
-                }
-                if (!sawMenuHidden[0]) {
-                    decor.postDelayed(this, 250L);
-                    return;
-                }
-
-                // MainMenuDialog just reappeared after duel end or exiting native DeckEditor!
-                sRpgDeckAllowedCaps = null;
-                sRpgDeckCurrentCounts = null;
-                if (editedYdkToSyncBack != null && editedYdkToSyncBack.exists()) {
-                    parseAndPublishEditedDeck(editedYdkToSyncBack);
-                }
-                if (editedYdkToSyncBack == null && targetTab == RpgHomeActivity.TAB_AI_DUEL) {
-                    // Restore lastdeckpath to player's RPG deck if we just exited readonly AI deck viewer
-                    File playerRpgDeck = new File(new File(AppsSettings.get().getDeckDir(), "RPG"), "rpg_player_active.ydk");
-                    if (playerRpgDeck.exists()) {
-                        String p = playerRpgDeck.getAbsolutePath();
-                        AppsSettings.get().setLastDeckPath(p);
-                        AppsSettings.get().saveSettings("lastdeckpath", p);
-                        AppsSettings.get().saveSettings("lastdeck", "rpg_player_active");
-                    }
-                }
-                Intent intent = new Intent(activity, RpgHomeActivity.class);
-                intent.putExtra(RpgHomeActivity.EXTRA_INITIAL_TAB, targetTab);
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                activity.startActivity(intent);
-            }
-        };
-        decor.postDelayed(watcher, 500L);
-    }
-
-    /**
-     * Dismisses MainMenuDialog / stale PlayerWaitingDialog and defers {@code task} until
-     * {@code act} regains foreground window focus after {@code RpgHomeActivity.finish()},
-     * avoiding MIUI/HyperOS/ColorOS PopupWindow token races when opening PlayerWaitingDialog.
-     */
-    private static void runWhenActivityForeground(final YGOProActivity act, final Runnable task) {
-        if (act == null || act.isFinishing() || act.isDestroyed()) return;
-        if (act.getPlayerWaitingDialog() != null) {
-            try {
-                act.getPlayerWaitingDialog().setOnDismissListener(null);
-                act.getPlayerWaitingDialog().dismiss();
-            } catch (Throwable ignored) {
-            }
-            act.setPlayerWaitingDialog(null);
-        }
-        if (act.getMainMenuDialog() != null) {
-            act.getMainMenuDialog().hideMainMenu();
-        }
-        final View decor = act.getWindow() != null ? act.getWindow().getDecorView() : null;
-        if (decor == null) {
-            task.run();
-            return;
-        }
-        final long deadlineMs = System.currentTimeMillis() + 1200L;
-        final Runnable waitFocus = new Runnable() {
-            @Override
-            public void run() {
-                if (act.isFinishing() || act.isDestroyed()) return;
-                if (act.getMainMenuDialog() != null && act.getMainMenuDialog().isShowing()) {
-                    act.getMainMenuDialog().hideMainMenu();
-                }
-                boolean ready = act.hasWindowFocus() && decor.getWindowToken() != null;
-                if (!ready && System.currentTimeMillis() < deadlineMs) {
-                    decor.postDelayed(this, 50L);
-                    return;
-                }
-                // Wait 1 extra frame after MainMenuDialog dismissal / Activity resume so WindowManager
-                // finishes removing the old PopupWindow before PlayerWaitingDialog calls showAtLocation.
-                decor.postDelayed(task, 60L);
-            }
-        };
-        decor.postDelayed(waitFocus, 60L);
-    }
-
-    /**
-     * Post-show safeguard for PlayerWaitingDialog: ensures MainMenuDialog stays hidden,
-     * preserves RPG rule/avatar overrides, updates seat 0 display name, and retries once
-     * if PopupWindow.showAtLocation was silently dropped by transient token invalidation.
-     */
-    private static void ensureWaitingDialogVisible(final YGOProActivity act,
-                                                   final String playerName,
-                                                   final OcgRuleSet activeRuleSet,
-                                                   final String playerAvatarId,
-                                                   final String opponentAvatarId) {
-        if (act == null || act.isFinishing() || act.isDestroyed()) return;
-        final View decor = act.getWindow() != null ? act.getWindow().getDecorView() : null;
-        if (decor == null) return;
-        decor.postDelayed(() -> {
-            if (act.isFinishing() || act.isDestroyed()) return;
-            GameEngine engine = act.getEngine();
-            if (engine == null) return;
-            GameEngine.GameState st = engine.getState();
-            if (st == GameEngine.GameState.DISCONNECTED || st == GameEngine.GameState.IDLE
-                    || st == GameEngine.GameState.DUELING || engine.isStarted()) {
-                return;
-            }
-            if (act.getMainMenuDialog() != null && act.getMainMenuDialog().isShowing()) {
-                act.getMainMenuDialog().hideMainMenu();
-            }
-            sActiveRpgDuelRuleSet = activeRuleSet;
-            sActiveDuelPlayerAvatarId = playerAvatarId;
-            sActiveDuelOpponentAvatarId = opponentAvatarId;
-
-            PlayerWaitingDialog dlg = act.getPlayerWaitingDialog();
-            if (dlg == null || !dlg.isShowing()) {
-                PlayerWaitingDialog.showPlayerWaitingForBotHost(act);
-            }
-            if (playerName != null && !playerName.isEmpty()) {
-                decor.postDelayed(() -> {
-                    PlayerWaitingDialog cur = act.getPlayerWaitingDialog();
-                    if (cur != null && cur.isShowing()) {
-                        cur.setPlayerName(0, playerName);
-                    }
-                }, 80L);
-            }
-        }, 240L);
+        sTransitionCoordinator.scheduleReturnToRpg(
+                asHostSurface(activity),
+                buildReturnToRpgAction(activity, targetTab, editedYdkToSyncBack));
     }
 
     private static void parseAndPublishEditedDeck(File ydkFile) {
@@ -594,81 +622,80 @@ public final class RpgIntegration {
                                            final String currentTimelineDate,
                                            final String roomTitle) {
                 if (act == null || act.isFinishing() || act.isDestroyed()) return;
-                cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.stopActive();
                 act.runOnUiThread(() -> {
                     sAppContext = act.getApplicationContext();
-                    GameEngine preEngine = act.getEngine();
-                    if (preEngine != null && preEngine.getClient() != null && preEngine.getClient().isConnected()) {
-                        // Drain any stale connection before RpgHomeActivity finishes so its async
-                        // DISCONNECTED callback cannot later tear down the newly launched duel.
-                        preEngine.disconnect();
-                    }
-                    runWhenActivityForeground(act, () -> {
-                        if (act.isFinishing() || act.isDestroyed()) return;
-                        if (act.getMainMenuDialog() != null) {
-                            act.getMainMenuDialog().hideMainMenu();
-                        }
-                        sAppContext = act.getApplicationContext();
-                        sActiveRpgDuelRuleSet = activeRuleSet;
-                        sActiveDuelPlayerAvatarId = playerAvatarId;
-                        sActiveDuelOpponentAvatarId = opponentAvatarId;
+                    sTransitionCoordinator.launchWaitingRoomScene(
+                            asHostSurface(act),
+                            () -> {
+                                sAppContext = act.getApplicationContext();
+                                sActiveRpgDuelRuleSet = activeRuleSet;
+                                sActiveDuelPlayerAvatarId = playerAvatarId;
+                                sActiveDuelOpponentAvatarId = opponentAvatarId;
 
-                        syncYdkToNativeDeckDir(playerDeckYdkPath);
+                                syncYdkToNativeDeckDir(playerDeckYdkPath);
 
-                        if (activeRuleSet != null) {
-                            String ruleSummary = activeRuleSet.name
-                                    + (activeRuleSet.tributeSummonEnabled ? "（上级需祭品" : "（上级免祭品")
-                                    + (activeRuleSet.firstTurnDrawEnabled ? " · 先攻抽卡）" : " · 先攻不抽卡）");
-                            Toast.makeText(act, "已应用 RPG 规则：" + ruleSummary, Toast.LENGTH_LONG).show();
-                        }
+                                if (activeRuleSet != null) {
+                                    String ruleSummary = activeRuleSet.name
+                                            + (activeRuleSet.tributeSummonEnabled ? "（上级需祭品" : "（上级免祭品")
+                                            + (activeRuleSet.firstTurnDrawEnabled ? " · 先攻抽卡）" : " · 先攻不抽卡）");
+                                    Toast.makeText(act, "已应用 RPG 规则：" + ruleSummary, Toast.LENGTH_LONG).show();
+                                }
 
-                        GameEngine engine = act.getEngine();
-                        engine.setBotMode(true);
-                        engine.setPlayerName(playerName);
+                                GameEngine engine = act.getEngine();
+                                engine.setBotMode(true);
+                                engine.setPlayerName(playerName);
 
-                        int duelMode = 0; // Single duel
-                        int duelRule = activeRuleSet != null ? activeRuleSet.ygoproDuelRule : 1;
-                        int startLp = activeRuleSet != null ? activeRuleSet.startLp : 8000;
-                        int startHand = activeRuleSet != null ? activeRuleSet.startHand : 5;
-                        engine.startLocalServerWithSettings(
-                                0, 5, duelMode, duelRule,
-                                true, false,
-                                startLp, startHand, 1, 0,
-                                roomTitle, "");
-                        engine.gameLflist = 0;
-                        engine.gameRule = 5;
-                        engine.gameMode = duelMode;
-                        engine.field.dInfo.duelRule = duelRule;
-                        engine.gameNoCheckDeck = 1;
-                        engine.gameNoShuffleDeck = 0;
-                        engine.gameStartLp = startLp;
-                        engine.gameStartHand = startHand;
-                        engine.gameDrawCount = 1;
-                        engine.gameTimeLimit = 0;
-                        engine.hasJoinRoomInfoCache = true;
+                                int duelMode = 0; // Single duel
+                                int duelRule = activeRuleSet != null ? activeRuleSet.ygoproDuelRule : 1;
+                                int startLp = activeRuleSet != null ? activeRuleSet.startLp : 8000;
+                                int startHand = activeRuleSet != null ? activeRuleSet.startHand : 5;
+                                engine.startLocalServerWithSettings(
+                                        0, 5, duelMode, duelRule,
+                                        true, false,
+                                        startLp, startHand, 1, 0,
+                                        roomTitle, "");
+                                engine.gameLflist = 0;
+                                engine.gameRule = 5;
+                                engine.gameMode = duelMode;
+                                engine.field.dInfo.duelRule = duelRule;
+                                engine.gameNoCheckDeck = 1;
+                                engine.gameNoShuffleDeck = 0;
+                                engine.gameStartLp = startLp;
+                                engine.gameStartHand = startHand;
+                                engine.gameDrawCount = 1;
+                                engine.gameTimeLimit = 0;
+                                engine.hasJoinRoomInfoCache = true;
 
-                        PlayerWaitingDialog.showPlayerWaitingForBotHost(act);
-                        ensureWaitingDialogVisible(act, playerName, activeRuleSet, playerAvatarId, opponentAvatarId);
+                                PlayerWaitingDialog.showPlayerWaitingForBotHost(act);
 
-                        cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
-                        if (catalog == null) {
-                            try {
-                                catalog = cn.garymb.ygomobile.rpg.data.RpgCatalogLoader
-                                        .loadFromAssets(act.getApplicationContext());
-                                RpgSessionManager.setCachedCatalog(catalog);
-                            } catch (Exception ignored) {
-                            }
-                        }
-                        cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.launchAsync(
-                                "127.0.0.1",
-                                7911,
-                                Constants.PRO_VERSION,
-                                opponent,
-                                aiDeckYdkPath,
-                                catalog,
-                                activeRuleSet,
-                                currentTimelineDate);
-                    });
+                                cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
+                                if (catalog == null) {
+                                    try {
+                                        catalog = cn.garymb.ygomobile.rpg.data.RpgCatalogLoader
+                                                .loadFromAssets(act.getApplicationContext());
+                                        RpgSessionManager.setCachedCatalog(catalog);
+                                    } catch (Exception ignored) {
+                                    }
+                                }
+                                cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.launchAsync(
+                                        "127.0.0.1",
+                                        7911,
+                                        Constants.PRO_VERSION,
+                                        opponent,
+                                        aiDeckYdkPath,
+                                        catalog,
+                                        activeRuleSet,
+                                        currentTimelineDate);
+                            },
+                            () -> {
+                                sActiveRpgDuelRuleSet = activeRuleSet;
+                                sActiveDuelPlayerAvatarId = playerAvatarId;
+                                sActiveDuelOpponentAvatarId = opponentAvatarId;
+                                PlayerWaitingDialog cur = act.getPlayerWaitingDialog();
+                                if (cur != null && cur.isShowing() && playerName != null && !playerName.isEmpty()) {
+                                    cur.setPlayerName(0, playerName);
+                                }
+                            });
                 });
             }
 
@@ -676,38 +703,25 @@ public final class RpgIntegration {
             public void openNativeDeckEditor(Context context,
                                              String playerDeckYdkPath,
                                              java.util.Map<Integer, Integer> allowedCardCaps) {
+                if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
                 activity.runOnUiThread(() -> {
-                    File syncedFile = syncYdkToNativeDeckDir(playerDeckYdkPath);
-                    sRpgDeckAllowedCaps = allowedCardCaps != null
+                    final File syncedFile = syncYdkToNativeDeckDir(playerDeckYdkPath);
+                    final java.util.Map<Integer, Integer> capsCopy = allowedCardCaps != null
                             ? new java.util.HashMap<>(allowedCardCaps)
                             : new java.util.HashMap<>();
-                    sRpgDeckCurrentCounts = countCardsInYdk(syncedFile);
-                    activity.showDeckEditorView();
-                    // Load the exact RPG deck & filter search panel to owned & still-available RPG cards
-                    View decor = activity.getWindow() != null ? activity.getWindow().getDecorView() : null;
-                    if (decor != null) {
-                        decor.postDelayed(() -> {
-                            try {
-                                java.lang.reflect.Field f = cn.garymb.ygomobile.YGOProActivityBase.class
-                                        .getDeclaredField("deckEditorManager");
-                                f.setAccessible(true);
-                                Object mgr = f.get(activity);
-                                if (mgr instanceof cn.garymb.ygomobile.game.deck.DeckEditorManager) {
-                                    cn.garymb.ygomobile.game.deck.DeckEditorManager dem =
-                                            (cn.garymb.ygomobile.game.deck.DeckEditorManager) mgr;
-                                    dem.openDeckForRpg(syncedFile.getAbsolutePath(), "rpg_player_active", "RPG");
-                                    cn.garymb.ygomobile.game.deck.CardSearcherManager searcher =
-                                            dem.getCardSearcherManager();
-                                    if (searcher != null) searcher.refreshRpgSearch();
-                                }
-                            } catch (Throwable ignored) {
-                            }
-                        }, 150L);
-                    }
-                    Toast.makeText(activity,
-                            "RPG 组卡限制已启用：仅显示已拥有且未达上限的卡片，保存并退出后自动同步",
-                            Toast.LENGTH_LONG).show();
-                    scheduleReturnToRpg(activity, RpgHomeActivity.TAB_DECK, syncedFile);
+                    final java.util.Map<Integer, Integer> countsCopy = countCardsInYdk(syncedFile);
+                    sTransitionCoordinator.launchDeckEditorScene(
+                            asHostSurface(activity),
+                            () -> {
+                                sRpgDeckAllowedCaps = capsCopy;
+                                sRpgDeckCurrentCounts = countsCopy;
+                                activity.showDeckEditorView();
+                                Toast.makeText(activity,
+                                        "RPG 组卡限制已启用：仅显示已拥有且未达上限的卡片，保存并退出后自动同步",
+                                        Toast.LENGTH_LONG).show();
+                            },
+                            () -> openRpgDeckInNativeEditor(activity, syncedFile.getAbsolutePath(), "rpg_player_active", "RPG"),
+                            buildReturnToRpgAction(activity, RpgHomeActivity.TAB_DECK, syncedFile));
                 });
             }
 
@@ -715,6 +729,7 @@ public final class RpgIntegration {
             public void openReadonlyAiDeckViewer(Context context,
                                                  String aiDeckYdkPath,
                                                  String displayTitle) {
+                if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
                 activity.runOnUiThread(() -> {
                     // Place the preview file under aiDeckDir so DeckHistory.isReadonlyDeck()
                     // automatically locks the native DeckEditor into full read-only mode.
@@ -723,7 +738,7 @@ public final class RpgIntegration {
                         //noinspection ResultOfMethodCallIgnored
                         aiDir.mkdirs();
                     }
-                    File previewFile = new File(aiDir, "RPG_AI_preview.ydk");
+                    final File previewFile = new File(aiDir, "RPG_AI_preview.ydk");
                     if (aiDeckYdkPath != null && !aiDeckYdkPath.isEmpty()) {
                         File src = new File(aiDeckYdkPath);
                         if (src.exists()) {
@@ -738,38 +753,40 @@ public final class RpgIntegration {
                             }
                         }
                     }
-                    // Empty allowed caps double-locks card search and card addition
-                    sRpgDeckAllowedCaps = Collections.emptyMap();
-                    sRpgDeckCurrentCounts = Collections.emptyMap();
-
                     final String label = (displayTitle != null && !displayTitle.isEmpty())
                             ? displayTitle : "AI 卡组";
-                    activity.showDeckEditorView();
-                    View decor = activity.getWindow() != null ? activity.getWindow().getDecorView() : null;
-                    if (decor != null) {
-                        decor.postDelayed(() -> {
-                            try {
-                                java.lang.reflect.Field f = cn.garymb.ygomobile.YGOProActivityBase.class
-                                        .getDeclaredField("deckEditorManager");
-                                f.setAccessible(true);
-                                Object mgr = f.get(activity);
-                                if (mgr instanceof cn.garymb.ygomobile.game.deck.DeckEditorManager) {
-                                    cn.garymb.ygomobile.game.deck.DeckEditorManager dem =
-                                            (cn.garymb.ygomobile.game.deck.DeckEditorManager) mgr;
-                                    dem.openDeckForRpg(previewFile.getAbsolutePath(), label, "AI卡组(只读)");
-                                    cn.garymb.ygomobile.game.deck.CardSearcherManager searcher =
-                                            dem.getCardSearcherManager();
-                                    if (searcher != null) searcher.refreshRpgSearch();
-                                }
-                            } catch (Throwable ignored) {
-                            }
-                        }, 150L);
-                    }
-                    Toast.makeText(activity,
-                            "只读查看 AI 卡组：" + label + "（不可修改，点「退出编辑」返回选对手页）",
-                            Toast.LENGTH_LONG).show();
-                    scheduleReturnToRpg(activity, RpgHomeActivity.TAB_AI_DUEL, null);
+                    sTransitionCoordinator.launchDeckEditorScene(
+                            asHostSurface(activity),
+                            () -> {
+                                // Empty allowed caps double-locks card search and card addition
+                                sRpgDeckAllowedCaps = Collections.emptyMap();
+                                sRpgDeckCurrentCounts = Collections.emptyMap();
+                                activity.showDeckEditorView();
+                                Toast.makeText(activity,
+                                        "只读查看 AI 卡组：" + label + "（不可修改，点「退出编辑」返回选对手页）",
+                                        Toast.LENGTH_LONG).show();
+                            },
+                            () -> openRpgDeckInNativeEditor(activity, previewFile.getAbsolutePath(), label, "AI卡组(只读)"),
+                            buildReturnToRpgAction(activity, RpgHomeActivity.TAB_AI_DUEL, null));
                 });
+            }
+
+            private void openRpgDeckInNativeEditor(YGOProActivity act, String path, String deckName, String category) {
+                try {
+                    java.lang.reflect.Field f = cn.garymb.ygomobile.YGOProActivityBase.class
+                            .getDeclaredField("deckEditorManager");
+                    f.setAccessible(true);
+                    Object mgr = f.get(act);
+                    if (mgr instanceof cn.garymb.ygomobile.game.deck.DeckEditorManager) {
+                        cn.garymb.ygomobile.game.deck.DeckEditorManager dem =
+                                (cn.garymb.ygomobile.game.deck.DeckEditorManager) mgr;
+                        dem.openDeckForRpg(path, deckName, category);
+                        cn.garymb.ygomobile.game.deck.CardSearcherManager searcher =
+                                dem.getCardSearcherManager();
+                        if (searcher != null) searcher.refreshRpgSearch();
+                    }
+                } catch (Throwable ignored) {
+                }
             }
 
             private final java.util.Set<Integer> failedRemotePics =
@@ -871,96 +888,97 @@ public final class RpgIntegration {
                     String currentTimelineDate,
                     int returnTab) {
                 if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
-                cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.stopActive();
                 activity.runOnUiThread(() -> {
                     sAppContext = activity.getApplicationContext();
-                    GameEngine preEngine = activity.getEngine();
-                    if (preEngine != null && preEngine.getClient() != null && preEngine.getClient().isConnected()) {
-                        preEngine.disconnect();
-                    }
                     final String avatarA = resolveOpponentIdByName(sideAName);
                     final String avatarB = resolveOpponentIdByName(sideBName);
-                    runWhenActivityForeground(activity, () -> {
-                        if (activity.isFinishing() || activity.isDestroyed()) return;
-                        if (activity.getMainMenuDialog() != null) {
-                            activity.getMainMenuDialog().hideMainMenu();
-                        }
-                        sAppContext = activity.getApplicationContext();
-                        sActiveRpgDuelRuleSet = activeRuleSet;
-                        sSpectateReturnTab = returnTab;
-                        sActiveDuelPlayerAvatarId = avatarA;
-                        sActiveDuelOpponentAvatarId = avatarB;
-                        GameEngine engine = activity.getEngine();
-                        engine.setBotMode(true);
-                        final String spectateName = "观战席·" + Constants.PlayerName;
-                        engine.setPlayerName(spectateName);
+                    final String spectateName = "观战席·" + Constants.PlayerName;
+                    sTransitionCoordinator.launchWaitingRoomScene(
+                            asHostSurface(activity),
+                            () -> {
+                                sAppContext = activity.getApplicationContext();
+                                sActiveRpgDuelRuleSet = activeRuleSet;
+                                sSpectateReturnTab = returnTab;
+                                sActiveDuelPlayerAvatarId = avatarA;
+                                sActiveDuelOpponentAvatarId = avatarB;
+                                GameEngine engine = activity.getEngine();
+                                engine.setBotMode(true);
+                                engine.setPlayerName(spectateName);
 
-                        int duelMode = 0;
-                        int duelRule = activeRuleSet != null ? activeRuleSet.ygoproDuelRule : 1;
-                        int startLp = activeRuleSet != null ? activeRuleSet.startLp : 8000;
-                        int startHand = activeRuleSet != null ? activeRuleSet.startHand : 5;
-                        engine.startLocalServerWithSettings(
-                                0, 5, duelMode, duelRule,
-                                true, false,
-                                startLp, startHand, 1, 0,
-                                "OCG AI观战 [" + currentTimelineDate + "]", "");
-                        engine.gameLflist = 0;
-                        engine.gameRule = 5;
-                        engine.gameMode = duelMode;
-                        engine.field.dInfo.duelRule = duelRule;
-                        engine.gameNoCheckDeck = 1;
-                        engine.gameNoShuffleDeck = 0;
-                        engine.gameStartLp = startLp;
-                        engine.gameStartHand = startHand;
-                        engine.gameDrawCount = 1;
-                        engine.gameTimeLimit = 0;
-                        engine.hasJoinRoomInfoCache = true;
+                                int duelMode = 0;
+                                int duelRule = activeRuleSet != null ? activeRuleSet.ygoproDuelRule : 1;
+                                int startLp = activeRuleSet != null ? activeRuleSet.startLp : 8000;
+                                int startHand = activeRuleSet != null ? activeRuleSet.startHand : 5;
+                                engine.startLocalServerWithSettings(
+                                        0, 5, duelMode, duelRule,
+                                        true, false,
+                                        startLp, startHand, 1, 0,
+                                        "OCG AI观战 [" + currentTimelineDate + "]", "");
+                                engine.gameLflist = 0;
+                                engine.gameRule = 5;
+                                engine.gameMode = duelMode;
+                                engine.field.dInfo.duelRule = duelRule;
+                                engine.gameNoCheckDeck = 1;
+                                engine.gameNoShuffleDeck = 0;
+                                engine.gameStartLp = startLp;
+                                engine.gameStartHand = startHand;
+                                engine.gameDrawCount = 1;
+                                engine.gameTimeLimit = 0;
+                                engine.hasJoinRoomInfoCache = true;
 
-                        PlayerWaitingDialog.showPlayerWaitingForBotHost(activity);
-                        ensureWaitingDialogVisible(activity, spectateName, activeRuleSet, avatarA, avatarB);
+                                PlayerWaitingDialog.showPlayerWaitingForBotHost(activity);
 
-                        cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
-                        if (catalog == null) {
-                            try {
-                                catalog = cn.garymb.ygomobile.rpg.data.RpgCatalogLoader
-                                        .loadFromAssets(activity.getApplicationContext());
-                                RpgSessionManager.setCachedCatalog(catalog);
-                            } catch (Exception ignored) {
-                            }
-                        }
-                        final cn.garymb.ygomobile.rpg.model.RpgCatalog finalCatalog = catalog;
-                        final String effA = (styleA != null && !styleA.isEmpty())
-                                ? styleA : cn.garymb.ygomobile.rpg.ai.RpgAiStrategy.inferStyleFromDeck(mainA, extraA, activeRuleSet);
-                        final String effB = (styleB != null && !styleB.isEmpty())
-                                ? styleB : cn.garymb.ygomobile.rpg.ai.RpgAiStrategy.inferStyleFromDeck(mainB, extraB, activeRuleSet);
-
-                        // Move host to observer seat once connected, then launch Seat 0 (A) & Seat 1 (B) AIs
-                        Thread spectateStarter = new Thread(() -> {
-                            long deadline = System.currentTimeMillis() + 6000L;
-                            while (System.currentTimeMillis() < deadline) {
-                                if (engine.getClient() != null && engine.getClient().isConnected()) {
-                                    break;
+                                cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
+                                if (catalog == null) {
+                                    try {
+                                        catalog = cn.garymb.ygomobile.rpg.data.RpgCatalogLoader
+                                                .loadFromAssets(activity.getApplicationContext());
+                                        RpgSessionManager.setCachedCatalog(catalog);
+                                    } catch (Exception ignored) {
+                                    }
                                 }
-                                try { Thread.sleep(40L); } catch (InterruptedException ignored) { return; }
-                            }
-                            try { Thread.sleep(200L); } catch (InterruptedException ignored) { return; }
-                            if (engine.getClient() != null && engine.getClient().isConnected()) {
-                                engine.getClient().sendToObserver();
-                            }
-                            try { Thread.sleep(150L); } catch (InterruptedException ignored) { return; }
-                            cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.launchSpectatePairAsync(
-                                    "127.0.0.1", 7911, Constants.PRO_VERSION,
-                                    sideAName, mainA, extraA, effA,
-                                    sideBName, mainB, extraB, effB,
-                                    finalCatalog, activeRuleSet, currentTimelineDate);
-                        }, "RpgAiSpectateLauncher");
-                        spectateStarter.setDaemon(true);
-                        spectateStarter.start();
+                                final cn.garymb.ygomobile.rpg.model.RpgCatalog finalCatalog = catalog;
+                                final String effA = (styleA != null && !styleA.isEmpty())
+                                        ? styleA : cn.garymb.ygomobile.rpg.ai.RpgAiStrategy.inferStyleFromDeck(mainA, extraA, activeRuleSet);
+                                final String effB = (styleB != null && !styleB.isEmpty())
+                                        ? styleB : cn.garymb.ygomobile.rpg.ai.RpgAiStrategy.inferStyleFromDeck(mainB, extraB, activeRuleSet);
 
-                        Toast.makeText(activity,
-                                "已切至观战席：等待两位 OCG 专属 AI 就座后点击「开始决斗」即可 3D 观战！",
-                                Toast.LENGTH_LONG).show();
-                    });
+                                // Move host to observer seat once connected, then launch Seat 0 (A) & Seat 1 (B) AIs
+                                Thread spectateStarter = new Thread(() -> {
+                                    long deadline = System.currentTimeMillis() + 6000L;
+                                    while (System.currentTimeMillis() < deadline) {
+                                        if (engine.getClient() != null && engine.getClient().isConnected()) {
+                                            break;
+                                        }
+                                        try { Thread.sleep(40L); } catch (InterruptedException ignored) { return; }
+                                    }
+                                    try { Thread.sleep(200L); } catch (InterruptedException ignored) { return; }
+                                    if (engine.getClient() != null && engine.getClient().isConnected()) {
+                                        engine.getClient().sendToObserver();
+                                    }
+                                    try { Thread.sleep(150L); } catch (InterruptedException ignored) { return; }
+                                    cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.launchSpectatePairAsync(
+                                            "127.0.0.1", 7911, Constants.PRO_VERSION,
+                                            sideAName, mainA, extraA, effA,
+                                            sideBName, mainB, extraB, effB,
+                                            finalCatalog, activeRuleSet, currentTimelineDate);
+                                }, "RpgAiSpectateLauncher");
+                                spectateStarter.setDaemon(true);
+                                spectateStarter.start();
+
+                                Toast.makeText(activity,
+                                        "已切至观战席：等待两位 OCG 专属 AI 就座后点击「开始决斗」即可 3D 观战！",
+                                        Toast.LENGTH_LONG).show();
+                            },
+                            () -> {
+                                sActiveRpgDuelRuleSet = activeRuleSet;
+                                sActiveDuelPlayerAvatarId = avatarA;
+                                sActiveDuelOpponentAvatarId = avatarB;
+                                PlayerWaitingDialog cur = activity.getPlayerWaitingDialog();
+                                if (cur != null && cur.isShowing()) {
+                                    cur.setPlayerName(0, spectateName);
+                                }
+                            });
                 });
             }
 
@@ -972,6 +990,7 @@ public final class RpgIntegration {
             @Override
             public void startRpgReplay(Context context, String replayFilePath,
                                        String player0Name, String player1Name, int returnTab) {
+                if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
                 if (replayFilePath == null || replayFilePath.isEmpty()) {
                     activity.runOnUiThread(() -> Toast.makeText(activity, "录像文件不存在", Toast.LENGTH_SHORT).show());
                     return;
@@ -981,11 +1000,18 @@ public final class RpgIntegration {
                     activity.runOnUiThread(() -> Toast.makeText(activity, "录像文件已丢失：" + replayFilePath, Toast.LENGTH_SHORT).show());
                     return;
                 }
+                final String p0Avatar = resolveOpponentIdByName(player0Name);
+                final String p1Avatar = resolveOpponentIdByName(player1Name);
                 activity.runOnUiThread(() -> {
                     sAppContext = activity.getApplicationContext();
-                    sActiveDuelPlayerAvatarId = resolveOpponentIdByName(player0Name);
-                    sActiveDuelOpponentAvatarId = resolveOpponentIdByName(player1Name);
-                    launchNative3dReplayForRpg(activity, replayFilePath, returnTab);
+                    sTransitionCoordinator.launchReplayScene(
+                            asHostSurface(activity),
+                            () -> launchNative3dReplayForRpg(activity, replayFilePath, returnTab),
+                            () -> {
+                                sAppContext = activity.getApplicationContext();
+                                sActiveDuelPlayerAvatarId = p0Avatar;
+                                sActiveDuelOpponentAvatarId = p1Avatar;
+                            });
                 });
             }
         });
@@ -1019,6 +1045,9 @@ public final class RpgIntegration {
                 activity.runOnUiThread(() -> {
                     switch (state) {
                         case PLAYING:
+                            if (activity.getMainMenuDialog() != null && activity.getMainMenuDialog().isShowing()) {
+                                activity.getMainMenuDialog().hideMainMenu();
+                            }
                             activity.getCardDetailPanel().showReplayControls();
                             activity.getCardDetailPanel().updateReplayButtonStates(false);
                             activity.updateChatUIVisibility();
@@ -1043,6 +1072,7 @@ public final class RpgIntegration {
                                         .setType(cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog.TYPE_MESSAGE)
                                         .setPositiveButtonText("返回 RPG 模式")
                                         .setPositiveButton(v -> {
+                                            sTransitionCoordinator.invalidatePendingTransitions();
                                             sActiveDuelPlayerAvatarId = null;
                                             sActiveDuelOpponentAvatarId = null;
                                             player.detachListener();
