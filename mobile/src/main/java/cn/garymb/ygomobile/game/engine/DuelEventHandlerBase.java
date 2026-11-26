@@ -253,12 +253,13 @@ abstract class DuelEventHandlerBase implements GameMessageParser.MessageHandler 
     public void onNewTurn(int player) {
         // Solo mode: the acting player must always sit at localPlayer==0 (bottom of screen).
         // If MSG_NEW_TURN targets the side currently shown as "opponent", request a perspective
-        // flip. requestSpectatorSwap defers the flip to the next drainPendingMsgs boundary, so
-        // pending animations of the previous turn finish before the view is swapped — same path
-        // as the manual spectator "switch view" button.
+        // flip. Auto flips keep the deferred semantics (requestAutoSpectatorSwap): the flip is
+        // applied at the next message-consumption boundary so pending animations of the previous
+        // turn finish before the view is swapped. The manual spectator "switch view" button is
+        // immediate on purpose and goes through requestSpectatorSwap instead.
         if (engine.soloMode && !engine.replayMode && engine.inDuel
                 && engine.localPlayer(player & 1) == 1) {
-            engine.requestSpectatorSwap();
+            engine.requestAutoSpectatorSwap();
         }
         engine.field.currentPlayer = engine.localPlayer(player);
         engine.field.turnCount++;
@@ -540,6 +541,10 @@ abstract class DuelEventHandlerBase implements GameMessageParser.MessageHandler 
 
     @Override
     public void onChainEnd() {
+        // 整段连锁结束：先把效果处理期间缓冲的 HINT_ZONE 区域宣告按当前场地态补落一次（此时本链
+        // 的 MSG_FIELD_DISABLED 已到达，封区同列的误标会被剔除），再把登记序置回 0；顺序颠倒会使
+        // 补落时退回按实时条数落戳，后续撤回剪除判据错位（见 GameField.applyHintZone）
+        engine.field.flushPendingHintZones();
         // 对齐 duelclient.cpp MSG_CHAIN_END L3436-3442：逐链清除对象卡与发动卡的
         // is_showchaintarget 后再 chains.clear()
         for (GameField.ChainInfo ch : engine.field.chains) {
