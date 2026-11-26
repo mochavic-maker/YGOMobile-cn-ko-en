@@ -36,6 +36,7 @@ public class RpgAiStrategy {
             "BURN_WALL",
             "EQUIP_LIGHT_EARTH",
             "FLIP_CONTROL",
+            "MILL_MORPHING",
             "DARK_VIRUS",
             "EXODIA_DRAW",
             "FUSION_COMBO"
@@ -168,6 +169,7 @@ public class RpgAiStrategy {
         int fusionCore = 0;
         int cannonCount = 0;
         int burnSpellCount = 0;
+        int millCore = 0;
         int flipCount = 0;
         int equipCount = 0;
 
@@ -179,6 +181,7 @@ public class RpgAiStrategy {
             if (id == RpgAiCardKnowledge.CYBER_STEIN || id == RpgAiCardKnowledge.POLYMERIZATION) fusionCore++;
             if (id == RpgAiCardKnowledge.CANNON_SOLDIER) cannonCount++;
             if (RpgAiCardKnowledge.getBurnDamage(id) > 0) burnSpellCount++;
+            if (id == RpgAiCardKnowledge.NEEDLE_WORM || id == RpgAiCardKnowledge.MORPHING_JAR) millCore++;
             if (RpgAiCardKnowledge.isFlipMonster(id)) flipCount++;
             if (RpgAiCardKnowledge.isEquipSpell(id) || id == RpgAiCardKnowledge.METALMORPH) equipCount++;
         }
@@ -187,6 +190,7 @@ public class RpgAiStrategy {
         if (ccvCount >= 1) return "DARK_VIRUS";
         if (fusionCore >= 2 && extra != null && !extra.isEmpty()) return "FUSION_COMBO";
         if (cannonCount >= 1 || burnSpellCount >= 5) return "BURN_WALL";
+        if (millCore >= 4) return "MILL_MORPHING";
         if (flipCount >= 6) return "FLIP_CONTROL";
         if (equipCount >= 4) return "EQUIP_LIGHT_EARTH";
         if (ruleSet != null && !ruleSet.tributeSummonEnabled) return "NO_TRIBUTE_BEAT";
@@ -200,6 +204,7 @@ public class RpgAiStrategy {
             case "DARK_VIRUS":        return "死毒暗控";
             case "FUSION_COMBO":      return "融合＆科学怪人";
             case "BURN_WALL":         return "烧血射出壁垒";
+            case "MILL_MORPHING":     return "变形壶＆卡组破坏";
             case "FLIP_CONTROL":      return "反转控制";
             case "EQUIP_LIGHT_EARTH": return "装备重击流";
             case "NO_TRIBUTE_BEAT":   return "免祭品高攻强攻";
@@ -218,6 +223,10 @@ public class RpgAiStrategy {
 
     private boolean isBurnStyle() {
         return "BURN_WALL".equals(style);
+    }
+
+    private boolean isMillStyle() {
+        return "MILL_MORPHING".equals(style);
     }
 
     private boolean isFlipStyle() {
@@ -243,11 +252,11 @@ public class RpgAiStrategy {
     /**
      * Decides whether to go first (true) or second (false) after winning RPS.
      * Under 1999 rules (Turn 1 does NOT draw), aggressive beatdown decks benefit strongly
-     * from going second (extra draw + immediate Battle Phase), while Exodia/Burn/Virus/Flip
+     * from going second (extra draw + immediate Battle Phase), while Exodia/Burn/Mill/Virus/Flip
      * decks prefer going first to set traps/flip walls and draw/filter undisturbed.
      */
     public boolean chooseGoFirst() {
-        if (isExodiaStyle() || isBurnStyle() || isFlipStyle() || isDarkVirusStyle()) {
+        if (isExodiaStyle() || isBurnStyle() || isMillStyle() || isFlipStyle() || isDarkVirusStyle()) {
             return true;
         }
         return state.ruleSet != null && state.ruleSet.firstTurnDrawEnabled;
@@ -672,6 +681,11 @@ public class RpgAiStrategy {
                 if (isExodiaStyle() && state.getUniqueExodiaPiecesInHand().size() >= 2) {
                     continue; // NEVER discard our Exodia pieces!
                 }
+                if (isMillStyle()) {
+                    // Mill / Anti-Exodia Morphing Jar: flip whenever opponent holds cards or our hand is small!
+                    if (oppHand >= 2 || myHand <= 3) return reposIdle(e);
+                    continue;
+                }
                 if (myHand <= 2 || myHand < oppHand) {
                     return reposIdle(e);
                 }
@@ -956,7 +970,10 @@ public class RpgAiStrategy {
         // Flip monsters LOVE being Set!
         if (RpgAiCardKnowledge.isFlipMonster(code)) {
             int base = 1750;
-            if (isFlipStyle() || isExodiaStyle() || isBurnStyle()) base += 450;
+            if (isFlipStyle() || isMillStyle() || isExodiaStyle() || isBurnStyle()) base += 450;
+            if (isMillStyle() && (code == RpgAiCardKnowledge.NEEDLE_WORM || code == RpgAiCardKnowledge.MORPHING_JAR)) {
+                base += 450;
+            }
             if (code == RpgAiCardKnowledge.MAN_EATER_BUG && !oppBoardEmpty) base += 350;
             if (code == RpgAiCardKnowledge.MAGICIAN_OF_FAITH && state.hasGoodSpellInMyGrave()) base += 300;
             if (code == RpgAiCardKnowledge.MASK_OF_DARKNESS && isDarkVirusStyle()) base += 350;
@@ -970,17 +987,17 @@ public class RpgAiStrategy {
         // Sangan / Witch: love being Set defensively (and serve as Crush Card Virus / search fodder)
         if (RpgAiCardKnowledge.isSearcherMonster(code)) {
             int base = 1550;
-            if (isExodiaStyle() || isDarkVirusStyle() || isFusionStyle()) base += 500;
+            if (isExodiaStyle() || isDarkVirusStyle() || isFusionStyle() || isMillStyle()) base += 500;
             return base;
         }
 
         // Wall of Illusion (1000/1850) & era-high-DEF walls
         if (code == RpgAiCardKnowledge.WALL_OF_ILLUSION) {
-            return (oppBoardEmpty && !isExodiaStyle() && !isBurnStyle()) ? 1400 : 1950;
+            return (oppBoardEmpty && !isExodiaStyle() && !isBurnStyle() && !isMillStyle()) ? 1400 : 1950;
         }
         if (def >= state.eraWallDefThreshold && def > atk) {
             int base = def - 100;
-            if (isExodiaStyle() || isBurnStyle() || state.turnCount == 1 || (!hasBoardAdvantage && oppStrongest > atk)) {
+            if (isExodiaStyle() || isBurnStyle() || isMillStyle() || state.turnCount == 1 || (!hasBoardAdvantage && oppStrongest > atk)) {
                 base += 400;
             }
             return base;
@@ -1100,10 +1117,10 @@ public class RpgAiStrategy {
                 return activateIdle(e);
             }
         }
-        // Heal spells (when damaged or in burn decks; when at full LP, keep as potential Trap Hole bluff)
+        // Heal spells (when damaged, in burn decks, or in MILL_MORPHING to lock in 1999 deck-out LP lead!)
         for (CmdEntry e : p.activatable) {
             if (RpgAiCardKnowledge.isHealSpell(e.code)) {
-                if (state.lp[0] < 8000 || isBurnStyle()) {
+                if (state.lp[0] < 8000 || isBurnStyle() || isMillStyle()) {
                     return activateIdle(e);
                 }
             }
@@ -1113,7 +1130,7 @@ public class RpgAiStrategy {
         if (swords != null) {
             boolean oppHasMonsters = !state.getMonsters(1).isEmpty();
             boolean behind = state.getStrongestThreatValue(1) >= state.getStrongestAtk(0);
-            boolean needStall = isExodiaStyle() || isBurnStyle() || state.lp[0] <= 3000;
+            boolean needStall = isExodiaStyle() || isBurnStyle() || isMillStyle() || state.lp[0] <= 3000;
             if ((oppHasMonsters && (behind || hasFaceDownMonster(1) || needStall))
                     || (needStall && state.getMonsters(0).isEmpty())) {
                 return activateIdle(swords);

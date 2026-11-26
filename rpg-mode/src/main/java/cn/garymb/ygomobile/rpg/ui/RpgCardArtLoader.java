@@ -119,6 +119,62 @@ public final class RpgCardArtLoader {
         });
     }
 
+    private static final LruCache<String, Bitmap> sAvatarCache = new LruCache<String, Bitmap>(4 * 1024) {
+        @Override
+        protected int sizeOf(String key, Bitmap bitmap) {
+            return bitmap == null ? 0 : (bitmap.getByteCount() / 1024);
+        }
+    };
+
+    /**
+     * Loads a Yu-Gi-Oh! anime-style AI opponent portrait from assets/rpg/avatars/<opponentId>.webp.
+     */
+    public static void loadOpponentAvatarInto(final android.content.Context context,
+                                              final ImageView target,
+                                              final String opponentId) {
+        if (context == null || target == null || opponentId == null || opponentId.isEmpty()) return;
+        target.setTag("avatar:" + opponentId);
+
+        Bitmap cached = sAvatarCache.get(opponentId);
+        if (cached != null && !cached.isRecycled()) {
+            target.setImageBitmap(cached);
+            return;
+        }
+
+        target.setImageDrawable(createAvatarPlaceholderDrawable());
+        final android.content.Context appCtx = context.getApplicationContext();
+
+        sExecutor.execute(() -> {
+            Bitmap bmp = null;
+            try (java.io.InputStream is = appCtx.getAssets().open("rpg/avatars/" + opponentId + ".webp")) {
+                bmp = BitmapFactory.decodeStream(is);
+            } catch (Throwable ignored) {
+            }
+            if (bmp == null) return;
+
+            sAvatarCache.put(opponentId, bmp);
+            final Bitmap finalBmp = bmp;
+            sMainHandler.post(() -> {
+                Object tag = target.getTag();
+                if (("avatar:" + opponentId).equals(tag)) {
+                    target.setImageBitmap(finalBmp);
+                }
+            });
+        });
+    }
+
+    public static GradientDrawable createAvatarPlaceholderDrawable() {
+        GradientDrawable bg = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.parseColor("#1E293B"),
+                        Color.parseColor("#0F172A")
+                });
+        bg.setCornerRadius(12f);
+        bg.setStroke(2, Color.parseColor("#D4AF37"));
+        return bg;
+    }
+
     /**
      * Creates a stylized Yu-Gi-Oh! card-back drawable for unflipped / loading cards.
      */

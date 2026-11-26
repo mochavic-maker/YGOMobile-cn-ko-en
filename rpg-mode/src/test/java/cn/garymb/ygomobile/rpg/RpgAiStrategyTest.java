@@ -652,6 +652,56 @@ public class RpgAiStrategyTest {
                 1 << 16, strategy.chooseIdleCmd(pKaiba));
     }
 
+    @Test
+    public void millMorphingArchetypeUsesHealFor1999LpRuleAndPrioritizesMillFlips() {
+        List<Integer> millDeck = Arrays.asList(
+                RpgAiCardKnowledge.NEEDLE_WORM, RpgAiCardKnowledge.NEEDLE_WORM,
+                RpgAiCardKnowledge.MORPHING_JAR, RpgAiCardKnowledge.MORPHING_JAR,
+                RpgAiCardKnowledge.DIAN_KETO);
+        assertEquals("MILL_MORPHING", RpgAiStrategy.inferStyleFromDeck(millDeck, Collections.emptyList(), tributeRule));
+
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-12-16");
+        state.turnCount = 1;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        addHandCard(state, RpgAiCardKnowledge.DIAN_KETO);
+        addHandCard(state, RpgAiCardKnowledge.NEEDLE_WORM);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "MILL_MORPHING");
+        assertTrue("MILL_MORPHING should prefer going first", strategy.chooseGoFirst());
+
+        // Set Needle Worm first
+        RpgAiStrategy.IdleCmdPrompt p1 = new RpgAiStrategy.IdleCmdPrompt();
+        p1.summonable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.NEEDLE_WORM, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 0));
+        p1.msetable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.NEEDLE_WORM, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 0));
+        p1.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.DIAN_KETO, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p1.canEnd = true;
+        assertEquals("MILL_MORPHING should Normal Set Needle Worm", (0 << 16) + 3, strategy.chooseIdleCmd(p1));
+
+        // After setting monster, cast Dian Keto even at 8000 LP to lock in 1999 deck-out LP lead!
+        p1.summonable.clear();
+        p1.msetable.clear();
+        assertEquals("MILL_MORPHING should cast Dian Keto even at 8000 LP for 1999 LP-compare rule",
+                (0 << 16) + 5, strategy.chooseIdleCmd(p1));
+    }
+
+    @Test
+    public void everyAiOpponentHasBundledAvatarAsset() {
+        File avatarDir = new File("src/main/assets/rpg/avatars");
+        if (!avatarDir.exists()) {
+            avatarDir = new File("rpg-mode/src/main/assets/rpg/avatars");
+        }
+        assertTrue("Expected rpg/avatars asset directory to exist", avatarDir.exists() && avatarDir.isDirectory());
+        for (cn.garymb.ygomobile.rpg.model.AiOpponent opp : cn.garymb.ygomobile.rpg.engine.AiDeckGenerator.getDemoOpponents()) {
+            File avatarFile = new File(avatarDir, opp.id + ".webp");
+            assertTrue("Missing Yu-Gi-Oh! avatar asset for AI opponent '" + opp.id
+                    + "' (" + opp.name + "): expected " + avatarFile.getPath(),
+                    avatarFile.exists() && avatarFile.length() > 1024);
+        }
+    }
+
     private void placeSetBackrow(RpgAiDuelState state, int localPlayer, int seq) {
         RpgAiDuelState.CardSlot s = new RpgAiDuelState.CardSlot();
         s.code = 0;

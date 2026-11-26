@@ -250,6 +250,11 @@ public final class RpgAiCardKnowledge {
         } else if ("FUSION_COMBO".equals(style)) {
             if (code == LAST_WILL) return 135;
             if (code == POLYMERIZATION) return 115;
+        } else if ("MILL_MORPHING".equals(style)) {
+            if (code == SWORDS_OF_REVEALING_LIGHT) return 145;
+            if (code == DIAN_KETO || code == SOUL_OF_THE_PURE) return 130;
+            if (code == POT_OF_GREED) return 120;
+            if (code == GRACEFUL_CHARITY) return 115;
         }
         Integer base = SPELL_RECOVERY_PRIORITY.get(code);
         return base != null ? base : 30;
@@ -258,6 +263,7 @@ public final class RpgAiCardKnowledge {
     public static int getTrapRecoveryScore(int code, String style) {
         if ("DARK_VIRUS".equals(style) && code == CRUSH_CARD_VIRUS) return 150;
         if ("EXODIA_DRAW".equals(style) && code == WABOKU) return 120;
+        if ("MILL_MORPHING".equals(style) && (code == WABOKU || code == SOLEMN_JUDGMENT)) return 130;
         if ("BURN_WALL".equals(style) && code == JUST_DESSERTS) return 115;
         Integer base = TRAP_RECOVERY_PRIORITY.get(code);
         return base != null ? base : 30;

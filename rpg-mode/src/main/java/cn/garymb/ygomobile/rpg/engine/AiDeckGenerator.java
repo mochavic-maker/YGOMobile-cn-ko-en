@@ -362,7 +362,27 @@ public final class AiDeckGenerator {
                         )
                 ),
 
-                // 10. Fusion & Cyber-Stein Master (1999-12-01): yugioh-history #17【融合召喚（第1期）】+ Cyber-Stein
+                // 10. Deck Destruction & Anti-Exodia Morphing Jar (1999-10-17): yugioh-history #15【デッキ破壊】& 12月【メタモルポット】
+                new AiOpponent(
+                        "ai_mill_morphing",
+                        "变形壶·卡组破坏使",
+                        "Lv.4 · 【第1期 卡组破坏＆抗艾克佐迪亚变形壶】",
+                        "1999-10-17",
+                        4, 650, 260, 150,
+                        "还原 yugioh-history 第15回【デッキ破壊】(10月)与12月年表【メタモルポット】：以针虫/变形壶高速削库丢手，并用高守壁垒与回血稳赢第1期抽干比血规则！",
+                        Arrays.asList(
+                                new AiOpponent.EraDeckProfile("1999-10-17", "【Booster 5 针虫·变形壶 卡组破坏轴】", "1999.10 卡组破坏初现",
+                                        "yugioh-history 第15回记载的 Booster 5 针虫+变形壶削库构筑，配合圣精灵/岩石巨兵/护封剑/天使的鲜血维持血量优势。",
+                                        recipe(81843628, 3, 33508719, 3, 31560081, 3, 28933734, 2, 13039848, 3, 15025844, 3, 54652250, 3, 55144522, 3, 79571449, 3, 72302403, 3, 47852924, 3, 51452091, 2, 83764718, 3, 12580477, 1, 53129443, 1, 4206964, 1),
+                                        null, "MILL_MORPHING"),
+                                new AiOpponent.EraDeckProfile("1999-12-16", "【EX 抗艾克佐迪亚 · 变形壶特化】", "1999.12 变形壶对策轴",
+                                        "还原 yugioh-history 1999年12月年表【メタモルポット】：满编变形壶、针虫、幻影壁、三眼怪、和睦的使者、治疗之神与神之宣告，专克手牌积攒流派！",
+                                        recipe(33508719, 3, 81843628, 3, 13945283, 3, 26202165, 3, 31560081, 3, 28933734, 2, 93920745, 2, 55144522, 3, 79571449, 3, 72302403, 3, 84257639, 2, 83764718, 2, 12607053, 3, 41420027, 2, 12580477, 1, 53129443, 1, 4206964, 1),
+                                        null, "MILL_MORPHING")
+                        )
+                ),
+
+                // 11. Fusion & Cyber-Stein Master (1999-12-01): yugioh-history #17【融合召喚（第1期）】+ Cyber-Stein
                 new AiOpponent(
                         "ai_fusion_stein",
                         "融合＆恶魔科学怪人大师",
@@ -539,6 +559,12 @@ public final class AiDeckGenerator {
         }
         if ("FLIP_CONTROL".equals(style)) {
             int bonus = (c.descCn != null && c.descCn.contains("反转")) ? 900 : (c.def >= 1800 ? 400 : 0);
+            return base + bonus;
+        }
+        if ("MILL_MORPHING".equals(style)) {
+            if (c.id == 81843628 || c.id == 33508719) return base + 1200;
+            int bonus = (c.descCn != null && c.descCn.contains("反转")) ? 800
+                    : (c.isMonster() ? (c.def >= 1800 ? 600 : -200) : 450);
             return base + bonus;
         }
         if ("EXODIA_DRAW".equals(style)) {

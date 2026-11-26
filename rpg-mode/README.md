@@ -28,4 +28,4 @@ git merge upstream/master
 
 ## 扩展更多 OCG 卡包、禁限表与 AI 对手
 - 卡包/特典/禁限表/规则：向 `rpg-mode/src/main/assets/rpg/ocg_demo_catalog.json` 追加新条目，勘误追加至 `ocg_errata_history.json`。
-- **参考环境史优化 AI 与新流派专属 AI（强制规范）**：延长时间线时，除为新卡池诞生的新流派或 `AiDeckGenerator.java` 新增对手 / `EraDeckProfile` 提供对应的纯 Java 专属 AI 系统外，还**必须参考对应时期的游戏王环境史（`yugioh-history.com` 等）优化 AI 的单卡博弈、资源留牌、防踩坑与心理战逻辑**，同步更新 `RpgAiCardKnowledge.java`、`RpgAiDuelState.java`、`RpgAiStrategy.java`（含 `SUPPORTED_STYLES` 与 `inferStyleFromDeck`）与 `RpgAiStrategyTest.java`，详见 [`docs/OCG_TIMELINE_DATA_SOURCES.md`](docs/OCG_TIMELINE_DATA_SOURCES.md) 第 7~8 节。
+- **参考环境史新建流派 AI 对手、生成游戏王风格头像并优化专属 AI（强制规范）**：延长时间线时，必须参考对应时期的游戏王环境史（`yugioh-history.com` 等）：① 为新出现的主流/特色流派创建对应 AI 对手及多阶段进化线（`AiDeckGenerator.java`）；② 为每位新 AI 对手生成 1:1 游戏王风格头像保存至 `rpg-mode/src/main/assets/rpg/avatars/<opponent_id>.webp`（流派吻合时可用原版角色，由单测守卫强制校验）；③ 优化该时代博弈逻辑并补齐专属纯 Java AI 系统（`RpgAiCardKnowledge` / `RpgAiDuelState` / `RpgAiStrategy` 含 `SUPPORTED_STYLES` 与 `inferStyleFromDeck` / `RpgAiStrategyTest`），详见 [`docs/OCG_TIMELINE_DATA_SOURCES.md`](docs/OCG_TIMELINE_DATA_SOURCES.md) 第 7~8 节。

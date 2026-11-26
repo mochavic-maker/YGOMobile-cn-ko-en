@@ -304,7 +304,7 @@ public class RpgEnginesTest {
     @Test
     public void aiDecksStrictlyObeyFull1999TimelineAndBanlist() {
         List<AiOpponent> opps = AiDeckGenerator.getDemoOpponents();
-        assertEquals(12, opps.size());
+        assertEquals(13, opps.size());
         String[] dates = {
                 "1999-02-04", "1999-03-01", "1999-03-06", "1999-03-27", "1999-05-05",
                 "1999-05-25", "1999-05-27", "1999-07-08", "1999-07-22",
@@ -336,15 +336,18 @@ public class RpgEnginesTest {
             }
         }
 
-        // Verify automatic deck switching along timeline for the SAME opponent (Kaiba & Exodia Master)
+        // Verify automatic deck switching along timeline for the SAME opponent (Kaiba, Exodia Master & Mill Morphing)
         AiOpponent kaiba = null;
         AiOpponent exodia = null;
+        AiOpponent millMorphing = null;
         for (AiOpponent o : opps) {
             if ("ai_starter_kaiba".equals(o.id)) kaiba = o;
             if ("ai_exodia_master".equals(o.id)) exodia = o;
+            if ("ai_mill_morphing".equals(o.id)) millMorphing = o;
         }
         assertNotNull(kaiba);
         assertNotNull(exodia);
+        assertNotNull(millMorphing);
 
         // Kaiba auto-switches from No-Tribute Blue-Eyes (03-06) -> Expert Transition (05-05) -> High ATK (08-26) -> EX (12-16)
         assertEquals("1999-03-06", kaiba.getActiveDeckProfile("1999-03-18").effectiveDate);
@@ -356,6 +359,10 @@ public class RpgEnginesTest {
         assertEquals("1999-08-26", exodia.getActiveDeckProfile("1999-09-23").effectiveDate);
         assertEquals("1999-11-18", exodia.getActiveDeckProfile("1999-11-18").effectiveDate);
         assertEquals("1999-12-16", exodia.getActiveDeckProfile("1999-12-19").effectiveDate);
+
+        // Mill Morphing auto-switches from Booster 5 Deck Destruction (10-17) -> EX Anti-Exodia Morphing Jar (12-16)
+        assertEquals("1999-10-17", millMorphing.getActiveDeckProfile("1999-11-01").effectiveDate);
+        assertEquals("1999-12-16", millMorphing.getActiveDeckProfile("1999-12-31").effectiveDate);
     }
 
     @Test

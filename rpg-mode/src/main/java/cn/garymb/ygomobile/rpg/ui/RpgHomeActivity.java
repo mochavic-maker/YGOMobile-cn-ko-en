@@ -1071,16 +1071,42 @@ public class RpgHomeActivity extends AppCompatActivity {
         for (final AiOpponent opp : opponents) {
             AiOpponent.EraDeckProfile activeDeck = opp.getActiveDeckProfile(profile.currentTimelineDate);
             LinearLayout box = makeCardContainer();
-            box.addView(makeTitleText(opp.name + "  (" + opp.title + ")"));
+
+            LinearLayout headerRow = new LinearLayout(this);
+            headerRow.setOrientation(LinearLayout.HORIZONTAL);
+            headerRow.setGravity(Gravity.CENTER_VERTICAL);
+            headerRow.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+            ImageView avatarView = new ImageView(this);
+            LinearLayout.LayoutParams avLp = new LinearLayout.LayoutParams(dp(68), dp(68));
+            avLp.setMarginEnd(dp(10));
+            avatarView.setLayoutParams(avLp);
+            avatarView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            avatarView.setPadding(dp(2), dp(2), dp(2), dp(2));
+            avatarView.setBackground(RpgCardArtLoader.createAvatarPlaceholderDrawable());
+            RpgCardArtLoader.loadOpponentAvatarInto(this, avatarView, opp.id);
+            headerRow.addView(avatarView);
+
+            LinearLayout infoCol = new LinearLayout(this);
+            infoCol.setOrientation(LinearLayout.VERTICAL);
+            infoCol.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            infoCol.addView(makeTitleText(opp.name + "  (" + opp.title + ")"));
             if (activeDeck != null) {
                 TextView deckTv = makeSubtleText("当前自动使用卡组：" + activeDeck.deckName + " [" + activeDeck.eraTag + "]");
                 deckTv.setTextColor(Color.parseColor("#38BDF8"));
-                box.addView(deckTv);
-                box.addView(makeSubtleText(activeDeck.description));
+                infoCol.addView(deckTv);
+                infoCol.addView(makeSubtleText(activeDeck.description));
             } else {
-                box.addView(makeSubtleText(opp.strategyHint));
+                infoCol.addView(makeSubtleText(opp.strategyHint));
             }
-            box.addView(makeSubtleText("奖励：胜 +" + opp.winRewardTokens + " / 平 +" + opp.drawRewardTokens + " / 负 +" + opp.lossRewardTokens + " 代币"));
+            headerRow.addView(infoCol);
+            box.addView(headerRow);
+
+            TextView rewardTv = makeSubtleText("奖励：胜 +" + opp.winRewardTokens + " / 平 +" + opp.drawRewardTokens + " / 负 +" + opp.lossRewardTokens + " 代币");
+            rewardTv.setPadding(0, dp(6), 0, 0);
+            box.addView(rewardTv);
 
             RpgProfile.RecentMatchStats rs = profile.getRecentStats(profile.currentTimelineDate, opp.id);
             TextView wrTv;
@@ -1982,6 +2008,34 @@ public class RpgHomeActivity extends AppCompatActivity {
         }, "RpgOcgShowdownBatch").start();
     }
 
+    private LinearLayout makeShowdownSideRow(String prefix, ShowdownDeckChoice choice) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rlp.topMargin = dp(4);
+        row.setLayoutParams(rlp);
+
+        if (choice != null && choice.key != null && choice.key.startsWith("ai:")) {
+            String oppId = choice.key.substring(3);
+            ImageView av = new ImageView(this);
+            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(40), dp(40));
+            alp.setMarginEnd(dp(8));
+            av.setLayoutParams(alp);
+            av.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            av.setPadding(dp(2), dp(2), dp(2), dp(2));
+            av.setBackground(RpgCardArtLoader.createAvatarPlaceholderDrawable());
+            RpgCardArtLoader.loadOpponentAvatarInto(this, av, oppId);
+            row.addView(av);
+        }
+
+        TextView tv = makeSubtleText(prefix + (choice != null ? choice.label : "未选择"));
+        tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        row.addView(tv);
+        return row;
+    }
+
     // ==================== TAB 7: REAL OCGCORE AI SHOWDOWN ====================
     private void renderAiShowdownTab() {
         List<ShowdownDeckChoice> choices = buildShowdownChoices();
@@ -1994,8 +2048,8 @@ public class RpgHomeActivity extends AppCompatActivity {
 
         LinearLayout pickerCard = makeCardContainer();
         pickerCard.addView(makeTitleText("选择对战双方卡组（时间轴：" + profile.currentTimelineDate + "）"));
-        pickerCard.addView(makeSubtleText("A 方：" + (choiceA != null ? choiceA.label : "未选择")));
-        pickerCard.addView(makeSubtleText("B 方：" + (choiceB != null ? choiceB.label : "未选择")));
+        pickerCard.addView(makeShowdownSideRow("A 方：", choiceA));
+        pickerCard.addView(makeShowdownSideRow("B 方：", choiceB));
 
         Button pickABtn = makeActionButton("选择 A 方", "#0284C7");
         pickABtn.setOnClickListener(v -> showShowdownPickerDialog(true, choices));

@@ -238,8 +238,25 @@ public final class RpgTimelineDigestDialog {
             content.addView(makeSectionTitle(activity, "🤖 AI 对手登场与卡组调整（" + digest.aiChanges.size() + "）", "#34D399"));
             for (TimelineEngine.AiChange ac : digest.aiChanges) {
                 LinearLayout card = makeSectionCard(activity, "#059669");
+                card.setOrientation(LinearLayout.HORIZONTAL);
+                card.setGravity(Gravity.CENTER_VERTICAL);
+
+                ImageView avatar = new ImageView(activity);
+                LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(activity, 46), dp(activity, 46));
+                alp.setMarginEnd(dp(activity, 10));
+                avatar.setLayoutParams(alp);
+                avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                avatar.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
+                avatar.setBackground(RpgCardArtLoader.createAvatarPlaceholderDrawable());
+                RpgCardArtLoader.loadOpponentAvatarInto(activity, avatar, ac.opponent.id);
+                card.addView(avatar);
+
+                LinearLayout info = new LinearLayout(activity);
+                info.setOrientation(LinearLayout.VERTICAL);
+                info.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
                 String tag = ac.newlyUnlocked ? "【新对手登场】" : "【卡组进化】";
-                card.addView(makeItemTitle(activity,
+                info.addView(makeItemTitle(activity,
                         tag + " " + ac.opponent.name + "（" + ac.opponent.title + "）", "#6EE7B7"));
                 AiOpponent.EraDeckProfile np = ac.newProfile;
                 if (np != null) {
@@ -251,11 +268,12 @@ public final class RpgTimelineDigestDialog {
                     } else {
                         deckLine = "使用卡组：" + np.deckName + " [" + np.eraTag + "]（" + np.effectiveDate + "）";
                     }
-                    card.addView(makeBodyText(activity, deckLine, "#38BDF8"));
+                    info.addView(makeBodyText(activity, deckLine, "#38BDF8"));
                     if (np.description != null && !np.description.isEmpty()) {
-                        card.addView(makeBodyText(activity, np.description, "#E2E8F0"));
+                        info.addView(makeBodyText(activity, np.description, "#E2E8F0"));
                     }
                 }
+                card.addView(info);
                 content.addView(card);
             }
         }
