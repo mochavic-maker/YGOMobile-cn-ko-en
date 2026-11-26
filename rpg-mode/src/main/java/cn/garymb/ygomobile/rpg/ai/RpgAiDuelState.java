@@ -146,7 +146,11 @@ public class RpgAiDuelState {
         }
 
         public int effectiveCombatValue() {
-            if (isFaceDown()) return 1400; // conservative estimate for unknown face-down
+            return effectiveCombatValue(1200);
+        }
+
+        public int effectiveCombatValue(int estimatedFaceDownDef) {
+            if (isFaceDown() || !isFaceUp()) return estimatedFaceDownDef;
             return isAttackPos() ? Math.max(0, atk) : Math.max(0, def);
         }
 
@@ -255,6 +259,13 @@ public class RpgAiDuelState {
     public final OcgRuleSet ruleSet;
     public final String currentTimelineDate;
 
+    /** Dynamic card-pool power benchmarks computed from all cards released <= currentTimelineDate. */
+    public final int eraTypicalLowerAtk;
+    public final int eraTopLowerAtk;
+    public final int eraEstimatedFaceDownDef;
+    public final int eraWallDefThreshold;
+    public final int eraHighThreatAtk;
+
     public int myProtocolPlayer = 1;
     public int duelRule = 1;
     public final int[] lp = new int[]{8000, 8000};
@@ -287,6 +298,50 @@ public class RpgAiDuelState {
         this.catalog = catalog;
         this.ruleSet = ruleSet;
         this.currentTimelineDate = currentTimelineDate != null ? currentTimelineDate : "1999-12-31";
+        int[] bench = computeEraBenchmarks(catalog, this.currentTimelineDate);
+        this.eraTypicalLowerAtk = bench[0];
+        this.eraTopLowerAtk = bench[1];
+        this.eraEstimatedFaceDownDef = bench[2];
+        this.eraWallDefThreshold = bench[3];
+        this.eraHighThreatAtk = bench[4];
+    }
+
+    private static int[] computeEraBenchmarks(RpgCatalog catalog, String date) {
+        // Fallback defaults for late-1999 if catalog is unavailable in synthetic tests
+        if (catalog == null) {
+            return new int[]{1200, 1500, 1200, 1600, 1800};
+        }
+        List<RpgCard> released = cn.garymb.ygomobile.rpg.engine.TimelineEngine.getReleasedCards(catalog, date);
+        List<Integer> lv4Atks = new ArrayList<>();
+        List<Integer> lv4Defs = new ArrayList<>();
+        List<Integer> allAtks = new ArrayList<>();
+        for (RpgCard c : released) {
+            if (c == null || !c.isMonster() || c.isExtraDeckCard()) continue;
+            if (c.level <= 4) {
+                lv4Atks.add(Math.max(0, c.atk));
+                lv4Defs.add(Math.max(0, c.def));
+            }
+            allAtks.add(Math.max(0, c.atk));
+        }
+        if (lv4Atks.isEmpty()) {
+            return new int[]{1200, 1500, 1200, 1600, 1800};
+        }
+        java.util.Collections.sort(lv4Atks);
+        java.util.Collections.sort(lv4Defs);
+        java.util.Collections.sort(allAtks);
+
+        int typicalLower = Math.max(800, percentile(lv4Atks, 0.80));
+        int topLower = Math.max(1000, percentile(lv4Atks, 0.92));
+        int estFdDef = Math.max(700, Math.min(1400, percentile(lv4Defs, 0.70)));
+        int wallDef = Math.max(950, percentile(lv4Defs, 0.92));
+        int highThreat = Math.max(1200, percentile(allAtks, 0.90));
+        return new int[]{typicalLower, topLower, estFdDef, wallDef, highThreat};
+    }
+
+    private static int percentile(List<Integer> sorted, double ratio) {
+        if (sorted == null || sorted.isEmpty()) return 1200;
+        int idx = Math.min(sorted.size() - 1, Math.max(0, (int) Math.floor(sorted.size() * ratio)));
+        return sorted.get(idx);
     }
 
     public int localPlayer(int protoPlayer) {
@@ -538,7 +593,7 @@ public class RpgAiDuelState {
     public int getStrongestThreatValue(int localPlayer) {
         int best = 0;
         for (CardSlot m : getMonsters(localPlayer)) {
-            best = Math.max(best, m.effectiveCombatValue());
+            best = Math.max(best, m.effectiveCombatValue(eraEstimatedFaceDownDef));
         }
         return best;
     }

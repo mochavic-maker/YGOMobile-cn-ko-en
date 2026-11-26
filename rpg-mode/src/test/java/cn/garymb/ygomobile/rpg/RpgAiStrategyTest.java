@@ -268,6 +268,102 @@ public class RpgAiStrategyTest {
         assertEquals(0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.WABOKU)));
     }
 
+    @Test
+    public void doesNotDoubleChainSecondTrapHoleOrDuplicateBattleTrap() {
+        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-02-04");
+        state.myProtocolPlayer = 1;
+        state.turnPlayer = 1; // opponent's turn
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "NO_TRIBUTE_BEAT");
+
+        // Link 1: opponent summons a 1200 ATK monster -> first Trap Hole activates (0)
+        state.currentChain.clear();
+        assertEquals("First Trap Hole should activate on empty chain",
+                0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        // Link 2: our first Trap Hole is ALREADY on the chain (un-negated) -> second Trap Hole MUST PASS (-1)!
+        state.currentChain.add(new RpgAiDuelState.ChainLink(
+                RpgAiCardKnowledge.TRAP_HOLE, 0, RpgAiDuelState.LOC_SZONE, 0, 0));
+        assertEquals("Second Trap Hole must NOT chain onto our own un-negated Trap Hole!",
+                -1, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        // Link 3: if opponent chains Royal Decree to negate our first Trap Hole -> backup Trap Hole IS allowed (resolves before Decree!)
+        state.currentChain.add(new RpgAiDuelState.ChainLink(
+                RpgAiCardKnowledge.ROYAL_DECREE, 1, RpgAiDuelState.LOC_SZONE, 1, 0));
+        assertEquals("Backup Trap Hole may chain if opponent tries to negate our Link 1 with Royal Decree",
+                0, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
+
+        // Battle Phase: never stack Waboku or a 2nd Mirror Force onto our own un-negated Mirror Force!
+        state.phase = RpgAiDuelState.PHASE_BATTLE_STEP;
+        state.lastAttackerLocalCtrl = 1;
+        state.currentChain.clear();
+        state.currentChain.add(new RpgAiDuelState.ChainLink(
+                RpgAiCardKnowledge.MIRROR_FORCE, 0, RpgAiDuelState.LOC_SZONE, 0, 0));
+        assertEquals("Must NOT chain 2nd Mirror Force onto our own Mirror Force",
+                -1, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.MIRROR_FORCE)));
+        assertEquals("Must NOT chain Waboku onto our own un-negated Mirror Force",
+                -1, strategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.WABOKU)));
+    }
+
+    @Test
+    public void vol1EraCalibrationSummonsMammothGraveyardInAttackAndScalesAcrossEras() {
+        final int MAMMOTH_GRAVEYARD = 40374923; // Vol.1 1200 ATK / 800 DEF, Lv3
+
+        RpgAiDuelState vol1State = new RpgAiDuelState(catalog, noTributeRule, "1999-02-04");
+        RpgAiDuelState late99State = new RpgAiDuelState(catalog, tributeRule, "1999-12-16");
+
+        // Dynamic era benchmarks should automatically scale as the card pool grows
+        assertTrue("Vol.1 estimated face-down DEF should be <= 900, got " + vol1State.eraEstimatedFaceDownDef,
+                vol1State.eraEstimatedFaceDownDef <= 900);
+        assertEquals("Vol.1 top Lv<=4 ATK should be 1200", 1200, vol1State.eraTopLowerAtk);
+        assertTrue("Late-1999 top Lv<=4 ATK (" + late99State.eraTopLowerAtk
+                + ") should exceed Vol.1 (" + vol1State.eraTopLowerAtk + ")",
+                late99State.eraTopLowerAtk > vol1State.eraTopLowerAtk);
+        assertTrue("Late-1999 wall DEF threshold (" + late99State.eraWallDefThreshold
+                + ") should exceed Vol.1 (" + vol1State.eraWallDefThreshold + ")",
+                late99State.eraWallDefThreshold > vol1State.eraWallDefThreshold);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(vol1State, null, "NO_TRIBUTE_BEAT");
+
+        // Case 1: Empty opponent board on Turn 1 -> MUST Normal Summon Mammoth Graveyard in ATK (0), NOT Set (3)
+        vol1State.turnCount = 1;
+        vol1State.turnPlayer = 0;
+        vol1State.phase = RpgAiDuelState.PHASE_MAIN1;
+        addHandCard(vol1State, MAMMOTH_GRAVEYARD);
+
+        RpgAiStrategy.IdleCmdPrompt p = new RpgAiStrategy.IdleCmdPrompt();
+        p.summonable.add(new RpgAiStrategy.CmdEntry(MAMMOTH_GRAVEYARD, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p.msetable.add(new RpgAiStrategy.CmdEntry(MAMMOTH_GRAVEYARD, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p.canBattle = true;
+        p.canEnd = true;
+
+        assertEquals("Vol.1 Mammoth Graveyard must be Normal Summoned in ATK on empty board",
+                0, strategy.chooseIdleCmd(p));
+
+        // Case 2: Board advantage (AI controls Dark Magician 2500) + opponent has a Vol.1 face-down monster -> MUST Summon in ATK
+        vol1State.turnCount = 3;
+        placeMonster(vol1State, 0, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        placeMonster(vol1State, 1, 2, 0, RpgAiDuelState.POS_FACEDOWN_DEFENSE, 0, 0);
+        assertEquals("Vol.1 Mammoth Graveyard must be Normal Summoned in ATK when ahead on board",
+                0, strategy.chooseIdleCmd(p));
+
+        // Case 3: Empty AI board vs opponent's Vol.1 face-down monster -> 1200 ATK easily beats Vol.1 Set DEF (~700)
+        vol1State.mzone[0][2] = null;
+        assertEquals("Vol.1 Mammoth Graveyard must be Normal Summoned in ATK against a Vol.1 face-down",
+                0, strategy.chooseIdleCmd(p));
+
+        // Case 4: Battle Phase — Mammoth Graveyard (1200 ATK) should attack a Vol.1 face-down monster
+        vol1State.phase = RpgAiDuelState.PHASE_BATTLE_STEP;
+        placeMonster(vol1State, 0, 2, MAMMOTH_GRAVEYARD, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        RpgAiStrategy.BattleCmdPrompt bp = new RpgAiStrategy.BattleCmdPrompt();
+        bp.attackable.add(new RpgAiStrategy.CmdEntry(MAMMOTH_GRAVEYARD, 0, 0, RpgAiDuelState.LOC_MZONE, 2, 0, 0, 0));
+        bp.canMain2 = true;
+        bp.canEnd = true;
+        assertEquals("Vol.1 Mammoth Graveyard (1200 ATK) should attack into a Vol.1 face-down monster",
+                (0 << 16) + 1, strategy.chooseBattleCmd(bp));
+    }
+
     private ByteBuffer buildSingleChainPrompt(int trapCode) {
         ByteBuffer b = ByteBuffer.allocate(11 + 14).order(ByteOrder.LITTLE_ENDIAN);
         b.put((byte) 1).put((byte) 1).put((byte) 0).putInt(0).putInt(0);

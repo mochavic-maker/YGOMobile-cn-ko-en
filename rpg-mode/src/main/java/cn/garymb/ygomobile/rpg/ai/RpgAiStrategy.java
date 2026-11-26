@@ -481,7 +481,7 @@ public class RpgAiStrategy {
             boolean worthIt = oppMons.size() >= 2
                     || oppStrongestThreat >= myEffectiveBest
                     || oppHasFaceDown
-                    || (!state.isMain2() && myEffectiveBest >= 1500 && oppStrongestAtk >= 1200)
+                    || (!state.isMain2() && myEffectiveBest >= state.eraTopLowerAtk && oppStrongestAtk >= state.eraTypicalLowerAtk)
                     || (!state.isMain2() && myBestOnField + myBestInHand >= state.lp[1]);
             if (worthIt) {
                 return activateIdle(raigeki);
@@ -500,7 +500,7 @@ public class RpgAiStrategy {
         CmdEntry fissure = findActivatable(p, RpgAiCardKnowledge.FISSURE);
         if (fissure != null && oppHasFaceUp) {
             boolean worthIt = oppStrongestAtk >= myEffectiveBest
-                    || (!state.isMain2() && (myEffectiveBest >= 1400 || oppStrongestAtk >= 1300))
+                    || (!state.isMain2() && (myEffectiveBest >= state.eraTopLowerAtk || oppStrongestAtk >= state.eraTypicalLowerAtk))
                     || isExodiaStyle() || isBurnStyle();
             if (worthIt) {
                 return activateIdle(fissure);
@@ -511,7 +511,7 @@ public class RpgAiStrategy {
         CmdEntry ttd = findActivatable(p, RpgAiCardKnowledge.TRIBUTE_TO_THE_DOOMED);
         if (ttd != null && canSafelyDiscard(1)) {
             boolean bigThreat = oppStrongestThreat >= myEffectiveBest
-                    || oppStrongestThreat >= 1800
+                    || oppStrongestThreat >= state.eraHighThreatAtk
                     || (isExodiaStyle() && state.isPreErrataSanganEra() && hasSearcherInHand());
             if (bigThreat) {
                 return activateIdle(ttd);
@@ -520,7 +520,7 @@ public class RpgAiStrategy {
 
         // 6) Stop Defense: only in Main 1 when opponent has a DEF monster we can beat in ATK
         CmdEntry stopDef = findActivatable(p, RpgAiCardKnowledge.STOP_DEFENSE);
-        if (stopDef != null && !state.isMain2() && p.canBattle && hasDefenseMonster(1) && myEffectiveBest >= 1200) {
+        if (stopDef != null && !state.isMain2() && p.canBattle && hasDefenseMonster(1) && myEffectiveBest >= state.eraTypicalLowerAtk) {
             return activateIdle(stopDef);
         }
 
@@ -547,10 +547,11 @@ public class RpgAiStrategy {
 
         // If we already have monsters on field, NEVER blow up our own advantage!
         if (!myMons.isEmpty()) {
-            // Check if all our monsters are expendable (e.g., Sangan/Witch or weak < 1000 ATK)
+            // Check if all our monsters are expendable (e.g., Sangan/Witch or weak < eraTypicalLowerAtk)
             int myValuableCount = 0;
             for (RpgAiDuelState.CardSlot m : myMons) {
-                if (!RpgAiCardKnowledge.isSearcherMonster(m.code) && m.effectiveCombatValue() >= 1200) {
+                if (!RpgAiCardKnowledge.isSearcherMonster(m.code)
+                        && m.effectiveCombatValue(state.eraEstimatedFaceDownDef) >= state.eraTypicalLowerAtk) {
                     myValuableCount++;
                 }
             }
@@ -563,7 +564,7 @@ public class RpgAiStrategy {
                 }
             }
             // Even with weak monsters, don't blow up our own board unless opponent has a real threat
-            if (oppStrongestThreat < 1400 && oppMons.size() <= myMons.size()) {
+            if (oppStrongestThreat < state.eraTopLowerAtk && oppMons.size() <= myMons.size()) {
                 return false;
             }
             return true;
@@ -575,8 +576,8 @@ public class RpgAiStrategy {
         if (oppMons.size() >= 2) return true;
         if (oppStrongestThreat >= myBestInHand) return true;
         if (hasFaceDownMonster(1)) return true;
-        if (!state.isMain2() && myBestInHand >= 1500 && oppStrongestThreat >= 1100) return true;
-        if ((isExodiaStyle() || isBurnStyle()) && oppStrongestThreat >= 1400) return true;
+        if (!state.isMain2() && myBestInHand >= state.eraTopLowerAtk && oppStrongestThreat >= state.eraTypicalLowerAtk) return true;
+        if ((isExodiaStyle() || isBurnStyle()) && oppStrongestThreat >= state.eraTypicalLowerAtk) return true;
         return false;
     }
 
@@ -676,8 +677,10 @@ public class RpgAiStrategy {
         if (p.summonable.isEmpty() && p.msetable.isEmpty()) return null;
 
         int oppStrongest = state.getStrongestThreatValue(1);
+        int myStrongestOnField = state.getStrongestAtk(0);
         boolean myBoardEmpty = state.getMonsters(0).isEmpty();
         boolean oppBoardEmpty = state.getMonsters(1).isEmpty();
+        boolean hasBoardAdvantage = oppBoardEmpty || myStrongestOnField >= oppStrongest;
         boolean hasStolen = state.hasStolenMonsterOnMyField();
 
         // Special case: Fusion deck with Cyber-Stein in hand & LP > 5000 & Main 1 -> summon Cyber-Stein!
@@ -693,7 +696,7 @@ public class RpgAiStrategy {
         CmdEntry bestSummon = null;
         int bestSummonScore = Integer.MIN_VALUE;
         for (CmdEntry e : p.summonable) {
-            int score = scoreNormalSummon(e, oppStrongest, oppBoardEmpty, hasStolen);
+            int score = scoreNormalSummon(e, oppStrongest, myStrongestOnField, oppBoardEmpty, hasBoardAdvantage, hasStolen);
             if (score > bestSummonScore) {
                 bestSummonScore = score;
                 bestSummon = e;
@@ -704,7 +707,7 @@ public class RpgAiStrategy {
         CmdEntry bestSet = null;
         int bestSetScore = Integer.MIN_VALUE;
         for (CmdEntry e : p.msetable) {
-            int score = scoreMonsterSet(e, oppStrongest, myBoardEmpty, oppBoardEmpty);
+            int score = scoreMonsterSet(e, oppStrongest, myStrongestOnField, myBoardEmpty, oppBoardEmpty, hasBoardAdvantage);
             if (score > bestSetScore) {
                 bestSetScore = score;
                 bestSet = e;
@@ -723,7 +726,8 @@ public class RpgAiStrategy {
         return null;
     }
 
-    private int scoreNormalSummon(CmdEntry e, int oppStrongest, boolean oppBoardEmpty, boolean hasStolen) {
+    private int scoreNormalSummon(CmdEntry e, int oppStrongest, int myStrongestOnField,
+                                  boolean oppBoardEmpty, boolean hasBoardAdvantage, boolean hasStolen) {
         int code = e.code;
         int atk = state.getCardBaseAtk(code);
         int def = state.getCardBaseDef(code);
@@ -758,10 +762,10 @@ public class RpgAiStrategy {
         int equipBonus = getBestHandEquipBonusFor(code);
         int effectiveAtk = atk + equipBonus;
 
-        // Defensive/wall monsters (e.g. Giant Soldier of Stone 1300/2000, Mystical Elf 800/2000, Wall of Illusion 1000/1850)
-        if (def >= 1800 && atk <= 1300) {
+        // Defensive/wall monsters (era-calibrated, e.g. Giant Soldier 1300/2000, Mystical Elf 800/2000)
+        if (def >= state.eraWallDefThreshold && def > atk && atk <= state.eraTypicalLowerAtk) {
             if (isExodiaStyle() || isBurnStyle() || isFlipStyle()) return -200;
-            if (!oppBoardEmpty && oppStrongest > effectiveAtk) return -200;
+            if (!hasBoardAdvantage && oppStrongest > effectiveAtk) return -200;
             if (state.isMain2() || (state.turnCount == 1)) return -200;
         }
 
@@ -781,26 +785,31 @@ public class RpgAiStrategy {
         }
 
         int score = effectiveAtk;
+        // Era top beaters (e.g. 1200 ATK in Vol.1, 1600+ in Vol.4, 1800+ in EX) strongly prefer Attack Summon!
+        if (effectiveAtk >= state.eraTopLowerAtk && effectiveAtk >= def) {
+            score += 250;
+        }
         // Under 1999-02-04 no-tribute rule, Lv5+ beaters cost 0 tributes -> pure ATK wins!
-        if (tributes == 0 && lv >= 5 && effectiveAtk >= 2000) {
+        if (tributes == 0 && lv >= 5 && effectiveAtk >= state.eraHighThreatAtk) {
             score += 350;
         }
         if (tributes > 0 && hasStolen) {
             score += 700;
         }
-        // In Main 2 or Turn 1, don't leave a fragile low-ATK monster exposed in Attack Position
-        if ((state.isMain2() || state.turnCount == 1) && effectiveAtk < 1400 && def >= atk) {
+        // In Main 2 or Turn 1, only avoid leaving a weak DEF-leaning monster exposed in Attack Position
+        if ((state.isMain2() || state.turnCount == 1)
+                && effectiveAtk < state.eraTypicalLowerAtk && def > atk) {
             score -= 400;
         }
-        // If opponent has a strictly bigger monster and we can't beat over it even with equip,
-        // prefer Setting a wall/flip instead of leaving a weak monster in ATK to take battle damage!
-        if (!oppBoardEmpty && oppStrongest > effectiveAtk && def >= 1000) {
+        // Only penalize Attack Summon when opponent strictly outclasses BOTH our field AND this monster
+        if (!hasBoardAdvantage && oppStrongest > Math.max(effectiveAtk, myStrongestOnField) && def >= atk) {
             score -= 600;
         }
         return score;
     }
 
-    private int scoreMonsterSet(CmdEntry e, int oppStrongest, boolean myBoardEmpty, boolean oppBoardEmpty) {
+    private int scoreMonsterSet(CmdEntry e, int oppStrongest, int myStrongestOnField,
+                                boolean myBoardEmpty, boolean oppBoardEmpty, boolean hasBoardAdvantage) {
         int code = e.code;
         int atk = state.getCardBaseAtk(code);
         int def = state.getCardBaseDef(code);
@@ -837,25 +846,34 @@ public class RpgAiStrategy {
             return base;
         }
 
-        // Wall of Illusion (1000/1850) & 2000-DEF walls
+        // Wall of Illusion (1000/1850) & era-high-DEF walls
         if (code == RpgAiCardKnowledge.WALL_OF_ILLUSION) {
             return (oppBoardEmpty && !isExodiaStyle() && !isBurnStyle()) ? 1400 : 1950;
         }
-        if (def >= 1800 && def > atk) {
+        if (def >= state.eraWallDefThreshold && def > atk) {
             int base = def - 100;
-            if (isExodiaStyle() || isBurnStyle() || state.turnCount == 1 || oppStrongest > atk) {
+            if (isExodiaStyle() || isBurnStyle() || state.turnCount == 1 || (!hasBoardAdvantage && oppStrongest > atk)) {
                 base += 400;
             }
             return base;
         }
 
-        // If opponent has a bigger monster than anything we can summon, setting a blocker saves LP
-        if (!oppBoardEmpty && oppStrongest > atk) {
-            return Math.max(def, 800) + 500;
+        // When opponent outclasses our board and this monster can't beat over them even with an equip,
+        // Setting a defensive blocker saves LP (NEVER defensively set an offensive beater when we have
+        // board advantage or opponent board is empty!)
+        int effectiveAtk = atk + getBestHandEquipBonusFor(code);
+        if (!hasBoardAdvantage && !oppBoardEmpty && oppStrongest > Math.max(effectiveAtk, myStrongestOnField)) {
+            if (def >= atk || def >= state.eraWallDefThreshold) {
+                return Math.max(def, state.eraTypicalLowerAtk) + 450;
+            }
+            // Even for low-DEF monsters when completely outclassed with an empty board, chump-blocking saves LP
+            if (myBoardEmpty && oppStrongest - effectiveAtk >= 500) {
+                return effectiveAtk + 400;
+            }
         }
 
-        // Otherwise normal beatsticks prefer Attack Position summon
-        return def - 200;
+        // Otherwise normal beatsticks strongly prefer Attack Position summon
+        return def - 300;
     }
 
     private Integer tryEquipSpells(IdleCmdPrompt p) {
@@ -872,18 +890,19 @@ public class RpgAiStrategy {
     private Integer tryReposition(IdleCmdPrompt p) {
         if (p.reposable.isEmpty()) return null;
         int oppStrongest = state.getStrongestThreatValue(1);
+        int attackFloor = Math.min(1000, state.eraTypicalLowerAtk);
         for (CmdEntry e : p.reposable) {
             RpgAiDuelState.CardSlot slot = state.getCard(0, e.location, e.sequence);
             if (slot == null || slot.isFaceDown()) continue; // face-downs already handled in tryFlipSummon
 
             if (slot.isDefensePos()) {
                 // Switch DEF -> ATK in Main 1 only if it can profitably attack!
-                if (!state.isMain2() && p.canBattle && slot.atk >= 1200 && canMonsterAttackProfitably(slot.atk)) {
+                if (!state.isMain2() && p.canBattle && slot.atk >= attackFloor && canMonsterAttackProfitably(slot.atk)) {
                     return reposIdle(e);
                 }
             } else if (slot.isAttackPos()) {
                 // Switch weak/flipped monsters (Magician of Faith, Man-Eater Bug, Sangan, low ATK wall) to DEF
-                boolean isWeakUtility = slot.atk <= 1000 && slot.def >= slot.atk;
+                boolean isWeakUtility = slot.atk < state.eraTypicalLowerAtk && slot.def > slot.atk;
                 boolean outclassedWall = slot.def > slot.atk && oppStrongest > slot.atk;
                 if ((state.isMain2() || !canMonsterAttackProfitably(slot.atk)) && (isWeakUtility || outclassedWall)) {
                     return reposIdle(e);
@@ -1086,9 +1105,8 @@ public class RpgAiStrategy {
                     bestTargetScore = Math.max(bestTargetScore, score);
                 }
             } else {
-                // Face-down defense monster: poke only with reasonably strong monster (>=1500),
-                // or >=1200 if we're in early 1999 (before 2000-DEF walls dominate) or have advantage
-                int threshold = state.currentTimelineDate.compareTo("1999-03-27") < 0 ? 1100 : 1450;
+                // Face-down defense monster: poke if our ATK beats the era's typical Set DEF
+                int threshold = Math.max(900, state.eraEstimatedFaceDownDef + 100);
                 if (myAtk >= threshold || isStolen) {
                     int score = 900 + Math.min(myAtk, 2500) / 4;
                     bestTargetScore = Math.max(bestTargetScore, score);
@@ -1170,6 +1188,54 @@ public class RpgAiStrategy {
         return -1; // Pass
     }
 
+    /**
+     * Returns true if we already have an activation of one of {@code codes} on the current chain
+     * that has NOT been threatened with negation by a later opponent chain link (e.g. Seven Tools,
+     * Solemn Judgment, Royal Decree, Magic Jammer). Prevents double-firing 2 Trap Holes, 2 Mirror
+     * Forces, Mirror Force + Waboku, etc. in the same chain!
+     */
+    private boolean hasActiveUnnegatedMyChain(int... codes) {
+        int n = state.currentChain.size();
+        for (int i = 0; i < n; i++) {
+            RpgAiDuelState.ChainLink link = state.currentChain.get(i);
+            if (link.controller != 0) continue;
+            boolean match = false;
+            for (int c : codes) {
+                if (link.code == c) {
+                    match = true;
+                    break;
+                }
+            }
+            if (!match) continue;
+
+            boolean negatedByOpponent = false;
+            for (int j = i + 1; j < n; j++) {
+                RpgAiDuelState.ChainLink later = state.currentChain.get(j);
+                if (later.controller == 1 && isOpponentNegateTrapOrCounter(later.code)) {
+                    negatedByOpponent = true;
+                    break;
+                }
+            }
+            if (!negatedByOpponent) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isOpponentNegateTrapOrCounter(int code) {
+        return code == RpgAiCardKnowledge.SEVEN_TOOLS
+                || code == RpgAiCardKnowledge.SOLEMN_JUDGMENT
+                || code == RpgAiCardKnowledge.ROYAL_DECREE
+                || code == RpgAiCardKnowledge.MAGIC_JAMMER;
+    }
+
+    private boolean isLikelyTrapCode(int code) {
+        if (isKnownTrap(code)) return true;
+        RpgCard c = state.lookupCard(code);
+        return c != null && "trap".equalsIgnoreCase(c.frameType);
+    }
+
     private int scoreChainItem(ChainItem it) {
         int code = it.code;
         RpgAiDuelState.ChainLink top = state.currentChain.isEmpty()
@@ -1178,14 +1244,29 @@ public class RpgAiStrategy {
 
         switch (code) {
             case RpgAiCardKnowledge.CRUSH_CARD_VIRUS:
+                // Never double-chain two Crush Card Viruses on the same chain
+                if (hasActiveUnnegatedMyChain(RpgAiCardKnowledge.CRUSH_CARD_VIRUS)) return 0;
                 // Always fire Crush Card Virus! Especially devastating in 1999!
                 return 1000;
 
             case RpgAiCardKnowledge.MIRROR_FORCE:
+                // Never stack Mirror Force with another Mirror Force or Waboku on the same attack
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.MIRROR_FORCE,
+                        RpgAiCardKnowledge.WABOKU)) {
+                    return 0;
+                }
                 return 950;
 
             case RpgAiCardKnowledge.TRAP_HOLE:
             case RpgAiCardKnowledge.ACID_TRAP_HOLE:
+                // Never waste a second Trap Hole / Acid Trap Hole on the same summon when ours is already resolving!
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.TRAP_HOLE,
+                        RpgAiCardKnowledge.ACID_TRAP_HOLE,
+                        RpgAiCardKnowledge.CRUSH_CARD_VIRUS)) {
+                    return 0;
+                }
                 // Great disruption on opponent's summon/flip
                 return 850;
 
@@ -1195,8 +1276,8 @@ public class RpgAiStrategy {
                     return state.lp[0] >= 1000 ? 900 : 0;
                 }
                 if (!state.isMyTurn() && state.currentChain.isEmpty()) {
-                    // Negating a big monster summon
-                    if (state.getStrongestAtk(1) >= 1800 || state.lp[0] <= 2500) {
+                    // Negating a big monster summon (calibrated to current era's high-threat threshold)
+                    if (state.getStrongestAtk(1) >= state.eraHighThreatAtk || state.lp[0] <= 2500) {
                         return 750;
                     }
                 }
@@ -1208,11 +1289,27 @@ public class RpgAiStrategy {
                 }
                 return 0;
 
+            case RpgAiCardKnowledge.MAGIC_JAMMER:
+                if (oppTopChain && RpgAiCardKnowledge.HIGH_THREAT_SPELLS_TO_NEGATE.contains(top.code)
+                        && !state.hand[0].isEmpty()) {
+                    return 870;
+                }
+                return 0;
+
             case RpgAiCardKnowledge.ROYAL_DECREE:
-                if (oppTopChain) return 820;
+                if (oppTopChain && isLikelyTrapCode(top.code)
+                        && !hasActiveUnnegatedMyChain(RpgAiCardKnowledge.ROYAL_DECREE)) {
+                    return 820;
+                }
                 return 0;
 
             case RpgAiCardKnowledge.WABOKU:
+                // Never double-chain Waboku or stack Waboku on top of our own Mirror Force
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.WABOKU,
+                        RpgAiCardKnowledge.MIRROR_FORCE)) {
+                    return 0;
+                }
                 // ONLY activate Waboku during opponent's Battle Phase when being attacked!
                 if (!state.isMyTurn() && state.isBattlePhase()) {
                     if (state.lastAttackerLocalCtrl == 1) {
@@ -1229,14 +1326,28 @@ public class RpgAiStrategy {
 
             case RpgAiCardKnowledge.METALMORPH:
             case RpgAiCardKnowledge.REINFORCEMENTS:
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.METALMORPH,
+                        RpgAiCardKnowledge.REINFORCEMENTS,
+                        RpgAiCardKnowledge.MIRROR_FORCE,
+                        RpgAiCardKnowledge.WABOKU)) {
+                    return 0;
+                }
                 if (state.isBattlePhase() && !state.getMonsters(0).isEmpty()) {
                     return 760;
                 }
                 return 0;
 
             case RpgAiCardKnowledge.TWO_PRONGED_ATTACK:
-                // Only if opponent has a big boss monster and we have >= 2 weak/expendable monsters
-                if (state.getStrongestThreatValue(1) >= 2200
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.TWO_PRONGED_ATTACK,
+                        RpgAiCardKnowledge.TRAP_HOLE,
+                        RpgAiCardKnowledge.MIRROR_FORCE)) {
+                    return 0;
+                }
+                // Only if opponent has an era-defining boss monster and we have >= 2 expendable monsters
+                int bossThreshold = Math.max(state.eraHighThreatAtk, state.eraTopLowerAtk + 400);
+                if (state.getStrongestThreatValue(1) >= bossThreshold
                         && state.getStrongestThreatValue(1) > state.getStrongestAtk(0)
                         && state.getMonsters(0).size() >= 2) {
                     return 600;
@@ -1667,7 +1778,7 @@ public class RpgAiStrategy {
 
         boolean preferDefense = RpgAiCardKnowledge.isFlipMonster(code)
                 || RpgAiCardKnowledge.isExodiaPiece(code)
-                || (def > atk && (def >= 1500 || isExodiaStyle() || isBurnStyle() || oppStrongest > atk))
+                || (def > atk && (def >= state.eraWallDefThreshold || isExodiaStyle() || isBurnStyle() || oppStrongest > atk))
                 || (RpgAiCardKnowledge.isSearcherMonster(code) && oppStrongest > atk);
 
         if (preferDefense) {
