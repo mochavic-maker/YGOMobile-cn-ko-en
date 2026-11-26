@@ -892,19 +892,15 @@ public class RpgEnginesTest {
                         cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.buildDeck(catalog, duel, side, duel.timelineDate);
                 assertEquals("Reconstructed canon deck must be exactly 40 cards: " + duel.id + "/" + side.characterName,
                         40, built.main.size());
-                // Every canon card must already be released in OCG on or before duel.timelineDate
+                // 100% of canon cards must be preserved (including non-core future cards via findCardOrCanon)
                 for (Integer cid : side.canonCardIds) {
-                    assertTrue("Canon card " + cid + " in " + duel.id + " must be released <= " + duel.timelineDate,
-                            TimelineEngine.isCardReleased(catalog, cid, duel.timelineDate));
-                    RpgCard meta = catalog.findCard(cid);
-                    assertNotNull("Missing OCG catalog card " + cid, meta);
+                    RpgCard meta = catalog.findCardOrCanon(cid);
+                    assertNotNull("Missing card metadata for canon card " + cid, meta);
                     assertFalse("Main canon card must not be Extra Deck: " + cid, meta.isExtraDeckCard());
                     assertTrue("Canon card must be preserved in main deck: " + cid, built.main.contains(cid));
                 }
                 for (Integer eid : side.canonExtraIds) {
-                    assertTrue("Canon extra card " + eid + " in " + duel.id + " must be released <= " + duel.timelineDate,
-                            TimelineEngine.isCardReleased(catalog, eid, duel.timelineDate));
-                    assertNotNull("Missing OCG catalog extra card " + eid, catalog.findCard(eid));
+                    assertNotNull("Missing extra card metadata " + eid, catalog.findCardOrCanon(eid));
                     assertTrue("Canon extra card must be preserved: " + eid, built.extra.contains(eid));
                 }
                 assertFalse("canonCardIds should be populated for visual deck tagging", built.canonCardIds.isEmpty());
@@ -914,16 +910,25 @@ public class RpgEnginesTest {
                 for (Integer eid : side.canonExtraIds) {
                     assertTrue("canonCardIds must include canon extra card " + eid, built.canonCardIds.contains(eid));
                 }
-                // Main deck must never contain Extra Deck or unreleased cards
+                // Main deck must never contain Extra Deck cards, and every padded filler card must be released <= duel.timelineDate
                 for (Integer mid : built.main) {
-                    assertTrue("Built main card " + mid + " must be released <= " + duel.timelineDate,
-                            TimelineEngine.isCardReleased(catalog, mid, duel.timelineDate));
-                    RpgCard mc = catalog.findCard(mid);
-                    assertNotNull("Every built main card must exist in 1999 OCG catalog: " + mid, mc);
+                    RpgCard mc = catalog.findCardOrCanon(mid);
+                    assertNotNull("Every built main card must have metadata: " + mid, mc);
                     assertFalse("Main deck must not contain Extra Deck card: " + mid, mc.isExtraDeckCard());
+                    if (!built.canonCardIds.contains(mid)) {
+                        assertTrue("Padded filler card " + mid + " must be released <= " + duel.timelineDate,
+                                TimelineEngine.isCardReleased(catalog, mid, duel.timelineDate));
+                    }
                 }
             }
         }
+
+        // Verify post-1999 non-core canon cards (e.g. Kuriboh 40640057, Mirror Force 44095762)
+        // resolve via findCardOrCanon for Canon Duels, yet NEVER leak into 1999 shop/crafting pool
+        assertNull("Kuriboh must NOT leak into 1999 OCG shop catalog", catalog.findCard(40640057));
+        assertNotNull("Kuriboh must resolve via findCardOrCanon", catalog.findCardOrCanon(40640057));
+        assertNull("Mirror Force must NOT leak into 1999 OCG shop catalog", catalog.findCard(44095762));
+        assertNotNull("Mirror Force must resolve via findCardOrCanon", catalog.findCardOrCanon(44095762));
     }
 
     @Test

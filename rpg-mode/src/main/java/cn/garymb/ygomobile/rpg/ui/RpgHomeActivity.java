@@ -2495,8 +2495,8 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
 
             // Canon signature cards preview
-            TextView sigTv = makeSubtleText("• " + duel.sideA.characterName + " 当期原著卡："
-                    + formatCanonCardSample(duel.sideA) + "\n• " + duel.sideB.characterName + " 当期原著卡："
+            TextView sigTv = makeSubtleText("• " + duel.sideA.characterName + " 原著用卡："
+                    + formatCanonCardSample(duel.sideA) + "\n• " + duel.sideB.characterName + " 原著用卡："
                     + formatCanonCardSample(duel.sideB));
             sigTv.setPadding(0, dp(4), 0, 0);
             card.addView(sigTv);
