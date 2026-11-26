@@ -27,8 +27,18 @@ public class RpgCatalog {
     private transient Map<Integer, RpgCard> cardById;
     private transient Map<Integer, RpgCard> canonCardById;
     private transient Map<Integer, String> earliestReleaseByCardId;
-    private transient Map<Integer, Rarity> highestRarityByCardId;
+    private transient Map<Integer, List<CardPrinting>> printingsByCardId;
     private transient Map<Integer, OcgCardErrata> errataByCardId;
+
+    private static final class CardPrinting {
+        final String releaseDate;
+        final Rarity rarity;
+
+        CardPrinting(String releaseDate, Rarity rarity) {
+            this.releaseDate = releaseDate;
+            this.rarity = rarity;
+        }
+    }
 
     public static class CraftingRules {
         public Map<String, Integer> dismantleDust = new HashMap<>();
@@ -49,7 +59,7 @@ public class RpgCatalog {
         cardById = new LinkedHashMap<>();
         canonCardById = new LinkedHashMap<>();
         earliestReleaseByCardId = new HashMap<>();
-        highestRarityByCardId = new HashMap<>();
+        printingsByCardId = new HashMap<>();
         errataByCardId = new LinkedHashMap<>();
         if (packs != null) {
             for (OcgPack pack : packs) {
@@ -80,18 +90,20 @@ public class RpgCatalog {
     private void indexCardList(List<RpgCard> list, String releaseDate) {
         if (list == null) return;
         for (RpgCard card : list) {
-            if (!cardById.containsKey(card.id)) {
+            String prevDate = earliestReleaseByCardId.get(card.id);
+            boolean isEarlier = prevDate == null || (releaseDate != null && releaseDate.compareTo(prevDate) < 0);
+            if (!cardById.containsKey(card.id) || isEarlier) {
                 cardById.put(card.id, card);
             }
-            String prevDate = earliestReleaseByCardId.get(card.id);
-            if (prevDate == null || (releaseDate != null && releaseDate.compareTo(prevDate) < 0)) {
+            if (isEarlier) {
                 earliestReleaseByCardId.put(card.id, releaseDate);
             }
-            Rarity cur = card.getRarityEnum();
-            Rarity prevR = highestRarityByCardId.get(card.id);
-            if (prevR == null || cur.ordinal() > prevR.ordinal()) {
-                highestRarityByCardId.put(card.id, cur);
+            List<CardPrinting> printings = printingsByCardId.get(card.id);
+            if (printings == null) {
+                printings = new ArrayList<>();
+                printingsByCardId.put(card.id, printings);
             }
+            printings.add(new CardPrinting(releaseDate, card.getRarityEnum()));
         }
     }
 
@@ -124,10 +136,38 @@ public class RpgCatalog {
         return earliestReleaseByCardId.get(cardId);
     }
 
-    public Rarity getCardRarity(int cardId) {
+    /**
+     * Returns the effective rarity of a card at the given OCG timeline date:
+     * the lowest rarity among all printings released on or before {@code timelineDate}
+     * (so future collector SCR promos never inflate crafting cost, while cheaper reprints
+     * like EX Starter Box N printings naturally reduce cost once released).
+     */
+    public Rarity getEffectiveRarity(int cardId, String timelineDate) {
         ensureIndexed();
-        Rarity r = highestRarityByCardId.get(cardId);
-        return r != null ? r : Rarity.N;
+        List<CardPrinting> printings = printingsByCardId.get(cardId);
+        if (printings == null || printings.isEmpty()) {
+            return Rarity.N;
+        }
+        Rarity lowestReleased = null;
+        Rarity lowestOverall = null;
+        boolean filterByDate = timelineDate != null && !timelineDate.isEmpty();
+        for (CardPrinting p : printings) {
+            if (p == null || p.rarity == null) continue;
+            if (lowestOverall == null || p.rarity.ordinal() < lowestOverall.ordinal()) {
+                lowestOverall = p.rarity;
+            }
+            if (!filterByDate || (p.releaseDate != null && p.releaseDate.compareTo(timelineDate) <= 0)) {
+                if (lowestReleased == null || p.rarity.ordinal() < lowestReleased.ordinal()) {
+                    lowestReleased = p.rarity;
+                }
+            }
+        }
+        if (lowestReleased != null) return lowestReleased;
+        return lowestOverall != null ? lowestOverall : Rarity.N;
+    }
+
+    public Rarity getCardRarity(int cardId) {
+        return getEffectiveRarity(cardId, null);
     }
 
     public OcgCardErrata findErrata(int cardId) {

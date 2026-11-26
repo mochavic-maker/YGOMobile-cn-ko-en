@@ -33,6 +33,7 @@ import cn.garymb.ygomobile.rpg.model.OcgCardErrata;
 import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
+import cn.garymb.ygomobile.rpg.model.Rarity;
 import cn.garymb.ygomobile.rpg.model.RpgCard;
 import cn.garymb.ygomobile.rpg.model.RpgCatalog;
 import cn.garymb.ygomobile.rpg.model.RpgProfile;
@@ -265,6 +266,41 @@ public class RpgEnginesTest {
         profile.currentTimelineDate = "1999-12-18";
         assertTrue(CraftingEngine.craft(profile, catalog, BLACK_LUSTER, 1).success);
         assertEquals(1, profile.getOwnedCount(BLACK_LUSTER));
+    }
+
+    @Test
+    public void craftingCostUsesLowestReleasedRarityAndMatchesUi() {
+        final int TRIAL_OF_NIGHTMARE = 77827521; // 1999-03-06 N, 1999-06-21 SCR
+        final int CELTIC_GUARDIAN = 91152256;    // 1999-03-18 SR, 1999-12-16 N
+
+        // On 1999-03-18, Trial of Nightmare is N (30 dust), NOT future 1999-06-21 SCR (900 dust)
+        assertEquals(Rarity.N, CraftingEngine.getCraftingRarity(catalog, TRIAL_OF_NIGHTMARE, "1999-03-18"));
+        assertEquals(30, CraftingEngine.getCraftCost(catalog, TRIAL_OF_NIGHTMARE, "1999-03-18"));
+
+        RpgProfile profile = new RpgProfile();
+        profile.currentTimelineDate = "1999-03-18";
+        profile.dust = 265;
+        profile.addCard(TRIAL_OF_NIGHTMARE, 2);
+        CraftingEngine.CraftResult r = CraftingEngine.craft(profile, catalog, TRIAL_OF_NIGHTMARE, 1);
+        assertTrue("Crafting Trial of Nightmare with 265 dust on 1999-03-18 must succeed: " + r.message, r.success);
+        assertEquals(-30, r.dustDelta);
+        assertEquals(235, profile.dust);
+
+        // Even after 1999-06-21 SCR collector reprint, lowest released rarity remains N (30 dust)
+        assertEquals(Rarity.N, CraftingEngine.getCraftingRarity(catalog, TRIAL_OF_NIGHTMARE, "1999-06-21"));
+        assertEquals(30, CraftingEngine.getCraftCost(catalog, TRIAL_OF_NIGHTMARE, "1999-06-21"));
+
+        // Celtic Guardian debuts as SR (240 dust) on 1999-03-18, then drops to N (30 dust) on EX 1999-12-16
+        assertEquals(Rarity.SR, CraftingEngine.getCraftingRarity(catalog, CELTIC_GUARDIAN, "1999-03-18"));
+        assertEquals(240, CraftingEngine.getCraftCost(catalog, CELTIC_GUARDIAN, "1999-03-18"));
+        assertEquals(Rarity.N, CraftingEngine.getCraftingRarity(catalog, CELTIC_GUARDIAN, "1999-12-16"));
+        assertEquals(30, CraftingEngine.getCraftCost(catalog, CELTIC_GUARDIAN, "1999-12-16"));
+
+        // Dark Hole debuts as SR (240 dust) in Vol.1, then drops to N (30 dust) on EX 1999-12-16
+        assertEquals(Rarity.SR, CraftingEngine.getCraftingRarity(catalog, DARK_HOLE, "1999-02-04"));
+        assertEquals(240, CraftingEngine.getCraftCost(catalog, DARK_HOLE, "1999-02-04"));
+        assertEquals(Rarity.N, CraftingEngine.getCraftingRarity(catalog, DARK_HOLE, "1999-12-16"));
+        assertEquals(30, CraftingEngine.getCraftCost(catalog, DARK_HOLE, "1999-12-16"));
     }
 
     @Test

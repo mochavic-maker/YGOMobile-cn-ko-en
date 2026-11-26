@@ -37,6 +37,20 @@ public final class CraftingEngine {
         }
     }
 
+    /** Returns the effective rarity used for crafting/dismantling at the given timeline date. */
+    public static Rarity getCraftingRarity(RpgCatalog catalog, int cardId, String timelineDate) {
+        if (catalog == null) return Rarity.N;
+        return catalog.getEffectiveRarity(cardId, timelineDate);
+    }
+
+    /** Returns the dust cost to craft 1 copy of {@code cardId} at the given timeline date. */
+    public static int getCraftCost(RpgCatalog catalog, int cardId, String timelineDate) {
+        Rarity rarity = getCraftingRarity(catalog, cardId, timelineDate);
+        return catalog != null && catalog.craftingRules != null
+                ? catalog.craftingRules.getCraftCostDust(rarity)
+                : rarity.defaultCraftCostDust;
+    }
+
     /** Dismantles `quantity` copies of a card into crafting dust. */
     public static CraftResult dismantle(RpgProfile profile, RpgCatalog catalog, int cardId, int quantity) {
         if (profile == null || catalog == null || quantity <= 0) {
@@ -46,7 +60,7 @@ public final class CraftingEngine {
         if (owned < quantity) {
             return CraftResult.error("拥有数量不足（当前拥有 " + owned + " 张）", profile.dust);
         }
-        Rarity rarity = catalog.getCardRarity(cardId);
+        Rarity rarity = getCraftingRarity(catalog, cardId, profile.currentTimelineDate);
         int gain = catalog.craftingRules.getDismantleDust(rarity) * quantity;
         profile.addCard(cardId, -quantity);
         profile.dust += gain;
@@ -104,8 +118,7 @@ public final class CraftingEngine {
                     card.getDisplayName() + " 已拥有 " + owned + " 张，最多合成至 3 张",
                     profile.dust);
         }
-        Rarity rarity = catalog.getCardRarity(cardId);
-        int cost = catalog.craftingRules.getCraftCostDust(rarity) * quantity;
+        int cost = getCraftCost(catalog, cardId, profile.currentTimelineDate) * quantity;
         if (profile.dust < cost) {
             return CraftResult.error("尘埃不足，需要 " + cost + "，当前仅有 " + profile.dust, profile.dust);
         }

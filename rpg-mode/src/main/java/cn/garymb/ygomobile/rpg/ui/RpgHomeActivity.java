@@ -1343,8 +1343,8 @@ public class RpgHomeActivity extends AppCompatActivity {
             if (collectionOnlyOwned && owned > 0) continue;
             shownCount++;
 
-            Rarity rarity = card.getRarityEnum();
-            int craftCost = catalog.craftingRules.getCraftCostDust(rarity);
+            Rarity rarity = CraftingEngine.getCraftingRarity(catalog, card.id, profile.currentTimelineDate);
+            int craftCost = CraftingEngine.getCraftCost(catalog, card.id, profile.currentTimelineDate);
             String limitBadge = banlist.getLimitBadge(card.id);
             String errataBadge = CardErrataEngine.getVersionBadge(catalog, card.id, profile.currentTimelineDate);
             final OcgCardErrata errataRec = catalog.findErrata(card.id);
