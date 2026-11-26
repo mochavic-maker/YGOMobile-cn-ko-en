@@ -154,6 +154,64 @@ public class RpgAiStrategy {
         return style;
     }
 
+    /**
+     * Automatically infers the best-matching dedicated AI strategy style for an arbitrary/player deck
+     * based on its card composition and active OCG rule set.
+     */
+    public static String inferStyleFromDeck(List<Integer> main, List<Integer> extra,
+                                            cn.garymb.ygomobile.rpg.model.OcgRuleSet ruleSet) {
+        if (main == null || main.isEmpty()) {
+            return (ruleSet != null && !ruleSet.tributeSummonEnabled) ? "NO_TRIBUTE_BEAT" : "GOOD_STUFF";
+        }
+        Set<Integer> exodiaDistinct = new HashSet<>();
+        int ccvCount = 0;
+        int fusionCore = 0;
+        int cannonCount = 0;
+        int burnSpellCount = 0;
+        int flipCount = 0;
+        int equipCount = 0;
+
+        for (Integer idObj : main) {
+            if (idObj == null) continue;
+            int id = idObj;
+            if (RpgAiCardKnowledge.isExodiaPiece(id)) exodiaDistinct.add(id);
+            if (id == RpgAiCardKnowledge.CRUSH_CARD_VIRUS) ccvCount++;
+            if (id == RpgAiCardKnowledge.CYBER_STEIN || id == RpgAiCardKnowledge.POLYMERIZATION) fusionCore++;
+            if (id == RpgAiCardKnowledge.CANNON_SOLDIER) cannonCount++;
+            if (RpgAiCardKnowledge.getBurnDamage(id) > 0) burnSpellCount++;
+            if (RpgAiCardKnowledge.isFlipMonster(id)) flipCount++;
+            if (RpgAiCardKnowledge.isEquipSpell(id) || id == RpgAiCardKnowledge.METALMORPH) equipCount++;
+        }
+
+        if (exodiaDistinct.size() >= 4) return "EXODIA_DRAW";
+        if (ccvCount >= 1) return "DARK_VIRUS";
+        if (fusionCore >= 2 && extra != null && !extra.isEmpty()) return "FUSION_COMBO";
+        if (cannonCount >= 1 || burnSpellCount >= 5) return "BURN_WALL";
+        if (flipCount >= 6) return "FLIP_CONTROL";
+        if (equipCount >= 4) return "EQUIP_LIGHT_EARTH";
+        if (ruleSet != null && !ruleSet.tributeSummonEnabled) return "NO_TRIBUTE_BEAT";
+        return "GOOD_STUFF";
+    }
+
+    public static String getStyleDisplayName(String fillStyle) {
+        if (fillStyle == null) return "Good Stuff 竞技强攻";
+        switch (fillStyle) {
+            case "EXODIA_DRAW":       return "艾克佐迪亚抽滤";
+            case "DARK_VIRUS":        return "死毒暗控";
+            case "FUSION_COMBO":      return "融合＆科学怪人";
+            case "BURN_WALL":         return "烧血射出壁垒";
+            case "FLIP_CONTROL":      return "反转控制";
+            case "EQUIP_LIGHT_EARTH": return "装备重击流";
+            case "NO_TRIBUTE_BEAT":   return "免祭品高攻强攻";
+            case "LOWER_BEAT":        return "下级重击";
+            case "NOVICE_NR":         return "新手凡骨";
+            case "CASUAL_MID":        return "休闲中游";
+            case "MID_TIER_THEME":    return "主题中坚";
+            case "GOOD_STUFF":
+            default:                  return "Good Stuff 竞技强攻";
+        }
+    }
+
     private boolean isExodiaStyle() {
         return "EXODIA_DRAW".equals(style);
     }

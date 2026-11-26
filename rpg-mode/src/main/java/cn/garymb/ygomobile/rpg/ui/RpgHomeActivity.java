@@ -32,6 +32,8 @@ import java.util.Random;
 import cn.garymb.ygomobile.rpg.R;
 import cn.garymb.ygomobile.rpg.bridge.RpgDuelHostBridge;
 import cn.garymb.ygomobile.rpg.bridge.RpgSessionManager;
+import cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels;
+import cn.garymb.ygomobile.rpg.ai.RpgAiStrategy;
 import cn.garymb.ygomobile.rpg.data.RpgCatalogLoader;
 import cn.garymb.ygomobile.rpg.data.RpgRepository;
 import cn.garymb.ygomobile.rpg.engine.AiDeckGenerator;
@@ -41,7 +43,6 @@ import cn.garymb.ygomobile.rpg.engine.DeckValidator;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
 import cn.garymb.ygomobile.rpg.engine.EventClaimEngine;
 import cn.garymb.ygomobile.rpg.engine.PackOpeningEngine;
-import cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.engine.TournamentEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
@@ -59,11 +60,12 @@ import cn.garymb.ygomobile.rpg.model.RpgProfile;
  * Self-contained Android UI for the 1999 OCG Timeline RPG Mode (1999-02-04 ~ 1999-12-31):
  * - Tab 0: Shop (Vol.1-6 / Booster 1-6 / STARTER BOX / EX / LE1 / PP1-2 at authentic JPY prices)
  * - Tab 1: 1999 Special Promo & Event Card Giveaways
- * - Tab 2: Card Collection & Dust Dismantle / Craft (with timeline-resolved errata text)
+ * - Tab 2: Card Collection & Dust Craft (auto-dismantle excess >3 copies)
  * - Tab 3: Ownership + Timeline + Banlist Restricted Deck Builder (with native DeckEditor reuse)
- * - Tab 4: Timeline-Compliant AI Duel Launcher (Manual WindBot & Quick Duel) & Token Rewards
+ * - Tab 4: Timeline-Compliant AI Duel Launcher (Manual & Real-ocgcore AI Auto-Duel) & Token Rewards
  * - Tab 5: OCG Timeline Tournament (4-player / 8-player randomized elimination bracket)
  * - Tab 6: OCG Official Card Errata History Archive (Series 1 ~ Series 13)
+ * - Tab 7: Real ocgcore AI-vs-AI Showdown (Headless Batch Win-Rate + Live 3D Spectate)
  */
 public class RpgHomeActivity extends AppCompatActivity {
 
@@ -99,7 +101,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     private boolean errataOnly1999 = true;
     private String showdownKeyA = "current";
     private String showdownKeyB = null;
-    private QuickDuelSimulator.BatchShowdownReport lastShowdownReport = null;
+    private RpgAiAutoDuelModels.BatchResult lastShowdownReport = null;
     private TimelineEngine.TimelineDigest currentTimelineDigest = null;
 
     @Override
@@ -1043,7 +1045,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             fightBtn.setOnClickListener(v -> launchAiDuel(opp));
             row.addView(fightBtn);
 
-            Button quickBtn = makeActionButton("⚡ 快速决斗", "#D97706");
+            Button quickBtn = makeActionButton("⚡ AI托管快战", "#D97706");
             quickBtn.setOnClickListener(v -> runQuickDuel(opp));
             row.addView(quickBtn);
 
@@ -1159,18 +1161,28 @@ public class RpgHomeActivity extends AppCompatActivity {
             bManual.setOnClickListener(v -> launchTournamentMatchManual(pendingPlayer));
             ctrlRow.addView(bManual);
 
-            Button bQuick = makeActionButton("⚡ 快速决斗参赛", "#D97706");
+            Button bQuick = makeActionButton("⚡ AI托管参赛(真引擎)", "#D97706");
             bQuick.setOnClickListener(v -> playTournamentMatchQuick(bracket, pendingPlayer));
             ctrlRow.addView(bQuick);
         } else if (!bracket.finished && bracket.playerEliminated) {
-            Button bSimRest = makeActionButton("⏭ 模拟决出本届冠军", "#2563EB");
+            Button bSimRest = makeActionButton("⏭ 真引擎决出本届冠军", "#2563EB");
             bSimRest.setOnClickListener(v -> {
-                TournamentEngine.simulateRemainingToChampion(catalog, bracket, new Random());
-                int prize = TournamentEngine.claimRewardIfFinished(profile, bracket);
-                if (prize > 0) saveProfileSafe();
-                refreshAll();
-                Toast.makeText(this, "冠军诞生：" + (bracket.champion != null ? bracket.champion.displayName : "")
-                        + "！已发放 +" + prize + " 代币", Toast.LENGTH_LONG).show();
+                AlertDialog waitDlg = new AlertDialog.Builder(this)
+                        .setTitle("正在运行真实 ocgcore 锦标赛对决…")
+                        .setMessage("双方均由专属 OCG AI 策略自动对战，请稍候…")
+                        .setCancelable(false)
+                        .show();
+                new Thread(() -> {
+                    TournamentEngine.simulateRemainingToChampion(catalog, bracket, new Random());
+                    runOnUiThread(() -> {
+                        if (waitDlg.isShowing()) waitDlg.dismiss();
+                        int prize = TournamentEngine.claimRewardIfFinished(profile, bracket);
+                        if (prize > 0) saveProfileSafe();
+                        refreshAll();
+                        Toast.makeText(this, "冠军诞生：" + (bracket.champion != null ? bracket.champion.displayName : "")
+                                + "！已发放 +" + prize + " 代币", Toast.LENGTH_LONG).show();
+                    });
+                }, "RpgTournamentSim").start();
             });
             ctrlRow.addView(bSimRest);
         }
@@ -1246,33 +1258,67 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     private void playTournamentMatchQuick(TournamentEngine.TournamentBracket bracket,
                                           TournamentEngine.Match match) {
-        TournamentEngine.Participant opp = match.getPlayerOpponent();
+        final TournamentEngine.Participant opp = match.getPlayerOpponent();
         if (opp == null) return;
-        QuickDuelSimulator.QuickDuelReport report = QuickDuelSimulator.simulateBetweenDecks(
-                catalog, "你", profile.activeDeckMain, opp.displayName, opp.deckMain,
-                bracket.timelineDate, new Random());
-        boolean pWin = !report.isDraw ? report.playerWon : (report.playerLp >= report.aiLp);
-        String summary = (pWin ? "你胜" : opp.displayName + "胜")
-                + " · T" + report.turns + " · LP " + report.playerLp + ":" + report.aiLp;
-        if (opp.opponent != null) {
-            DuelRewardEngine.settle(profile, opp.opponent, pWin, false);
+        final RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未注册 YGOMobile 决斗引擎桥接器", Toast.LENGTH_LONG).show();
+            return;
         }
-        TournamentEngine.recordPlayerMatchResult(catalog, bracket, pWin, summary, report.logs, report, new Random());
-        int prize = TournamentEngine.claimRewardIfFinished(profile, bracket);
-        saveProfileSafe();
-        refreshAll();
+        final OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, bracket.timelineDate);
+        final String playerStyle = RpgAiStrategy.inferStyleFromDeck(
+                profile.activeDeckMain, profile.activeDeckExtra, activeRule);
+        final String oppStyle = (opp.fillStyle != null && !opp.fillStyle.isEmpty())
+                ? opp.fillStyle
+                : RpgAiStrategy.inferStyleFromDeck(opp.deckMain, opp.deckExtra, activeRule);
 
-        String msg = "本场对阵：你 vs " + opp.displayName + " " + opp.activeDeckName + "\n"
-                + "结果：" + summary + "\n"
-                + (bracket.finished
-                ? ("\n🏆 锦标赛结束！" + bracket.playerPlacementLabel + " · 额外奖金 +" + prize + " 代币")
-                : (pWin ? "\n✅ 你已晋级下一轮！同轮 AI 比赛已同步结算。" : "\n❌ 你止步本轮，可模拟剩余 AI 比赛决出冠军并领奖。"));
-        new AlertDialog.Builder(this)
-                .setTitle("🏆 锦标赛赛果 · " + bracket.getRoundTitle(match.roundIndex))
-                .setMessage(msg)
-                .setNeutralButton("🎬 回放本局观战", (d, w) -> showQuickDuelReplayDialog(report))
-                .setPositiveButton("查看对阵表", null)
+        final AlertDialog waitDlg = new AlertDialog.Builder(this)
+                .setTitle("⚡ 真实 ocgcore 锦标赛托管对战中…")
+                .setMessage("我方策略：" + RpgAiStrategy.getStyleDisplayName(playerStyle)
+                        + "\n对手策略：" + RpgAiStrategy.getStyleDisplayName(oppStyle))
+                .setCancelable(false)
                 .show();
+        new Thread(() -> {
+            Random rng = new Random();
+            final RpgAiAutoDuelModels.DuelResult report = bridge.runHeadlessOcgDuel(
+                    catalog,
+                    "你", profile.activeDeckMain, profile.activeDeckExtra, playerStyle,
+                    opp.displayName, opp.deckMain, opp.deckExtra, oppStyle,
+                    activeRule, bracket.timelineDate, rng.nextBoolean(), true, rng);
+            if (report == null) {
+                runOnUiThread(() -> {
+                    if (waitDlg.isShowing()) waitDlg.dismiss();
+                    Toast.makeText(this, "ocgcore 引擎未就绪，请稍后再试", Toast.LENGTH_LONG).show();
+                });
+                return;
+            }
+            boolean pWin = !report.isDraw ? report.sideAWon : (report.sideALp >= report.sideBLp);
+            String summary = (pWin ? "你胜" : opp.displayName + "胜")
+                    + " · T" + report.turns + " · LP " + report.sideALp + ":" + report.sideBLp;
+            TournamentEngine.recordPlayerMatchResult(catalog, bracket, pWin, summary, report.logs, report, rng);
+            runOnUiThread(() -> {
+                if (waitDlg.isShowing()) waitDlg.dismiss();
+                if (opp.opponent != null) {
+                    DuelRewardEngine.settle(profile, opp.opponent, pWin, false);
+                }
+                int prize = TournamentEngine.claimRewardIfFinished(profile, bracket);
+                saveProfileSafe();
+                refreshAll();
+
+                String msg = "本场对阵：你（" + RpgAiStrategy.getStyleDisplayName(playerStyle)
+                        + "） vs " + opp.displayName + " " + opp.activeDeckName + "\n"
+                        + "结果：" + summary + "\n"
+                        + (bracket.finished
+                        ? ("\n🏆 锦标赛结束！" + bracket.playerPlacementLabel + " · 额外奖金 +" + prize + " 代币")
+                        : (pWin ? "\n✅ 你已晋级下一轮！同轮 AI 比赛已按真引擎同步结算。" : "\n❌ 你止步本轮，可点击真引擎决出冠军并领奖。"));
+                new AlertDialog.Builder(this)
+                        .setTitle("🏆 锦标赛赛果 · " + bracket.getRoundTitle(match.roundIndex))
+                        .setMessage(msg)
+                        .setNeutralButton("🎬 回放本局战报", (d, w) -> showQuickDuelReplayDialog(report))
+                        .setPositiveButton("查看对阵表", null)
+                        .show();
+            });
+        }, "RpgTourneyQuickMatch").start();
     }
 
     private void launchTournamentMatchManual(TournamentEngine.Match match) {
@@ -1384,7 +1430,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void runQuickDuel(AiOpponent opponent) {
+    private void runQuickDuel(final AiOpponent opponent) {
         DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
         if (!val.valid) {
             new AlertDialog.Builder(this)
@@ -1398,46 +1444,80 @@ public class RpgHomeActivity extends AppCompatActivity {
                     .show();
             return;
         }
-        AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
-                catalog, opponent, profile.currentTimelineDate, new Random());
-        QuickDuelSimulator.QuickDuelReport report = QuickDuelSimulator.simulate(
-                catalog, profile.activeDeckMain, aiDeck.main, opponent,
-                profile.currentTimelineDate, new Random());
-        DuelRewardEngine.RewardSettlement settlement =
-                DuelRewardEngine.settle(profile, opponent, report.playerWon, report.isDraw);
-        saveProfileSafe();
-        refreshAll();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("规则：").append(report.appliedRule.name).append("\n")
-                .append("结果：").append(settlement.outcomeLabel)
-                .append("（我方 LP ").append(report.playerLp)
-                .append(" vs 对手 LP ").append(report.aiLp)
-                .append("，共 ").append(report.turns).append(" 回合）\n")
-                .append("获得代币：+").append(settlement.tokensEarned).append("\n\n")
-                .append("--- 战报摘录 ---\n");
-        int limit = Math.min(report.logs.size(), 18);
-        for (int i = 0; i < limit; i++) {
-            sb.append(report.logs.get(i)).append("\n");
+        final RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未注册 YGOMobile 决斗引擎桥接器", Toast.LENGTH_LONG).show();
+            return;
         }
-        new AlertDialog.Builder(this)
-                .setTitle("⚡ 快速决斗结算 · " + settlement.outcomeLabel)
-                .setMessage(sb.toString())
-                .setNeutralButton("🎬 回放本局观战", (d, w) -> showQuickDuelReplayDialog(report))
-                .setPositiveButton("收下代币", null)
+        final OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        final AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
+                catalog, opponent, profile.currentTimelineDate, new Random());
+        final String playerStyle = RpgAiStrategy.inferStyleFromDeck(
+                profile.activeDeckMain, profile.activeDeckExtra, activeRule);
+        final String aiStyle = (aiDeck.appliedProfile != null && aiDeck.appliedProfile.fillStyle != null)
+                ? aiDeck.appliedProfile.fillStyle
+                : RpgAiStrategy.inferStyleFromDeck(aiDeck.main, aiDeck.extra, activeRule);
+
+        final AlertDialog waitDlg = new AlertDialog.Builder(this)
+                .setTitle("⚡ 真实 ocgcore AI 托管快战中…")
+                .setMessage("我方自选卡组 AI：" + RpgAiStrategy.getStyleDisplayName(playerStyle)
+                        + "\n对手卡组 AI：" + RpgAiStrategy.getStyleDisplayName(aiStyle))
+                .setCancelable(false)
                 .show();
+
+        new Thread(() -> {
+            Random rng = new Random();
+            final RpgAiAutoDuelModels.DuelResult report = bridge.runHeadlessOcgDuel(
+                    catalog,
+                    "你", profile.activeDeckMain, profile.activeDeckExtra, playerStyle,
+                    opponent.name, aiDeck.main, aiDeck.extra, aiStyle,
+                    activeRule, profile.currentTimelineDate, rng.nextBoolean(), true, rng);
+            runOnUiThread(() -> {
+                if (waitDlg.isShowing()) waitDlg.dismiss();
+                if (report == null) {
+                    Toast.makeText(this, "ocgcore 引擎未就绪，请稍后再试", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                DuelRewardEngine.RewardSettlement settlement =
+                        DuelRewardEngine.settle(profile, opponent, report.sideAWon, report.isDraw);
+                saveProfileSafe();
+                refreshAll();
+
+                StringBuilder sb = new StringBuilder();
+                sb.append("引擎：真实 ocgcore + 专属 OCG AI\n")
+                        .append("我方 AI 策略：").append(RpgAiStrategy.getStyleDisplayName(report.sideAStyle)).append("\n")
+                        .append("对手 AI 策略：").append(RpgAiStrategy.getStyleDisplayName(report.sideBStyle)).append("\n")
+                        .append("规则：").append(report.appliedRule != null ? report.appliedRule.name : "").append("\n")
+                        .append("结果：").append(settlement.outcomeLabel)
+                        .append("（我方 LP ").append(report.sideALp)
+                        .append(" vs 对手 LP ").append(report.sideBLp)
+                        .append("，共 ").append(report.turns).append(" 回合）\n")
+                        .append("获得代币：+").append(settlement.tokensEarned).append("\n\n")
+                        .append("--- 真实 ocgcore 战报摘录 ---\n");
+                int limit = Math.min(report.logs.size(), 18);
+                for (int i = 0; i < limit; i++) {
+                    sb.append(report.logs.get(i)).append("\n");
+                }
+                new AlertDialog.Builder(this)
+                        .setTitle("⚡ AI 托管快战结算 · " + settlement.outcomeLabel)
+                        .setMessage(sb.toString())
+                        .setNeutralButton("🎬 回放本局战报", (d, w) -> showQuickDuelReplayDialog(report))
+                        .setPositiveButton("收下代币", null)
+                        .show();
+            });
+        }, "RpgQuickDuelOcg").start();
     }
 
     /**
-     * Interactive step-by-step replay viewer for quick duels and tournament AI matches.
+     * Interactive step-by-step replay viewer for real ocgcore AI-vs-AI duels and tournament AI matches.
      * Supports Play/Pause, Prev/Next step, and 1x/2x/4x speed without altering player stats.
      */
-    private void showQuickDuelReplayDialog(final QuickDuelSimulator.QuickDuelReport report) {
+    private void showQuickDuelReplayDialog(final RpgAiAutoDuelModels.DuelResult report) {
         if (report == null || report.replayFrames == null || report.replayFrames.isEmpty()) {
             Toast.makeText(this, "本局暂无可回放的帧记录", Toast.LENGTH_SHORT).show();
             return;
         }
-        final List<QuickDuelSimulator.ReplayFrame> frames = report.replayFrames;
+        final List<RpgAiAutoDuelModels.ReplayFrame> frames = report.replayFrames;
         final int[] curIdx = {0};
         final boolean[] playing = {true};
         final int[] speed = {1};
@@ -1475,7 +1555,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         root.addView(controls);
 
         final Runnable renderFrame = () -> {
-            QuickDuelSimulator.ReplayFrame f = frames.get(curIdx[0]);
+            RpgAiAutoDuelModels.ReplayFrame f = frames.get(curIdx[0]);
             tvStep.setText("🎬 帧 " + (curIdx[0] + 1) + "/" + frames.size()
                     + " · Turn " + f.turn + " [" + f.phase + "] · 行动方：" + f.activeName);
             String mA = f.sideAMonsters.isEmpty() ? "（空场）" : android.text.TextUtils.join("、", f.sideAMonsters);
@@ -1656,13 +1736,18 @@ public class RpgHomeActivity extends AppCompatActivity {
         final String key;
         final String group;
         final String label;
+        final String shortName;
+        final String fillStyle;
         final List<Integer> main;
         final List<Integer> extra;
 
-        ShowdownDeckChoice(String key, String group, String label, List<Integer> main, List<Integer> extra) {
+        ShowdownDeckChoice(String key, String group, String label, String shortName,
+                           String fillStyle, List<Integer> main, List<Integer> extra) {
             this.key = key;
             this.group = group;
             this.label = label;
+            this.shortName = shortName;
+            this.fillStyle = fillStyle;
             this.main = main != null ? new ArrayList<>(main) : new ArrayList<>();
             this.extra = extra != null ? new ArrayList<>(extra) : new ArrayList<>();
         }
@@ -1670,10 +1755,15 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     private List<ShowdownDeckChoice> buildShowdownChoices() {
         List<ShowdownDeckChoice> list = new ArrayList<>();
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        String curStyle = RpgAiStrategy.inferStyleFromDeck(profile.activeDeckMain, profile.activeDeckExtra, activeRule);
         list.add(new ShowdownDeckChoice(
                 "current",
                 "当前卡组",
-                "[当前卡组] 当前编辑中的 RPG 卡组（主 " + profile.activeDeckMain.size() + " / 额外 " + profile.activeDeckExtra.size() + "）",
+                "[当前卡组] 当前编辑中的 RPG 卡组（主 " + profile.activeDeckMain.size()
+                        + " / 额外 " + profile.activeDeckExtra.size() + " · AI策略:" + RpgAiStrategy.getStyleDisplayName(curStyle) + "）",
+                "玩家自构AI",
+                curStyle,
                 profile.activeDeckMain,
                 profile.activeDeckExtra
         ));
@@ -1682,10 +1772,14 @@ public class RpgHomeActivity extends AppCompatActivity {
                 if (sd == null) continue;
                 int m = sd.main != null ? sd.main.size() : 0;
                 int e = sd.extra != null ? sd.extra.size() : 0;
+                String st = RpgAiStrategy.inferStyleFromDeck(sd.main, sd.extra, activeRule);
                 list.add(new ShowdownDeckChoice(
                         "saved:" + sd.id,
                         "已保存卡组",
-                        "[已保存] " + sd.name + "（主 " + m + " / 额外 " + e + "）",
+                        "[已保存] " + sd.name + "（主 " + m + " / 额外 " + e
+                                + " · AI策略:" + RpgAiStrategy.getStyleDisplayName(st) + "）",
+                        sd.name,
+                        st,
                         sd.main,
                         sd.extra
                 ));
@@ -1697,10 +1791,16 @@ public class RpgHomeActivity extends AppCompatActivity {
             AiDeckGenerator.GeneratedAiDeck gen = AiDeckGenerator.generateDeck(
                     catalog, opp, profile.currentTimelineDate, new Random(opp.id.hashCode()));
             String eraName = gen.appliedProfile != null ? (" · " + gen.appliedProfile.deckName) : "";
+            String st = (gen.appliedProfile != null && gen.appliedProfile.fillStyle != null)
+                    ? gen.appliedProfile.fillStyle
+                    : RpgAiStrategy.inferStyleFromDeck(gen.main, gen.extra, activeRule);
             list.add(new ShowdownDeckChoice(
                     "ai:" + opp.id,
                     "当前时间点 AI 卡组",
-                    "[AI] " + opp.name + eraName + "（主 " + gen.main.size() + "）",
+                    "[AI] " + opp.name + eraName + "（主 " + gen.main.size()
+                            + " · 策略:" + RpgAiStrategy.getStyleDisplayName(st) + "）",
+                    opp.name,
+                    st,
                     gen.main,
                     gen.extra
             ));
@@ -1734,7 +1834,58 @@ public class RpgHomeActivity extends AppCompatActivity {
                 .show();
     }
 
-    // ==================== TAB 7: 100-GAME AI SHOWDOWN ====================
+    private void runRealOcgShowdownBatch(final ShowdownDeckChoice choiceA,
+                                         final ShowdownDeckChoice choiceB,
+                                         final int gameCount) {
+        if (choiceA == null || choiceB == null) return;
+        if (choiceA.main.size() < 5 || choiceB.main.size() < 5) {
+            Toast.makeText(this, "双方主卡组均需至少 5 张卡片才能开始对战", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未注册 YGOMobile 决斗引擎桥接器", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        final TextView tvProg = makeSubtleText("正在初始化真实 ocgcore 引擎…\n进度：0 / " + gameCount);
+        tvProg.setPadding(dp(20), dp(14), dp(20), dp(10));
+        tvProg.setTextColor(Color.parseColor("#E2E8F0"));
+        final AlertDialog progDlg = new AlertDialog.Builder(this)
+                .setTitle("⚔️ 真实 ocgcore " + gameCount + " 局 AI 对决")
+                .setView(tvProg)
+                .setCancelable(false)
+                .show();
+
+        new Thread(() -> {
+            final RpgAiAutoDuelModels.BatchResult res = bridge.runHeadlessOcgBatch(
+                    catalog,
+                    choiceA.label, choiceA.main, choiceA.extra, choiceA.fillStyle,
+                    choiceB.label, choiceB.main, choiceB.extra, choiceB.fillStyle,
+                    activeRule,
+                    profile.currentTimelineDate,
+                    gameCount,
+                    (done, total, wA, wB, dr) -> runOnUiThread(() -> tvProg.setText(
+                            "真实 ocgcore 引擎对战中（双方均为 OCG 专属 AI）\n"
+                                    + "进度：" + done + " / " + total + " 局\n"
+                                    + "当前比分：A 胜 " + wA + " · B 胜 " + wB + " · 平 " + dr)),
+                    new Random());
+            runOnUiThread(() -> {
+                if (progDlg.isShowing()) progDlg.dismiss();
+                if (res == null) {
+                    Toast.makeText(this, "ocgcore 引擎未就绪，请稍后再试", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                lastShowdownReport = res;
+                Toast.makeText(this,
+                        "已完成 " + res.totalGames + " 局真实 ocgcore AI 对决（耗时 " + res.elapsedMs + "ms）",
+                        Toast.LENGTH_SHORT).show();
+                renderCurrentTab();
+            });
+        }, "RpgOcgShowdownBatch").start();
+    }
+
+    // ==================== TAB 7: REAL OCGCORE AI SHOWDOWN ====================
     private void renderAiShowdownTab() {
         List<ShowdownDeckChoice> choices = buildShowdownChoices();
         final ShowdownDeckChoice choiceA = findShowdownChoice(choices, showdownKeyA, 0);
@@ -1742,7 +1893,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         if (choiceA != null) showdownKeyA = choiceA.key;
         if (choiceB != null) showdownKeyB = choiceB.key;
 
-        layoutTabActions.addView(makeSubtleText("⚔️ 自由 100 局 AI 快战测试 · 不计入战绩/近20局胜率，也不发放代币（严格按当前时间轴规则与勘误执行）"));
+        layoutTabActions.addView(makeSubtleText("⚔️ 真实 ocgcore 引擎 AI 对决 · 双方均由专属 OCG AI 策略操控（自选卡组自动识别流派），支持批量测胜率或 3D 实况观战"));
 
         LinearLayout pickerCard = makeCardContainer();
         pickerCard.addView(makeTitleText("选择对战双方卡组（时间轴：" + profile.currentTimelineDate + "）"));
@@ -1775,46 +1926,60 @@ public class RpgHomeActivity extends AppCompatActivity {
         runRow.setOrientation(LinearLayout.HORIZONTAL);
         runRow.setPadding(0, dp(8), 0, 0);
 
-        Button run100Btn = makeActionButton("⚡ 开始 100 局 AI 对决", "#059669");
-        run100Btn.setOnClickListener(v -> {
+        Button run20Btn = makeActionButton("⚡ 20 局真引擎", "#059669");
+        run20Btn.setOnClickListener(v -> runRealOcgShowdownBatch(choiceA, choiceB, 20));
+        runRow.addView(run20Btn);
+
+        Button run100Btn = makeActionButton("🔥 100 局真引擎", "#D97706");
+        run100Btn.setOnClickListener(v -> runRealOcgShowdownBatch(choiceA, choiceB, 100));
+        runRow.addView(run100Btn);
+
+        Button spectateBtn = makeActionButton("👁️ 3D实况观战", "#DC2626");
+        spectateBtn.setOnClickListener(v -> {
             if (choiceA == null || choiceB == null) return;
             if (choiceA.main.size() < 5 || choiceB.main.size() < 5) {
-                Toast.makeText(this, "双方主卡组均需至少 5 张卡片才能开始模拟", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "双方主卡组均需至少 5 张卡片才能开始观战", Toast.LENGTH_LONG).show();
                 return;
             }
-            lastShowdownReport = QuickDuelSimulator.simulateBatch(
-                    catalog,
-                    choiceA.label, choiceA.main,
-                    choiceB.label, choiceB.main,
-                    profile.currentTimelineDate,
-                    100,
-                    new Random()
-            );
-            Toast.makeText(this, "已完成 100 局 AI 快战（耗时 " + lastShowdownReport.elapsedMs + "ms，不计战绩与代币）", Toast.LENGTH_SHORT).show();
-            renderCurrentTab();
+            RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+            if (bridge == null) {
+                Toast.makeText(this, "未注册 YGOMobile 决斗桥接器", Toast.LENGTH_LONG).show();
+                return;
+            }
+            OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+            bridge.startRpgAiSpectateDuel(
+                    this,
+                    choiceA.shortName, choiceA.main, choiceA.extra, choiceA.fillStyle,
+                    choiceB.shortName, choiceB.main, choiceB.extra, choiceB.fillStyle,
+                    activeRule,
+                    profile.currentTimelineDate);
+            finish();
         });
-        runRow.addView(run100Btn);
+        runRow.addView(spectateBtn);
+
         pickerCard.addView(runRow);
         layoutContent.addView(pickerCard);
 
         if (lastShowdownReport != null) {
-            QuickDuelSimulator.BatchShowdownReport r = lastShowdownReport;
+            RpgAiAutoDuelModels.BatchResult r = lastShowdownReport;
             LinearLayout resCard = makeCardContainer();
             TextView resTitle = makeTitleText(String.format(Locale.US,
-                    "📊 %d 局对决结果（%s · %s）",
-                    r.totalGames, r.timelineDate, r.appliedRule.name));
+                    "📊 %d 局真实 ocgcore 对决结果（%s · %s）",
+                    r.totalGames, r.timelineDate, r.appliedRule != null ? r.appliedRule.name : ""));
             resTitle.setTextColor(Color.parseColor("#38BDF8"));
             resCard.addView(resTitle);
 
             TextView aTv = makeSubtleText(String.format(Locale.US,
-                    "A 方胜率：%.1f%%（%d 胜 / %d 局）— %s",
-                    r.getSideAWinRate(), r.sideAWins, r.totalGames, r.sideAName));
+                    "A 方胜率：%.1f%%（%d 胜 / %d 局 · AI策略:%s）— %s",
+                    r.getSideAWinRate(), r.sideAWins, r.totalGames,
+                    RpgAiStrategy.getStyleDisplayName(r.sideAStyle), r.sideAName));
             aTv.setTextColor(Color.parseColor("#34D399"));
             resCard.addView(aTv);
 
             TextView bTv = makeSubtleText(String.format(Locale.US,
-                    "B 方胜率：%.1f%%（%d 胜 / %d 局）— %s",
-                    r.getSideBWinRate(), r.sideBWins, r.totalGames, r.sideBName));
+                    "B 方胜率：%.1f%%（%d 胜 / %d 局 · AI策略:%s）— %s",
+                    r.getSideBWinRate(), r.sideBWins, r.totalGames,
+                    RpgAiStrategy.getStyleDisplayName(r.sideBStyle), r.sideBName));
             bTv.setTextColor(Color.parseColor("#F87171"));
             resCard.addView(bTv);
 
@@ -1825,14 +1990,14 @@ public class RpgHomeActivity extends AppCompatActivity {
                     "先后攻拆分（50/50 交替）：A 先攻胜率 %.1f%%（%d/%d） · A 后攻胜率 %.1f%%（%d/%d）",
                     r.getSideAFirstWinRate(), r.sideAFirstWins, r.sideAFirstGames,
                     r.getSideASecondWinRate(), r.sideASecondWins, r.sideASecondGames)));
-            resCard.addView(makeSubtleText("说明：本次测试纯内存模拟，不计入胜率统计，也不发放代币。"));
+            resCard.addView(makeSubtleText("说明：由真实 ocgcore 引擎 + 专属 OCG AI 实战演算，不计入战绩也不发放代币。"));
 
-            if (r.sampleLastReport != null && !r.sampleLastReport.replayFrames.isEmpty()) {
+            if (r.sampleLastResult != null && !r.sampleLastResult.replayFrames.isEmpty()) {
                 LinearLayout repRow = new LinearLayout(this);
                 repRow.setOrientation(LinearLayout.HORIZONTAL);
                 repRow.setPadding(0, dp(8), 0, 0);
-                Button sampleBtn = makeActionButton("🎬 回放样本对局(第100局)", "#0284C7");
-                sampleBtn.setOnClickListener(v -> showQuickDuelReplayDialog(r.sampleLastReport));
+                Button sampleBtn = makeActionButton("🎬 回放样本战报(第" + r.totalGames + "局)", "#0284C7");
+                sampleBtn.setOnClickListener(v -> showQuickDuelReplayDialog(r.sampleLastResult));
                 repRow.addView(sampleBtn);
                 resCard.addView(repRow);
             }

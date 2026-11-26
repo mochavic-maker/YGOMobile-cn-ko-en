@@ -25,8 +25,8 @@ import cn.garymb.ygomobile.rpg.engine.DeckValidator;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
 import cn.garymb.ygomobile.rpg.engine.EventClaimEngine;
 import cn.garymb.ygomobile.rpg.engine.PackOpeningEngine;
-import cn.garymb.ygomobile.rpg.engine.QuickDuelSimulator;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
+import cn.garymb.ygomobile.rpg.engine.TournamentEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
 import cn.garymb.ygomobile.rpg.model.OcgCardErrata;
@@ -416,14 +416,8 @@ public class RpgEnginesTest {
         AiOpponent opp = AiDeckGenerator.getDemoOpponents().get(4);
         AiDeckGenerator.GeneratedAiDeck aiDeck =
                 AiDeckGenerator.generateDeck(catalog, opp, profile.currentTimelineDate, new Random(7L));
-        QuickDuelSimulator.QuickDuelReport report =
-                QuickDuelSimulator.simulate(
-                        catalog, profile.activeDeckMain, aiDeck.main, opp,
-                        profile.currentTimelineDate, new Random(99L));
-
-        assertEquals("ocg_expert_1999", report.appliedRule.id);
-        assertFalse(report.logs.isEmpty());
-        assertTrue(report.turns >= 1);
+        assertEquals("ocg_expert_1999", TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate).id);
+        assertEquals(40, aiDeck.main.size());
         assertNotNull(catalog.findCard(EXODIA_HEAD));
     }
 
@@ -502,116 +496,93 @@ public class RpgEnginesTest {
     }
 
     @Test
-    public void quickDuelExecutesSangan1999PreErrataDiscardVsDec20FieldOnly() {
-        // Construct a test deck rich in Graceful Charity + Sangan + low-ATK monsters
-        List<Integer> comboDeck = new ArrayList<>();
-        for (int i = 0; i < 15; i++) comboDeck.add(GRACEFUL_CHARITY);
-        for (int i = 0; i < 15; i++) comboDeck.add(SANGAN);
-        for (int i = 0; i < 10; i++) comboDeck.add(CELTIC_GUARDIAN);
-
-        List<Integer> dummyAiDeck = new ArrayList<>();
-        for (int i = 0; i < 40; i++) dummyAiDeck.add(DE_SPELL);
-
-        AiOpponent opp = AiDeckGenerator.getDemoOpponents().get(5);
-
-        // On 1999-12-19: Sangan v1 (any GY) MUST trigger when discarded by Graceful Charity!
-        QuickDuelSimulator.QuickDuelReport beforeErrata = QuickDuelSimulator.simulate(
-                catalog, comboDeck, dummyAiDeck, opp, "1999-12-19", new Random(42L));
-        boolean triggeredFromHandBefore = false;
-        for (String line : beforeErrata.logs) {
-            if (line.contains("三眼怪") && line.contains("手卡/非场上送墓")) {
-                triggeredFromHandBefore = true;
-                break;
-            }
-        }
-        assertTrue("On 1999-12-19 Sangan MUST trigger search when discarded from hand by Graceful Charity",
-                triggeredFromHandBefore);
-
-        // On 1999-12-20: Sangan v2 (field only) MUST NOT trigger when discarded from hand!
-        QuickDuelSimulator.QuickDuelReport afterErrata = QuickDuelSimulator.simulate(
-                catalog, comboDeck, dummyAiDeck, opp, "1999-12-20", new Random(42L));
-        boolean triggeredFromHandAfter = false;
-        for (String line : afterErrata.logs) {
-            if (line.contains("三眼怪") && line.contains("手卡/非场上送墓")) {
-                triggeredFromHandAfter = true;
-                break;
-            }
-        }
-        assertFalse("On 1999-12-20 Sangan MUST NOT trigger search when discarded from hand",
-                triggeredFromHandAfter);
-    }
-
-    @Test
     public void tournamentEngineSupportsRandomBracketsAndChampionSettlement() {
-        RpgProfile profile = new RpgProfile();
-        profile.currentTimelineDate = "1999-08-26";
-        profile.tokens = 50000;
-        PackOpeningEngine engine = new PackOpeningEngine(new Random(7L));
-        engine.openPacks(profile, catalog.findPack("ocg_starter_box"), 1);
-        engine.openPacks(profile, catalog.findPack("ocg_vol4"), 5);
-        DeckValidator.autoBuildLegalPlayerDeck(profile, catalog);
-        assertEquals(40, profile.activeDeckMain.size());
+        TournamentEngine.setAutoDuelExecutorForTest(
+                (cat, nameA, mainA, extraA, styleA, nameB, mainB, extraB, styleB, rule, date, aFirst, rec, rng) -> {
+                    assertNotNull(styleA);
+                    assertNotNull(styleB);
+                    List<cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.ReplayFrame> frames = new ArrayList<>();
+                    frames.add(new cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.ReplayFrame(
+                            0, 1, "开局", nameA, 8000, 8000, 5, 5, 35, 35, null, null, null));
+                    frames.add(new cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.ReplayFrame(
+                            1, 5, "决胜", nameA, 5500, 0, 3, 2, 30, 30, null, null, null));
+                    return new cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.DuelResult(
+                            true, false, 5500, 0, 5, rule, java.util.Collections.singletonList("真引擎测试对局"),
+                            nameA, nameB, styleA, styleB, frames);
+                });
+        try {
+            RpgProfile profile = new RpgProfile();
+            profile.currentTimelineDate = "1999-08-26";
+            profile.tokens = 50000;
+            PackOpeningEngine engine = new PackOpeningEngine(new Random(7L));
+            engine.openPacks(profile, catalog.findPack("ocg_starter_box"), 1);
+            engine.openPacks(profile, catalog.findPack("ocg_vol4"), 5);
+            DeckValidator.autoBuildLegalPlayerDeck(profile, catalog);
+            assertEquals(40, profile.activeDeckMain.size());
 
-        // 1) 4-player Shop Cup: player wins Semi + Final -> Champion (+600 tokens)
-        cn.garymb.ygomobile.rpg.engine.TournamentEngine.TournamentBracket b4 =
-                cn.garymb.ygomobile.rpg.engine.TournamentEngine.createBracket(catalog, profile, 4, new Random(11L));
-        assertEquals(4, b4.size);
-        assertEquals(1, b4.rounds.size());
-        assertEquals(2, b4.rounds.get(0).size());
-        assertNotNull(b4.findPendingPlayerMatch());
-        for (cn.garymb.ygomobile.rpg.engine.TournamentEngine.Match m : b4.rounds.get(0)) {
-            assertEquals(40, m.p1.deckMain.size());
-            assertEquals(40, m.p2.deckMain.size());
-        }
-
-        int tokensBefore = profile.tokens;
-        cn.garymb.ygomobile.rpg.engine.TournamentEngine.recordPlayerMatchResult(
-                catalog, b4, true, "半决赛获胜", null, new Random(12L));
-        assertFalse(b4.finished);
-        assertEquals(1, b4.currentRound);
-        assertNotNull(b4.findPendingPlayerMatch());
-
-        cn.garymb.ygomobile.rpg.engine.TournamentEngine.recordPlayerMatchResult(
-                catalog, b4, true, "决赛夺冠", null, new Random(13L));
-        assertTrue(b4.finished);
-        assertTrue(b4.champion.isPlayer);
-        assertEquals(600, b4.rewardTokens);
-        int claimed = cn.garymb.ygomobile.rpg.engine.TournamentEngine.claimRewardIfFinished(profile, b4);
-        assertEquals(600, claimed);
-        assertEquals(tokensBefore + 600, profile.tokens);
-        assertEquals(1, profile.tournamentWins);
-        assertEquals(1, profile.tournamentsPlayed);
-        // Idempotent reward claim
-        assertEquals(0, cn.garymb.ygomobile.rpg.engine.TournamentEngine.claimRewardIfFinished(profile, b4));
-
-        // 2) 8-player Grand Tournament: player loses round 1 -> simulateRemainingToChampion crowns an AI
-        cn.garymb.ygomobile.rpg.engine.TournamentEngine.TournamentBracket b8 =
-                cn.garymb.ygomobile.rpg.engine.TournamentEngine.createBracket(catalog, profile, 8, new Random(21L));
-        assertEquals(8, b8.size);
-        assertEquals(4, b8.rounds.get(0).size());
-        cn.garymb.ygomobile.rpg.engine.TournamentEngine.recordPlayerMatchResult(
-                catalog, b8, false, "首轮惜败", null, new Random(22L));
-        assertTrue(b8.playerEliminated);
-        assertFalse(b8.finished);
-        cn.garymb.ygomobile.rpg.engine.TournamentEngine.simulateRemainingToChampion(
-                catalog, b8, new Random(23L));
-        assertTrue(b8.finished);
-        assertNotNull(b8.champion);
-        assertFalse(b8.champion.isPlayer);
-        assertEquals(3, b8.rounds.size());
-        assertEquals(120, b8.rewardTokens);
-        assertEquals(120, cn.garymb.ygomobile.rpg.engine.TournamentEngine.claimRewardIfFinished(profile, b8));
-        assertEquals(1, profile.tournamentWins);
-        assertEquals(2, profile.tournamentsPlayed);
-
-        // Verify AI-vs-AI tournament matches recorded step-by-step replay frames
-        for (cn.garymb.ygomobile.rpg.engine.TournamentEngine.Match m : b8.rounds.get(0)) {
-            if (!m.involvesPlayer()) {
-                assertNotNull("AI match should have replayReport", m.replayReport);
-                assertTrue("AI match replayReport should have >= 2 frames", m.replayReport.replayFrames.size() >= 2);
-                assertEquals(8000, m.replayReport.replayFrames.get(0).sideALp);
-                assertEquals(8000, m.replayReport.replayFrames.get(0).sideBLp);
+            // 1) 4-player Shop Cup: player wins Semi + Final -> Champion (+600 tokens)
+            TournamentEngine.TournamentBracket b4 =
+                    TournamentEngine.createBracket(catalog, profile, 4, new Random(11L));
+            assertEquals(4, b4.size);
+            assertEquals(1, b4.rounds.size());
+            assertEquals(2, b4.rounds.get(0).size());
+            assertNotNull(b4.findPendingPlayerMatch());
+            for (TournamentEngine.Match m : b4.rounds.get(0)) {
+                assertEquals(40, m.p1.deckMain.size());
+                assertEquals(40, m.p2.deckMain.size());
+                assertNotNull(m.p1.fillStyle);
+                assertNotNull(m.p2.fillStyle);
             }
+
+            int tokensBefore = profile.tokens;
+            TournamentEngine.recordPlayerMatchResult(
+                    catalog, b4, true, "半决赛获胜", null, new Random(12L));
+            assertFalse(b4.finished);
+            assertEquals(1, b4.currentRound);
+            assertNotNull(b4.findPendingPlayerMatch());
+
+            TournamentEngine.recordPlayerMatchResult(
+                    catalog, b4, true, "决赛夺冠", null, new Random(13L));
+            assertTrue(b4.finished);
+            assertTrue(b4.champion.isPlayer);
+            assertEquals(600, b4.rewardTokens);
+            int claimed = TournamentEngine.claimRewardIfFinished(profile, b4);
+            assertEquals(600, claimed);
+            assertEquals(tokensBefore + 600, profile.tokens);
+            assertEquals(1, profile.tournamentWins);
+            assertEquals(1, profile.tournamentsPlayed);
+            assertEquals(0, TournamentEngine.claimRewardIfFinished(profile, b4));
+
+            // 2) 8-player Grand Tournament: player loses round 1 -> simulateRemainingToChampion crowns an AI
+            TournamentEngine.TournamentBracket b8 =
+                    TournamentEngine.createBracket(catalog, profile, 8, new Random(21L));
+            assertEquals(8, b8.size);
+            assertEquals(4, b8.rounds.get(0).size());
+            TournamentEngine.recordPlayerMatchResult(
+                    catalog, b8, false, "首轮惜败", null, new Random(22L));
+            assertTrue(b8.playerEliminated);
+            assertFalse(b8.finished);
+            TournamentEngine.simulateRemainingToChampion(
+                    catalog, b8, new Random(23L));
+            assertTrue(b8.finished);
+            assertNotNull(b8.champion);
+            assertFalse(b8.champion.isPlayer);
+            assertEquals(3, b8.rounds.size());
+            assertEquals(120, b8.rewardTokens);
+            assertEquals(120, TournamentEngine.claimRewardIfFinished(profile, b8));
+            assertEquals(1, profile.tournamentWins);
+            assertEquals(2, profile.tournamentsPlayed);
+
+            for (TournamentEngine.Match m : b8.rounds.get(0)) {
+                if (!m.involvesPlayer()) {
+                    assertNotNull("AI match should have replayReport", m.replayReport);
+                    assertTrue("AI match replayReport should have >= 2 frames", m.replayReport.replayFrames.size() >= 2);
+                    assertEquals(8000, m.replayReport.replayFrames.get(0).sideALp);
+                    assertEquals(8000, m.replayReport.replayFrames.get(0).sideBLp);
+                }
+            }
+        } finally {
+            TournamentEngine.setAutoDuelExecutorForTest(null);
         }
     }
 
@@ -764,49 +735,6 @@ public class RpgEnginesTest {
             }
             tempDir.delete();
         }
-    }
-
-    @Test
-    public void aiShowdownBatchRuns100FastGamesWithZeroProfileSideEffects() {
-        RpgProfile profile = new RpgProfile();
-        profile.currentTimelineDate = "1999-05-25";
-        profile.tokens = 2500;
-        int tokensBefore = profile.tokens;
-        int winsBefore = profile.wins;
-        int lossesBefore = profile.losses;
-        int drawsBefore = profile.draws;
-
-        List<AiOpponent> opps = TimelineEngine.getAvailableOpponents(
-                AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
-        AiOpponent oppA = opps.get(0);
-        AiOpponent oppB = opps.get(opps.size() - 1);
-        AiDeckGenerator.GeneratedAiDeck deckA = AiDeckGenerator.generateDeck(catalog, oppA, profile.currentTimelineDate, new Random(1L));
-        AiDeckGenerator.GeneratedAiDeck deckB = AiDeckGenerator.generateDeck(catalog, oppB, profile.currentTimelineDate, new Random(2L));
-
-        QuickDuelSimulator.BatchShowdownReport batch = QuickDuelSimulator.simulateBatch(
-                catalog,
-                oppA.name, deckA.main,
-                oppB.name, deckB.main,
-                profile.currentTimelineDate,
-                100,
-                new Random(99L)
-        );
-
-        assertEquals(100, batch.totalGames);
-        assertEquals(100, batch.sideAWins + batch.sideBWins + batch.draws);
-        assertEquals(50, batch.sideAFirstGames);
-        assertEquals(50, batch.sideASecondGames);
-        assertTrue(batch.avgTurns >= 1.0);
-        assertNotNull("Last sample match should include replay frames", batch.sampleLastReport);
-        assertTrue(batch.sampleLastReport.replayFrames.size() >= 2);
-
-        // Strictly zero side effects on player profile (no tokens, no win-rate changes)
-        assertEquals(tokensBefore, profile.tokens);
-        assertEquals(winsBefore, profile.wins);
-        assertEquals(lossesBefore, profile.losses);
-        assertEquals(drawsBefore, profile.draws);
-        assertEquals(0, profile.getRecentStats(profile.currentTimelineDate, oppA.id).total);
-        assertEquals(0, profile.getRecentStats(profile.currentTimelineDate, oppB.id).total);
     }
 
     @Test

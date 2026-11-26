@@ -92,7 +92,15 @@ public final class RpgIntegration {
      * automatic navigation back to RPG Mode's opponent/tournament screen once the duel closes.
      */
     public static void onDuelResult(final YGOProActivity activity, int winner, boolean selfWon) {
-        if (activity == null || !RpgSessionManager.hasActiveRpgDuel()) {
+        if (activity == null) {
+            return;
+        }
+        if (!RpgSessionManager.hasActiveRpgDuel()) {
+            if (sActiveRpgDuelRuleSet != null) {
+                sActiveRpgDuelRuleSet = null;
+                cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.stopActive();
+                activity.runOnUiThread(() -> scheduleReturnToRpg(activity, 7, null));
+            }
             return;
         }
         sActiveRpgDuelRuleSet = null;
@@ -151,15 +159,11 @@ public final class RpgIntegration {
     private static volatile OcgRuleSet sActiveRpgDuelRuleSet = null;
 
     /**
-     * Hook called from ServerDuelBase (and ServerDuel undo rebuild) right before OcgDuelEngine.startDuel().
-     * Injects historical OCG rule overrides (e.g. 1999-02-04 no-tribute summon/set, no Turn 1 draw,
-     * no 6-card End Phase hand limit) directly into ocgcore via Lua GlobalEffects.
+     * Writes historical OCG rule overrides (e.g. 1999-02-04 no-tribute summon/set, no Turn 1 draw,
+     * no 6-card End Phase hand limit) to {@code <resourcePath>/rpg_rule_override.lua}.
      */
-    public static void applyActiveRpgRulesToDuel(long pduel) {
-        if (pduel == 0L || !RpgSessionManager.hasActiveRpgDuel()) return;
-        OcgRuleSet rule = sActiveRpgDuelRuleSet;
-        if (rule == null) return;
-
+    public static boolean writeRuleOverrideScript(OcgRuleSet rule) {
+        if (rule == null) return false;
         StringBuilder lua = new StringBuilder();
         lua.append("-- Auto-generated OCG Timeline RPG rule override: ").append(rule.id).append("\n");
         if (!rule.tributeSummonEnabled) {
@@ -205,10 +209,21 @@ public final class RpgIntegration {
         File ruleFile = new File(AppsSettings.get().getResourcePath(), "rpg_rule_override.lua");
         try (java.io.FileOutputStream fos = new java.io.FileOutputStream(ruleFile)) {
             fos.write(lua.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return true;
         } catch (Exception e) {
             android.util.Log.e("RpgIntegration", "Failed to write rpg_rule_override.lua", e);
-            return;
+            return false;
         }
+    }
+
+    /**
+     * Hook called from ServerDuelBase (and ServerDuel undo rebuild) right before OcgDuelEngine.startDuel().
+     * Injects historical OCG rule overrides directly into ocgcore via Lua GlobalEffects.
+     */
+    public static void applyActiveRpgRulesToDuel(long pduel) {
+        OcgRuleSet rule = sActiveRpgDuelRuleSet;
+        if (pduel == 0L || rule == null) return;
+        if (!writeRuleOverrideScript(rule)) return;
         int res = cn.garymb.ygomobile.engine.OcgDuelEngine.preloadScript(pduel, "./rpg_rule_override.lua");
         android.util.Log.i("RpgIntegration", "Preloaded RPG rule override (" + rule.id
                 + ", tribute=" + rule.tributeSummonEnabled
@@ -582,6 +597,122 @@ public final class RpgIntegration {
             @Override
             public byte[] loadCardImageBytes(int cardId) {
                 return cn.garymb.ygomobile.loader.ImageLoader.findCardImageData(cardId);
+            }
+
+            @Override
+            public cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.DuelResult runHeadlessOcgDuel(
+                    cn.garymb.ygomobile.rpg.model.RpgCatalog catalog,
+                    String sideAName, java.util.List<Integer> mainA, java.util.List<Integer> extraA, String styleA,
+                    String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
+                    OcgRuleSet activeRuleSet,
+                    String currentTimelineDate,
+                    boolean sideAFirst,
+                    boolean recordReplay,
+                    java.util.Random rng) {
+                return RpgOcgHeadlessDuelRunner.runSingleDuel(
+                        catalog,
+                        sideAName, mainA, extraA, styleA,
+                        sideBName, mainB, extraB, styleB,
+                        activeRuleSet, currentTimelineDate,
+                        sideAFirst, recordReplay, rng);
+            }
+
+            @Override
+            public cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.BatchResult runHeadlessOcgBatch(
+                    cn.garymb.ygomobile.rpg.model.RpgCatalog catalog,
+                    String sideAName, java.util.List<Integer> mainA, java.util.List<Integer> extraA, String styleA,
+                    String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
+                    OcgRuleSet activeRuleSet,
+                    String currentTimelineDate,
+                    int gameCount,
+                    cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.ProgressListener progressListener,
+                    java.util.Random rng) {
+                return RpgOcgHeadlessDuelRunner.runBatch(
+                        catalog,
+                        sideAName, mainA, extraA, styleA,
+                        sideBName, mainB, extraB, styleB,
+                        activeRuleSet, currentTimelineDate,
+                        gameCount, progressListener, rng);
+            }
+
+            @Override
+            public void startRpgAiSpectateDuel(
+                    Context context,
+                    String sideAName, java.util.List<Integer> mainA, java.util.List<Integer> extraA, String styleA,
+                    String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
+                    OcgRuleSet activeRuleSet,
+                    String currentTimelineDate) {
+                activity.runOnUiThread(() -> {
+                    sActiveRpgDuelRuleSet = activeRuleSet;
+                    GameEngine engine = activity.getEngine();
+                    engine.setBotMode(true);
+                    engine.setPlayerName("观战席·" + Constants.PlayerName);
+
+                    int duelMode = 0;
+                    int duelRule = activeRuleSet != null ? activeRuleSet.ygoproDuelRule : 1;
+                    int startLp = activeRuleSet != null ? activeRuleSet.startLp : 8000;
+                    int startHand = activeRuleSet != null ? activeRuleSet.startHand : 5;
+                    engine.startLocalServerWithSettings(
+                            0, 5, duelMode, duelRule,
+                            true, false,
+                            startLp, startHand, 1, 0,
+                            "OCG AI观战 [" + currentTimelineDate + "]", "");
+                    engine.gameLflist = 0;
+                    engine.gameRule = 5;
+                    engine.gameMode = duelMode;
+                    engine.field.dInfo.duelRule = duelRule;
+                    engine.gameNoCheckDeck = 1;
+                    engine.gameNoShuffleDeck = 0;
+                    engine.gameStartLp = startLp;
+                    engine.gameStartHand = startHand;
+                    engine.gameDrawCount = 1;
+                    engine.gameTimeLimit = 0;
+                    engine.hasJoinRoomInfoCache = true;
+
+                    PlayerWaitingDialog.showPlayerWaitingForBotHost(activity);
+
+                    cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
+                    if (catalog == null) {
+                        try {
+                            catalog = cn.garymb.ygomobile.rpg.data.RpgCatalogLoader
+                                    .loadFromAssets(activity.getApplicationContext());
+                            RpgSessionManager.setCachedCatalog(catalog);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    final cn.garymb.ygomobile.rpg.model.RpgCatalog finalCatalog = catalog;
+                    final String effA = (styleA != null && !styleA.isEmpty())
+                            ? styleA : cn.garymb.ygomobile.rpg.ai.RpgAiStrategy.inferStyleFromDeck(mainA, extraA, activeRuleSet);
+                    final String effB = (styleB != null && !styleB.isEmpty())
+                            ? styleB : cn.garymb.ygomobile.rpg.ai.RpgAiStrategy.inferStyleFromDeck(mainB, extraB, activeRuleSet);
+
+                    // Move host to observer seat once connected, then launch Seat 0 (A) & Seat 1 (B) AIs
+                    Thread spectateStarter = new Thread(() -> {
+                        long deadline = System.currentTimeMillis() + 6000L;
+                        while (System.currentTimeMillis() < deadline) {
+                            if (engine.getClient() != null && engine.getClient().isConnected()) {
+                                break;
+                            }
+                            try { Thread.sleep(40L); } catch (InterruptedException ignored) { return; }
+                        }
+                        try { Thread.sleep(200L); } catch (InterruptedException ignored) { return; }
+                        if (engine.getClient() != null && engine.getClient().isConnected()) {
+                            engine.getClient().sendToObserver();
+                        }
+                        try { Thread.sleep(150L); } catch (InterruptedException ignored) { return; }
+                        cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.launchSpectatePairAsync(
+                                "127.0.0.1", 7911, Constants.PRO_VERSION,
+                                sideAName, mainA, extraA, effA,
+                                sideBName, mainB, extraB, effB,
+                                finalCatalog, activeRuleSet, currentTimelineDate);
+                    }, "RpgAiSpectateLauncher");
+                    spectateStarter.setDaemon(true);
+                    spectateStarter.start();
+
+                    Toast.makeText(activity,
+                            "已切至观战席：等待两位 OCG 专属 AI 就座后点击「开始决斗」即可 3D 观战！",
+                            Toast.LENGTH_LONG).show();
+                });
             }
         });
     }

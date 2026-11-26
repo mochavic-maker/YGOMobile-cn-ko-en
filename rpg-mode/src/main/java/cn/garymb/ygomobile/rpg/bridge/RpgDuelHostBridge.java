@@ -49,4 +49,48 @@ public interface RpgDuelHostBridge {
     default byte[] loadCardImageBytes(int cardId) {
         return null;
     }
+
+    /**
+     * Runs a single real ocgcore AI-vs-AI duel in-process using {@code RpgAiStrategy} on both sides
+     * and the active historical {@link OcgRuleSet}. Must be called off the main thread.
+     */
+    default cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.DuelResult runHeadlessOcgDuel(
+            cn.garymb.ygomobile.rpg.model.RpgCatalog catalog,
+            String sideAName, java.util.List<Integer> mainA, java.util.List<Integer> extraA, String styleA,
+            String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
+            OcgRuleSet activeRuleSet,
+            String currentTimelineDate,
+            boolean sideAFirst,
+            boolean recordReplay,
+            java.util.Random rng) {
+        return null;
+    }
+
+    /**
+     * Runs {@code gameCount} real ocgcore AI-vs-AI duels (alternating first/second 50/50)
+     * using {@code RpgAiStrategy} on both sides. Must be called off the main thread.
+     */
+    default cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.BatchResult runHeadlessOcgBatch(
+            cn.garymb.ygomobile.rpg.model.RpgCatalog catalog,
+            String sideAName, java.util.List<Integer> mainA, java.util.List<Integer> extraA, String styleA,
+            String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
+            OcgRuleSet activeRuleSet,
+            String currentTimelineDate,
+            int gameCount,
+            cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.ProgressListener progressListener,
+            java.util.Random rng) {
+        return null;
+    }
+
+    /**
+     * Starts a live 3D spectate duel in YGOMobile: the local host moves to observer, and two
+     * dedicated {@code RpgAiDuelClient} bots join Seat 0 (Side A) and Seat 1 (Side B).
+     */
+    default void startRpgAiSpectateDuel(
+            Context context,
+            String sideAName, java.util.List<Integer> mainA, java.util.List<Integer> extraA, String styleA,
+            String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
+            OcgRuleSet activeRuleSet,
+            String currentTimelineDate) {
+    }
 }

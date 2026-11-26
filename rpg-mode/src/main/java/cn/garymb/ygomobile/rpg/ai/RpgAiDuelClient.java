@@ -94,7 +94,7 @@ public class RpgAiDuelClient {
     private static final int MSG_ANNOUNCE_NUMBER     = 143;
     private static final int MSG_RELOAD_FIELD        = 162;
 
-    private static volatile RpgAiDuelClient sActiveInstance;
+    private static final List<RpgAiDuelClient> sActiveInstances = new ArrayList<>();
 
     private final String host;
     private final int port;
@@ -130,11 +130,30 @@ public class RpgAiDuelClient {
                            OcgRuleSet ruleSet,
                            String currentTimelineDate,
                            long actionDelayMs) {
+        this(host, port, proVersion,
+                (opponent != null && opponent.name != null && !opponent.name.isEmpty())
+                        ? opponent.name : "OCG RPG AI",
+                opponent, fillStyle, mainDeck, extraDeck, sideDeck,
+                catalog, ruleSet, currentTimelineDate, actionDelayMs);
+    }
+
+    public RpgAiDuelClient(String host,
+                           int port,
+                           int proVersion,
+                           String displayName,
+                           AiOpponent opponent,
+                           String fillStyle,
+                           List<Integer> mainDeck,
+                           List<Integer> extraDeck,
+                           List<Integer> sideDeck,
+                           RpgCatalog catalog,
+                           OcgRuleSet ruleSet,
+                           String currentTimelineDate,
+                           long actionDelayMs) {
         this.host = host;
         this.port = port;
         this.proVersion = proVersion;
-        this.botName = (opponent != null && opponent.name != null && !opponent.name.isEmpty())
-                ? opponent.name : "OCG RPG AI";
+        this.botName = (displayName != null && !displayName.isEmpty()) ? displayName : "OCG RPG AI";
         this.mainDeck = mainDeck != null ? new ArrayList<>(mainDeck) : new ArrayList<>();
         this.extraDeck = extraDeck != null ? new ArrayList<>(extraDeck) : new ArrayList<>();
         this.sideDeck = sideDeck != null ? new ArrayList<>(sideDeck) : new ArrayList<>();
@@ -143,7 +162,7 @@ public class RpgAiDuelClient {
         this.actionDelayMs = Math.max(0L, actionDelayMs);
     }
 
-    /** Stops any previously running RPG AI client and launches a new one asynchronously. */
+    /** Stops any previously running RPG AI clients and launches a single opponent AI asynchronously. */
     public static synchronized RpgAiDuelClient launchAsync(String host,
                                                            int port,
                                                            int proVersion,
@@ -168,16 +187,52 @@ public class RpgAiDuelClient {
         RpgAiDuelClient client = new RpgAiDuelClient(
                 host, port, proVersion, opponent, fillStyle,
                 main, extra, side, catalog, ruleSet, currentTimelineDate, 350L);
-        sActiveInstance = client;
+        sActiveInstances.add(client);
         client.start();
         return client;
     }
 
+    /**
+     * Launches TWO pure-Java OCG AI clients (Seat 0 = Side A, Seat 1 = Side B) for live 3D spectate mode.
+     * Side B joins slightly after Side A so seat ordering matches A vs B cleanly.
+     */
+    public static synchronized void launchSpectatePairAsync(String host,
+                                                            int port,
+                                                            int proVersion,
+                                                            String nameA, List<Integer> mainA, List<Integer> extraA, String styleA,
+                                                            String nameB, List<Integer> mainB, List<Integer> extraB, String styleB,
+                                                            RpgCatalog catalog,
+                                                            OcgRuleSet ruleSet,
+                                                            String currentTimelineDate) {
+        stopActive();
+        final RpgAiDuelClient botA = new RpgAiDuelClient(
+                host, port, proVersion, nameA, null, styleA,
+                mainA, extraA, null, catalog, ruleSet, currentTimelineDate, 450L);
+        final RpgAiDuelClient botB = new RpgAiDuelClient(
+                host, port, proVersion, nameB, null, styleB,
+                mainB, extraB, null, catalog, ruleSet, currentTimelineDate, 450L);
+        sActiveInstances.add(botA);
+        sActiveInstances.add(botB);
+        botA.start();
+        Thread delayedB = new Thread(() -> {
+            try {
+                Thread.sleep(350L);
+            } catch (InterruptedException ignored) {
+                return;
+            }
+            if (botA.isRunning()) {
+                botB.start();
+            }
+        }, "RpgAiSpectateSeatB");
+        delayedB.setDaemon(true);
+        delayedB.start();
+    }
+
     public static synchronized void stopActive() {
-        if (sActiveInstance != null) {
-            sActiveInstance.stop();
-            sActiveInstance = null;
+        for (RpgAiDuelClient c : sActiveInstances) {
+            if (c != null) c.stop();
         }
+        sActiveInstances.clear();
     }
 
     public void start() {

@@ -299,6 +299,29 @@ public class RpgAiStrategyTest {
     }
 
     @Test
+    public void inferStyleFromDeckClassifiesCustomPlayerDecksAccurately() {
+        List<Integer> exodia = Arrays.asList(
+                RpgAiCardKnowledge.EXODIA_HEAD, RpgAiCardKnowledge.EXODIA_LEFT_ARM,
+                RpgAiCardKnowledge.EXODIA_RIGHT_ARM, RpgAiCardKnowledge.EXODIA_LEFT_LEG,
+                RpgAiCardKnowledge.EXODIA_RIGHT_LEG, RpgAiCardKnowledge.POT_OF_GREED);
+        assertEquals("EXODIA_DRAW", RpgAiStrategy.inferStyleFromDeck(exodia, Collections.emptyList(), tributeRule));
+
+        List<Integer> virus = Arrays.asList(RpgAiCardKnowledge.CRUSH_CARD_VIRUS, RpgAiCardKnowledge.SANGAN);
+        assertEquals("DARK_VIRUS", RpgAiStrategy.inferStyleFromDeck(virus, Collections.emptyList(), tributeRule));
+
+        List<Integer> fusion = Arrays.asList(RpgAiCardKnowledge.CYBER_STEIN, RpgAiCardKnowledge.POLYMERIZATION);
+        assertEquals("FUSION_COMBO", RpgAiStrategy.inferStyleFromDeck(
+                fusion, Collections.singletonList(RpgAiCardKnowledge.BLUE_EYES_ULTIMATE), tributeRule));
+
+        List<Integer> burn = Arrays.asList(RpgAiCardKnowledge.CANNON_SOLDIER, RpgAiCardKnowledge.OOKAZI);
+        assertEquals("BURN_WALL", RpgAiStrategy.inferStyleFromDeck(burn, Collections.emptyList(), tributeRule));
+
+        List<Integer> beat = Arrays.asList(RpgAiCardKnowledge.BLUE_EYES, RpgAiCardKnowledge.DARK_MAGICIAN);
+        assertEquals("NO_TRIBUTE_BEAT", RpgAiStrategy.inferStyleFromDeck(beat, Collections.emptyList(), noTributeRule));
+        assertEquals("GOOD_STUFF", RpgAiStrategy.inferStyleFromDeck(beat, Collections.emptyList(), tributeRule));
+    }
+
+    @Test
     public void endToEndTcpProtocolHandshakeAndIdleDecisionRoundTrip() throws Exception {
         try (ServerSocket server = new ServerSocket(0)) {
             int port = server.getLocalPort();

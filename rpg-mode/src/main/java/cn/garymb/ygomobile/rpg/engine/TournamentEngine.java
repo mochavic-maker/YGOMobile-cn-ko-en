@@ -5,18 +5,30 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
+import cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels;
+import cn.garymb.ygomobile.rpg.ai.RpgAiStrategy;
+import cn.garymb.ygomobile.rpg.bridge.RpgDuelHostBridge;
+import cn.garymb.ygomobile.rpg.bridge.RpgSessionManager;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
+import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.model.RpgCatalog;
 import cn.garymb.ygomobile.rpg.model.RpgProfile;
 
 /**
  * Pure-Java OCG Timeline Tournament Engine (4-player Shop Cup / 8-player Grand Championship).
  * Randomly seeds the player and unlocked AI opponents from the current timeline date into a
- * single-elimination bracket, simulates AI-vs-AI matches under the active timeline's rules & errata,
+ * single-elimination bracket, resolves AI-vs-AI matches on real ocgcore via {@link RpgAiStrategy},
  * and computes tiered token rewards.
  */
 public final class TournamentEngine {
+    private static volatile RpgAiAutoDuelModels.AutoDuelExecutor sTestExecutor = null;
+
     private TournamentEngine() {}
+
+    /** Optional hook for JVM unit tests (production runs real native ocgcore via RpgDuelHostBridge). */
+    public static void setAutoDuelExecutorForTest(RpgAiAutoDuelModels.AutoDuelExecutor executor) {
+        sTestExecutor = executor;
+    }
 
     public static class Participant {
         public final String id;
@@ -25,11 +37,12 @@ public final class TournamentEngine {
         public final AiOpponent opponent;
         public final String activeDeckName;
         public final String eraTag;
+        public final String fillStyle;
         public final List<Integer> deckMain;
         public final List<Integer> deckExtra;
 
         public Participant(String id, String displayName, boolean isPlayer, AiOpponent opponent,
-                           String activeDeckName, String eraTag,
+                           String activeDeckName, String eraTag, String fillStyle,
                            List<Integer> deckMain, List<Integer> deckExtra) {
             this.id = id;
             this.displayName = displayName;
@@ -37,6 +50,7 @@ public final class TournamentEngine {
             this.opponent = opponent;
             this.activeDeckName = activeDeckName;
             this.eraTag = eraTag;
+            this.fillStyle = fillStyle;
             this.deckMain = deckMain != null ? new ArrayList<>(deckMain) : new ArrayList<Integer>();
             this.deckExtra = deckExtra != null ? new ArrayList<>(deckExtra) : new ArrayList<Integer>();
         }
@@ -50,7 +64,7 @@ public final class TournamentEngine {
         public Participant winner;
         public String summary = "";
         public List<String> logs = new ArrayList<>();
-        public QuickDuelSimulator.QuickDuelReport replayReport;
+        public RpgAiAutoDuelModels.DuelResult replayReport;
         public boolean finished = false;
 
         public Match(int roundIndex, int matchIndex, Participant p1, Participant p2) {
@@ -138,6 +152,8 @@ public final class TournamentEngine {
         List<AiOpponent> shuffledPool = new ArrayList<>(unlocked);
         Collections.shuffle(shuffledPool, rng);
 
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, date);
+        String playerStyle = RpgAiStrategy.inferStyleFromDeck(profile.activeDeckMain, profile.activeDeckExtra, activeRule);
         List<Participant> entrants = new ArrayList<>();
         entrants.add(new Participant(
                 "player",
@@ -146,6 +162,7 @@ public final class TournamentEngine {
                 null,
                 "玩家自构 RPG 卡组",
                 date,
+                playerStyle,
                 profile.activeDeckMain,
                 profile.activeDeckExtra
         ));
@@ -165,6 +182,9 @@ public final class TournamentEngine {
             AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(catalog, baseOpp, date, rng);
             String deckName = aiDeck.appliedProfile != null ? aiDeck.appliedProfile.deckName : "动态构筑";
             String eraTag = aiDeck.appliedProfile != null ? aiDeck.appliedProfile.eraTag : date;
+            String aiStyle = (aiDeck.appliedProfile != null && aiDeck.appliedProfile.fillStyle != null)
+                    ? aiDeck.appliedProfile.fillStyle
+                    : RpgAiStrategy.inferStyleFromDeck(aiDeck.main, aiDeck.extra, activeRule);
             entrants.add(new Participant(
                     baseOpp.id + "_" + i,
                     displayName,
@@ -172,6 +192,7 @@ public final class TournamentEngine {
                     baseOpp,
                     deckName,
                     eraTag,
+                    aiStyle,
                     aiDeck.main,
                     aiDeck.extra
             ));
@@ -190,29 +211,53 @@ public final class TournamentEngine {
     }
 
     /**
-     * Simulates a single AI-vs-AI match under the tournament's timeline date rules & errata.
-     * Guarantees a winner (breaks rare draws by higher remaining LP, then tie-break coin flip).
+     * Resolves a single AI-vs-AI match on the real ocgcore engine using each participant's
+     * dedicated {@link RpgAiStrategy} under the active timeline's OCG rules.
      */
     public static void simulateAiMatch(RpgCatalog catalog,
                                        Match match,
                                        String currentDate,
                                        Random rng) {
         if (match == null || match.finished || match.p1 == null || match.p2 == null) return;
-        QuickDuelSimulator.QuickDuelReport rep = QuickDuelSimulator.simulateBetweenDecks(
-                catalog,
-                match.p1.displayName,
-                match.p1.deckMain,
-                match.p2.displayName,
-                match.p2.deckMain,
-                currentDate,
-                rng
-        );
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, currentDate);
+        boolean p1First = rng.nextBoolean();
+
+        RpgAiAutoDuelModels.DuelResult rep = null;
+        RpgAiAutoDuelModels.AutoDuelExecutor testExec = sTestExecutor;
+        if (testExec != null) {
+            rep = testExec.runSingleDuel(
+                    catalog,
+                    match.p1.displayName, match.p1.deckMain, match.p1.deckExtra, match.p1.fillStyle,
+                    match.p2.displayName, match.p2.deckMain, match.p2.deckExtra, match.p2.fillStyle,
+                    activeRule, currentDate, p1First, true, rng);
+        } else {
+            RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+            if (bridge != null) {
+                rep = bridge.runHeadlessOcgDuel(
+                        catalog,
+                        match.p1.displayName, match.p1.deckMain, match.p1.deckExtra, match.p1.fillStyle,
+                        match.p2.displayName, match.p2.deckMain, match.p2.deckExtra, match.p2.fillStyle,
+                        activeRule, currentDate, p1First, true, rng);
+            }
+        }
+
+        if (rep == null) {
+            // Host ocgcore bridge unavailable (e.g. headless unit test without stub)
+            boolean p1Wins = rng.nextBoolean();
+            match.winner = p1Wins ? match.p1 : match.p2;
+            match.finished = true;
+            match.logs = new ArrayList<>();
+            match.logs.add("离线裁定：" + match.winner.displayName + " 胜");
+            match.summary = match.winner.displayName + " 胜（离线裁定）";
+            return;
+        }
+
         boolean p1Wins;
         String tieNote = "";
         if (!rep.isDraw) {
-            p1Wins = rep.playerWon;
-        } else if (rep.playerLp != rep.aiLp) {
-            p1Wins = rep.playerLp > rep.aiLp;
+            p1Wins = rep.sideAWon;
+        } else if (rep.sideALp != rep.sideBLp) {
+            p1Wins = rep.sideALp > rep.sideBLp;
             tieNote = "（LP 判定）";
         } else {
             p1Wins = rng.nextBoolean();
@@ -223,7 +268,7 @@ public final class TournamentEngine {
         match.logs = rep.logs;
         match.replayReport = rep;
         match.summary = match.winner.displayName + " 胜 · T" + rep.turns
-                + " · LP " + rep.playerLp + ":" + rep.aiLp + tieNote;
+                + " · LP " + rep.sideALp + ":" + rep.sideBLp + tieNote;
     }
 
     /**
@@ -244,7 +289,7 @@ public final class TournamentEngine {
                                                boolean playerWon,
                                                String summary,
                                                List<String> logs,
-                                               QuickDuelSimulator.QuickDuelReport replayReport,
+                                               RpgAiAutoDuelModels.DuelResult replayReport,
                                                Random rng) {
         if (bracket == null || bracket.finished) return;
         Match pm = bracket.findPendingPlayerMatch();
