@@ -358,6 +358,7 @@ public abstract class YGOProActivityBase extends AppCompatActivity {
     }
 
     public void quitReplay() {
+        if (cn.garymb.ygomobile.rpg.RpgIntegration.handleRpgReplayQuit((YGOProActivity) this)) return;
         ReplayModeDialog.quitReplay((YGOProActivity) this);
     }
 

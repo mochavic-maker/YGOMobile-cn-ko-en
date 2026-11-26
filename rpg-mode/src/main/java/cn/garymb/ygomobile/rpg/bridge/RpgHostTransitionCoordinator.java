@@ -25,6 +25,7 @@ public final class RpgHostTransitionCoordinator {
     public static final long DECK_LOAD_DELAY_MS = 150L;
     public static final long POST_LAUNCH_VERIFY_DELAY_MS = 240L;
     public static final long POST_LAUNCH_SECOND_VERIFY_DELAY_MS = 480L;
+    public static final long POST_LAUNCH_THIRD_VERIFY_DELAY_MS = 900L;
     public static final long RETURN_WATCHER_START_DELAY_MS = 550L;
     public static final long RETURN_WATCHER_POLL_MS = 250L;
 
@@ -72,6 +73,16 @@ public final class RpgHostTransitionCoordinator {
 
     public ActiveScene getActiveScene() {
         return activeScene;
+    }
+
+    /**
+     * Marks an RPG scene launch as pending host recreation (e.g., when Android destroyed
+     * {@code YGOProActivity} in the background while {@code RpgHomeActivity} was foreground).
+     * Ensures {@link #shouldBlockMainMenu(HostSurface)} blocks {@code MainMenuDialog.showMainMenu()}
+     * inside the recreated host's {@code onCreate()} until the pending scene hands off.
+     */
+    public long markPendingHostRecreate(ActiveScene scene) {
+        return beginSceneTransition(scene != null ? scene : ActiveScene.NONE);
     }
 
     /** Cancels all pending foreground waits, safeguards, and return watchers. */
@@ -154,10 +165,15 @@ public final class RpgHostTransitionCoordinator {
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
-            transitionInProgress = false;
-            host.hideMainMenu();
-            if (startSceneBody != null) {
-                startSceneBody.run();
+            try {
+                host.hideMainMenu();
+                if (startSceneBody != null) {
+                    startSceneBody.run();
+                }
+            } finally {
+                if (transitionGen.get() == gen) {
+                    transitionInProgress = false;
+                }
             }
             Runnable verifyWaiting = () -> {
                 if (!isCurrentAndAlive(host, gen)) return;
@@ -183,6 +199,7 @@ public final class RpgHostTransitionCoordinator {
             };
             host.postDelayed(verifyWaiting, POST_LAUNCH_VERIFY_DELAY_MS);
             host.postDelayed(verifyWaiting, POST_LAUNCH_SECOND_VERIFY_DELAY_MS);
+            host.postDelayed(verifyWaiting, POST_LAUNCH_THIRD_VERIFY_DELAY_MS);
         });
         return gen;
     }
@@ -198,13 +215,18 @@ public final class RpgHostTransitionCoordinator {
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
-            transitionInProgress = false;
-            host.hideMainMenu();
-            if (restoreAvatarOverrides != null) {
-                restoreAvatarOverrides.run();
-            }
-            if (startReplayBody != null) {
-                startReplayBody.run();
+            try {
+                host.hideMainMenu();
+                if (restoreAvatarOverrides != null) {
+                    restoreAvatarOverrides.run();
+                }
+                if (startReplayBody != null) {
+                    startReplayBody.run();
+                }
+            } finally {
+                if (transitionGen.get() == gen) {
+                    transitionInProgress = false;
+                }
             }
             Runnable verifyReplay = () -> {
                 if (!isCurrentAndAlive(host, gen)) return;
@@ -221,6 +243,7 @@ public final class RpgHostTransitionCoordinator {
             };
             host.postDelayed(verifyReplay, POST_LAUNCH_VERIFY_DELAY_MS);
             host.postDelayed(verifyReplay, POST_LAUNCH_SECOND_VERIFY_DELAY_MS);
+            host.postDelayed(verifyReplay, POST_LAUNCH_THIRD_VERIFY_DELAY_MS);
         });
         return gen;
     }
@@ -237,10 +260,15 @@ public final class RpgHostTransitionCoordinator {
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
-            transitionInProgress = false;
-            host.hideMainMenu();
-            if (openEditorBody != null) {
-                openEditorBody.run();
+            try {
+                host.hideMainMenu();
+                if (openEditorBody != null) {
+                    openEditorBody.run();
+                }
+            } finally {
+                if (transitionGen.get() == gen) {
+                    transitionInProgress = false;
+                }
             }
             if (loadDeckIntoEditorBody != null) {
                 host.postDelayed(() -> {
@@ -266,6 +294,7 @@ public final class RpgHostTransitionCoordinator {
             };
             host.postDelayed(verifyDeckEditor, POST_LAUNCH_VERIFY_DELAY_MS);
             host.postDelayed(verifyDeckEditor, POST_LAUNCH_SECOND_VERIFY_DELAY_MS);
+            host.postDelayed(verifyDeckEditor, POST_LAUNCH_THIRD_VERIFY_DELAY_MS);
             if (onReturnToRpgMenu != null) {
                 armReturnToRpg(host, gen, onReturnToRpgMenu, true);
             }

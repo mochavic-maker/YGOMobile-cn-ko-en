@@ -530,4 +530,95 @@ public class RpgHostTransitionCoordinatorTest {
         assertFalse("480ms checkpoint must be cancelled after legitimate exit", host.deckEditorVisible);
         assertEquals(1, returnCalls.get());
     }
+
+    @Test
+    public void replay3dKeepsMainMenuBlockedThroughoutStartBodyBeforeReplayFlagFlipsTrue() {
+        RpgHostTransitionCoordinator coordinator = new RpgHostTransitionCoordinator();
+        FakeHostSurface host = new FakeHostSurface();
+        host.foregroundFocused = true;
+        host.mainMenuShowing = true;
+
+        AtomicBoolean blockedMidLaunch = new AtomicBoolean(false);
+        coordinator.launchReplayScene(
+                host,
+                () -> {
+                    // Simulate enterReplayUI() executing BEFORE player.loadAndPlay() sets State.LOADING
+                    host.enterReplayUi();
+                    assertFalse(host.replaySessionActive);
+                    blockedMidLaunch.set(coordinator.shouldBlockMainMenu(host));
+                    host.replaySessionActive = true;
+                },
+                () -> host.rpgAvatarOverrideActive.set(true));
+
+        host.advanceBy(200L);
+        assertTrue("MainMenu must remain synchronously blocked during startReplayBody before isReplaySessionActive flips true",
+                blockedMidLaunch.get());
+        assertTrue("MainMenu must remain blocked while replay is active", coordinator.shouldBlockMainMenu(host));
+        assertTrue(host.gameUiVisible);
+        assertFalse(host.mainMenuShowing);
+    }
+
+    @Test
+    public void replay3dPendingHostRecreateBlocksFreshOnCreateMainMenuAndHandsOffCleanly() {
+        RpgHostTransitionCoordinator coordinator = new RpgHostTransitionCoordinator();
+        // 1) Old YGOProActivity was destroyed in background after several Quick Duels
+        coordinator.markPendingHostRecreate(RpgHostTransitionCoordinator.ActiveScene.REPLAY);
+
+        // 2) Fresh YGOProActivity starts onCreate() -> getMainMenuDialog().showMainMenu()
+        FakeHostSurface recreatedHost = new FakeHostSurface();
+        recreatedHost.foregroundFocused = false;
+        recreatedHost.mainMenuShowing = false;
+        assertTrue("Fresh host onCreate() MainMenuDialog.showMainMenu() must be blocked while replay handoff is pending",
+                coordinator.shouldBlockMainMenu(recreatedHost));
+
+        // 3) attachMainMenuButton consumes pending replay task -> launches replay on recreated host
+        AtomicBoolean replayLaunched = new AtomicBoolean(false);
+        coordinator.launchReplayScene(
+                recreatedHost,
+                () -> {
+                    recreatedHost.enterReplayUi();
+                    recreatedHost.replaySessionActive = true;
+                    replayLaunched.set(true);
+                },
+                () -> recreatedHost.rpgAvatarOverrideActive.set(true));
+
+        // 4) Recreated host gains foreground focus
+        recreatedHost.advanceBy(100L);
+        recreatedHost.foregroundFocused = true;
+        recreatedHost.advanceBy(200L);
+
+        assertTrue("3D replay must launch seamlessly on recreated YGOProActivity", replayLaunched.get());
+        assertTrue(recreatedHost.gameUiVisible);
+        assertFalse("MainMenuDialog must never appear on recreated host", recreatedHost.mainMenuShowing);
+        assertTrue(recreatedHost.rpgAvatarOverrideActive.get());
+    }
+
+    @Test
+    public void replay3dRecoversFromLateStrayMenuAt700msViaThirdCheckpoint() {
+        RpgHostTransitionCoordinator coordinator = new RpgHostTransitionCoordinator();
+        FakeHostSurface host = new FakeHostSurface();
+        host.foregroundFocused = true;
+
+        coordinator.launchReplayScene(
+                host,
+                () -> {
+                    host.enterReplayUi();
+                    host.replaySessionActive = true;
+                },
+                () -> host.rpgAvatarOverrideActive.set(true));
+
+        // Advance past 240ms and 480ms checkpoints (launch at +120ms, 480ms check at +600ms)
+        host.advanceBy(700L);
+        assertTrue(host.gameUiVisible);
+
+        // Late stray menu restore occurs at +700ms (after 480ms check, before 900ms third check at +1020ms)
+        host.simulateStrayMainMenuRestore();
+        assertFalse(host.gameUiVisible);
+        assertTrue(host.mainMenuShowing);
+
+        host.advanceBy(400L);
+        assertTrue("900ms third checkpoint must restore 3D replay UI after late stray menu", host.gameUiVisible);
+        assertFalse("900ms third checkpoint must re-hide stray MainMenu", host.mainMenuShowing);
+        assertTrue("Avatar override must be restored", host.rpgAvatarOverrideActive.get());
+    }
 }

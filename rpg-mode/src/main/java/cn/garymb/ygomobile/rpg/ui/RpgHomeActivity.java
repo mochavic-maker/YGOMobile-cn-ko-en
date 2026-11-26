@@ -2273,6 +2273,11 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "本局暂无可播放的 3D 录像文件", Toast.LENGTH_SHORT).show();
             return;
         }
+        File replayFile = new File(report.replayFilePath);
+        if (!replayFile.exists() || replayFile.length() <= 0L) {
+            Toast.makeText(this, "录像文件已被清理或不存在，请重新快战一局再回看", Toast.LENGTH_LONG).show();
+            return;
+        }
         RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
         if (bridge == null) {
             Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
