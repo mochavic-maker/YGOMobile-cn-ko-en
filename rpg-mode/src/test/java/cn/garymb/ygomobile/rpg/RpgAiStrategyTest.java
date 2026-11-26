@@ -279,6 +279,26 @@ public class RpgAiStrategyTest {
     }
 
     @Test
+    public void allAiOpponentDeckStylesHaveDedicatedStrategySupport() {
+        List<cn.garymb.ygomobile.rpg.model.AiOpponent> opponents =
+                cn.garymb.ygomobile.rpg.engine.AiDeckGenerator.getDemoOpponents();
+        assertTrue("Expected built-in AI opponents", !opponents.isEmpty());
+        for (cn.garymb.ygomobile.rpg.model.AiOpponent opp : opponents) {
+            assertTrue("Opponent " + opp.id + " must define at least one EraDeckProfile",
+                    opp.deckEvolutions != null && !opp.deckEvolutions.isEmpty());
+            for (cn.garymb.ygomobile.rpg.model.AiOpponent.EraDeckProfile prof : opp.deckEvolutions) {
+                assertTrue(
+                        "AI opponent '" + opp.id + "' era deck '" + prof.deckName
+                                + "' uses unregistered fillStyle='" + prof.fillStyle
+                                + "'. Register its key cards in RpgAiCardKnowledge, add dedicated"
+                                + " tactics in RpgAiStrategy, and add it to RpgAiStrategy.SUPPORTED_STYLES!",
+                        RpgAiStrategy.SUPPORTED_STYLES.contains(prof.fillStyle)
+                );
+            }
+        }
+    }
+
+    @Test
     public void endToEndTcpProtocolHandshakeAndIdleDecisionRoundTrip() throws Exception {
         try (ServerSocket server = new ServerSocket(0)) {
             int port = server.getLocalPort();

@@ -10,7 +10,7 @@
    - AI 对手同样严格遵守当前时间轴的已发售卡池与最新 OCG 禁限表。
 3. **开包与保底**：按 OCG 第一期 5 张/包规则（4 张 N + 第 5 张按稀罕度权重抽取，每 5 包保底 R 以上）。
 4. **分解与合成**：支持单卡分解、一键分解多余卡（>3 张）换取尘埃，消耗尘埃合成当前时间轴已发售卡片。
-5. **严格组卡与 AI 对战**：RPG 卡组同时校验「已拥有数量」「已发售时间」「当前禁限表」，导出标准 `.ydk` 并通过 WindBot `Deck=Lucky DeckFile=...` 发起对战、通过 `EngineCallbackDelegate.onDuelResult` 自动结算代币奖励。
+5. **严格组卡与纯 Java 专属 AI 对战**：RPG 卡组同时校验「已拥有数量」「已发售时间」「当前禁限表」，导出标准 `.ydk` 并由内置纯 Java OCG 专属 AI（`RpgAiDuelClient` + `RpgAiStrategy`，按卡组流派与单卡逻辑独立决策，不依赖 WindBot `Deck=Lucky`）直连本机服务器对战、通过 `EngineCallbackDelegate.onDuelResult` 自动结算代币奖励。
 
 ## 对上游 `YGOMobile-cn-ko-en` 的极薄接入点（仅 4 处）
 - `settings.gradle`：加入 `':rpg-mode'`
@@ -26,5 +26,6 @@ git merge upstream/master
 ```
 或者直接在 GitHub Actions 手动触发 `.github/workflows/sync-upstream.yml`。
 
-## 扩展更多 OCG 卡包与禁限表
-只需向 `rpg-mode/src/main/assets/rpg/ocg_demo_catalog.json` 的 `packs` 与 `banlists` 数组追加新条目（无需修改业务代码）。
+## 扩展更多 OCG 卡包、禁限表与 AI 对手
+- 卡包/特典/禁限表/规则：向 `rpg-mode/src/main/assets/rpg/ocg_demo_catalog.json` 追加新条目，勘误追加至 `ocg_errata_history.json`。
+- **新增 AI 对手或为已有对手新增卡组（强制规范）**：在 `AiDeckGenerator.java` 新增对手或 `EraDeckProfile` 时，必须同步更新 `RpgAiCardKnowledge.java`、`RpgAiStrategy.java`（含 `SUPPORTED_STYLES` 注册）与 `RpgAiStrategyTest.java`，详见 [`docs/OCG_TIMELINE_DATA_SOURCES.md`](docs/OCG_TIMELINE_DATA_SOURCES.md) 第 8 节。

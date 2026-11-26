@@ -20,6 +20,27 @@ import cn.garymb.ygomobile.rpg.model.RpgCard;
  */
 public class RpgAiStrategy {
 
+    /**
+     * Authoritative registry of AI deck fillStyles with dedicated tactics implemented in this class.
+     * Enforced by RpgAiStrategyTest#allAiOpponentDeckStylesHaveDedicatedStrategySupport():
+     * whenever adding a new AI opponent or new EraDeckProfile in AiDeckGenerator, register its
+     * signature cards in RpgAiCardKnowledge, implement its archetype logic here, and add its style below.
+     */
+    public static final Set<String> SUPPORTED_STYLES = Collections.unmodifiableSet(new HashSet<>(java.util.Arrays.asList(
+            "NOVICE_NR",
+            "CASUAL_MID",
+            "MID_TIER_THEME",
+            "NO_TRIBUTE_BEAT",
+            "LOWER_BEAT",
+            "GOOD_STUFF",
+            "BURN_WALL",
+            "EQUIP_LIGHT_EARTH",
+            "FLIP_CONTROL",
+            "DARK_VIRUS",
+            "EXODIA_DRAW",
+            "FUSION_COMBO"
+    )));
+
     // ===== Parsed Command DTOs =====
 
     public static class CmdEntry {

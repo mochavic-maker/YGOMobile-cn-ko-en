@@ -49,9 +49,20 @@ public final class AiDeckGenerator {
     }
 
     /**
-     * Built-in 12 OCG 1999 AI opponents (1999-02-04 ~ 1999-12-31) with multi-era deck evolutions:
+     * Built-in 10 OCG 1999 AI opponents (1999-02-04 ~ 1999-12-31) with multi-era deck evolutions:
      * includes 3 progressive non-meta/mid-tier opponents (Novice, Shop Regular, Weekend Challenger)
-     * plus 9 iconic metagame opponents grounded in yugioh-history.com's Series 1 chronicle.
+     * plus 7 iconic metagame opponents grounded in yugioh-history.com's Series 1 chronicle.
+     *
+     * <p><b>MANDATORY RULE WHEN ADDING NEW AI OPPONENTS OR NEW ERA DECKS:</b>
+     * Every new {@link AiOpponent} or new {@link AiOpponent.EraDeckProfile} MUST also receive
+     * dedicated pure-Java AI strategy support (never rely on generic blind card play):
+     * <ol>
+     *   <li>Register new signature cards/roles/combos in {@code RpgAiCardKnowledge};</li>
+     *   <li>Register any new {@code fillStyle} in {@code RpgAiStrategy.SUPPORTED_STYLES} and
+     *       implement dedicated turn-order, play-order, targeting, discard, search, and chain
+     *       tactics in {@code RpgAiStrategy} (and {@code RpgAiDuelState} if new state is needed);</li>
+     *   <li>Add tactical unit tests in {@code RpgAiStrategyTest} and run {@code :rpg-mode:testDebugUnitTest}.</li>
+     * </ol>
      */
     public static List<AiOpponent> getDemoOpponents() {
         return Arrays.asList(

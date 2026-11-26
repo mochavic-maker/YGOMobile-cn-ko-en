@@ -91,4 +91,29 @@
 2. **卡片数据对齐**：拉取百鸽 `cards.zip` 匹配密码与中英日名，重算每张卡的最早发售日，确保时间轴前的卡池不泄漏未来卡。
 3. **规则与限表追加**：按 `yugioh-wiki.net` 规则页与禁限卡表页，在 `ocg_demo_catalog.json` 中追加新 `RuleSetVersion` 与 `BanlistVersion`。
 4. **勘误时间点核对**：对照 `yugioh-wiki.net/?%A5%A8%A5%E9%A5%C3%A5%BF`，更新 `ocg_errata_history.json` 中落入新时间段的勘误生效日（如 `2000-04-20` 黑森林魔女首次改版、`2000-07-13` 三魔神改版等）。
-5. **AI 卡组进化线扩展**：参考 `yugioh-history.com` 对应世代年表，为既有 AI 追加新 `EraDeckProfile` 并新增时代代表对手，最后运行 `:rpg-mode:testDebugUnitTest` 校验全时间节点的 40 张合法构筑。
+5. **AI 卡组进化线扩展**：参考 `yugioh-history.com` 对应世代年表，在 `AiDeckGenerator.java` 中为既有 AI 追加新 `EraDeckProfile` 并新增时代代表对手，运行 `:rpg-mode:testDebugUnitTest` 校验全时间节点的 40 张合法构筑。
+6. **【强制】同步编写专属 AI 战术策略（禁止使用通用盲出 AI）**：每当新增 AI 对手、或为已有对手追加新卡组/新核心单卡时，**必须同步更新纯 Java 专属 AI 模块**（详见第 8 节）。
+
+---
+
+## 8. 新增 AI 对手 / 新增卡组的专属 AI 策略强制规范
+
+本项目 RPG 人机对战已彻底移除 WindBot 通用随机脚本（`Deck=Lucky`），改由纯 Java YGOPro 协议客户端 [`RpgAiDuelClient`](../src/main/java/cn/garymb/ygomobile/rpg/ai/RpgAiDuelClient.java) + 战术大脑 [`RpgAiStrategy`](../src/main/java/cn/garymb/ygomobile/rpg/ai/RpgAiStrategy.java) 驱动。
+
+**每次在 `AiDeckGenerator.java` 中新增 AI 对手或给已有对手添加新卡组/新核心卡时，必须按以下 4 步同步落实专属 AI 策略：**
+
+1. **登记新卡知识（`RpgAiCardKnowledge.java`）**
+   - 将新卡组中的关键魔法、陷阱、反转/诱发/检索/斩杀/终端怪兽、装备适用条件、直伤数值、高威胁反击对象、墓地回收优先级登记到 `RpgAiCardKnowledge`。
+2. **编写流派与单卡策略（`RpgAiStrategy.java` + `RpgAiDuelState.java`）**
+   - 若引入新卡组流派（`fillStyle`），必须在 `RpgAiStrategy.SUPPORTED_STYLES` 中显式注册（否则单元测试守卫会自动报错）。
+   - 为新流派/新卡编写专属决策逻辑：
+     - 先后攻偏好（`chooseGoFirst`）；
+     - 主阶段出牌先后序与防自爆逻辑（例如清场/削手/抽滤先于通召、绝不先招主力再黑洞/大岚炸自己、不盲目献祭主力）；
+     - 选目标/弃牌/检索/苏生/解放/表示形式优先级（`chooseSelectCard` / `chooseSelectTribute` / `choosePosition`）；
+     - 陷阱与速攻连锁时机（`chooseChain` / `chooseEffectYn`，如战斗阶段陷阱不在主阶乱开、反击陷阱只康高价值目标）；
+     - 若新卡依赖新的场地/回合状态字段，同步补充到 `RpgAiDuelState`。
+3. **补充战术单元测试（`RpgAiStrategyTest.java`）**
+   - 为新卡组的核心展开 Combo、关键单卡先后序与防低级失误场景补充单元测试。
+4. **执行自动化守卫校验**
+   - 运行 `./gradlew :rpg-mode:testDebugUnitTest`，确认全部卡组构筑校验、战术单测及 `allAiOpponentDeckStylesHaveDedicatedStrategySupport` 守卫测试全部通过。
+
