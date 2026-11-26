@@ -2,6 +2,8 @@
 
 本手册记录了构建 **YGOMobile OCG 时间轴 RPG 模式**（1999 第 1 期）过程中检索、核对并使用的全部权威网站与 API 端点，便于日后将时间轴扩展至第 2 期（2000 年）及以后版本时直接查阅与自动化抓取。
 
+> **【最高原则 · 仅限 OCG 环境】** 本模式**严格仅还原日版 OCG 环境**（仅包含 OCG 正式发售的卡包、预组、限定包、特典活动、OCG 禁限卡表、OCG 历代规则、OCG 勘误史与 OCG 竞技环境史）。**完全不考虑、不收录任何 TCG 专属卡包、TCG 先行/独占卡、TCG 特典、TCG 发售日或 TCG 限表**（例如 `LOB / MRD / SDK` 等 TCG 商品一律不引入）。
+>
 > 同步已保存为 Agent Skill：**`ocg-timeline-expansion`**（后续任何对话均可直接调用该技能获取相同清单与扩展流程）。
 
 ---
@@ -13,9 +15,9 @@
 | **百鸽 (YGOCDB) API 文档** | https://ygocdb.com/api | 汇总 KONAMI 官方库与 YGOPro 数据库，提供免鉴权 JSON API |
 | 百鸽全量卡片数据 | https://ygocdb.com/api/v0/cards.zip | 获取所有卡片的 YGOPro 密码 (`id`)、官方 `cid`、中/日/英卡名、属性种族攻守与效果文本 |
 | 百鸽数据 MD5 校验 | https://ygocdb.com/api/v0/cards.zip.md5 | 判断 `cards.zip` 是否有更新 |
-| 百鸽全卡发售日期表 | https://ygocdb.com/api/v0/releaseDates.json | 查询卡片各语种首次发售信息 |
-| 百鸽禁限卡表（含历史） | https://ygocdb.com/api/v0/limits.json | 获取当前及历史禁限卡表 JSON |
-| **KONAMI 官方 OCG 卡片数据库** | https://www.db.yugioh-card.com/yugiohdb/?request_locale=ja | 最终核对卡包正式收录列表、商品 `pid` 与官方最新文本 |
+| 百鸽全卡发售日期表 | https://ygocdb.com/api/v0/releaseDates.json | 查询卡片各语种首次发售信息（仅取日版 OCG 发售日） |
+| 百鸽禁限卡表（含历史） | https://ygocdb.com/api/v0/limits.json | 获取当前及历史 OCG 禁限卡表 JSON |
+| **KONAMI 官方 OCG 卡片数据库** | https://www.db.yugioh-card.com/yugiohdb/?request_locale=ja | 最终核对日版 OCG 卡包正式收录列表、商品 `pid` 与官方最新文本 |
 
 ---
 
@@ -23,12 +25,10 @@
 
 | 资源名称 | 网址 / 端点 | 用途说明 |
 | :--- | :--- | :--- |
-| **Yu-Gi-Oh! Wiki (Fandom) Parse API** | `https://yugioh.fandom.com/api.php?action=parse&page=<Page_Name>&prop=text\|wikitext&format=json` | 批量抓取卡包发售日、日元原价、每包张数、完整卡表与稀罕度 |
-| Fandom 第 1 期商品总览 | https://yugioh.fandom.com/wiki/Template:Series_1_sets | 含 Vol.1~7、Booster 1~7、Starter Box、EX、Premium Pack、Limited Edition、特典卡（第 2 期可查 `Template:Series_2_sets` 以此类推） |
-| **Yugipedia** | https://yugipedia.com/ | 交叉核对 OCG 各类商品（含 Carddass 贩卖机、杂志/游戏/大会特典卡）的准确日期与稀罕度 |
-| **YGOPRODeck Pack Simulator** | https://ygoprodeck.com/pack-sim/ | 抽包交互与槽位出率权重机制参考 |
-| YGOPRODeck API 指南 | https://ygoprodeck.com/api-guide/ | 卡组/卡包结构参考（注：其发售日以 TCG 为主，OCG 数据仍以 Fandom/Yugipedia/官方库为准） |
-| YGOPRODeck Card Sets API | https://db.ygoprodeck.com/api/v7/cardsets.php | 批量检索卡包列表元数据 |
+| **Yu-Gi-Oh! Wiki (Fandom) Parse API** | `https://yugioh.fandom.com/api.php?action=parse&page=<Page_Name>&prop=text\|wikitext&format=json` | 批量抓取日版 OCG 卡包发售日、日元原价、每包张数、完整卡表与稀罕度 |
+| Fandom 第 1 期商品总览 | https://yugioh.fandom.com/wiki/Template:Series_1_sets | 仅取日版 OCG 商品：Vol.1~7、Booster 1~7、Starter Box、EX、Premium Pack、Limited Edition、OCG 特典卡（第 2 期查 `Template:Series_2_sets` 以此类推） |
+| **Yugipedia** | https://yugipedia.com/ | 交叉核对日版 OCG 各类商品（含 Carddass 贩卖机、杂志/游戏/大会特典卡）的准确日期与稀罕度 |
+| **YGOPRODeck Pack Simulator** | https://ygoprodeck.com/pack-sim/ | 仅参考其前端抽包动画/槽位交互体验；**切勿直接照搬其 TCG 卡包或 TCG 发售日** |
 
 ---
 
