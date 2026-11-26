@@ -66,7 +66,8 @@ public class MainMenuDialog {
          * 屏幕上就只剩窗口背景图。回放的收场由 ReplayModeDialog.quitReplay 显式完成（那时 replayMode
          * 已复位，不受本拦截影响）。
          */
-        if (activity.isReplaySessionActive()) {
+        if (activity.isReplaySessionActive()
+                || cn.garymb.ygomobile.rpg.RpgIntegration.shouldBlockMainMenu(activity)) {
             return;
         }
         // 注册自定义旋转重排逻辑：确保横屏转竖屏/竖屏转横屏时对话框按新方向重算宽度
@@ -86,13 +87,15 @@ public class MainMenuDialog {
             // 校验实际显示状态，未显示则下一帧重试一次，覆盖所有调用入口
             if (!popupWindow.isShowing()) {
                 decor.post(() -> {
-                    if (!popupWindow.isShowing() && decor.getWindowToken() != null) {
+                    if (!popupWindow.isShowing() && decor.getWindowToken() != null
+                            && !activity.isReplaySessionActive()
+                            && !cn.garymb.ygomobile.rpg.RpgIntegration.shouldBlockMainMenu(activity)) {
                         draggableHelper.showPopup(popupWindow, decor);
                     }
                 });
             }
         }
-        cn.garymb.ygomobile.rpg.RpgIntegration.onMainMenuShown();
+        cn.garymb.ygomobile.rpg.RpgIntegration.onMainMenuShown(activity);
         activity.hideGameUI();
         activity.updateBGM();
         activity.applySettingsToEngine();

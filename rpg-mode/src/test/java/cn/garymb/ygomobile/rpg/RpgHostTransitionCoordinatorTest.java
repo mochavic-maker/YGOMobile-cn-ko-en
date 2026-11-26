@@ -378,7 +378,7 @@ public class RpgHostTransitionCoordinatorTest {
         // 1) Deck Editor -> edit -> exit back to RPG
         host.foregroundFocused = true;
         coordinator.launchDeckEditorScene(host, host::showDeckEditor, () -> {}, returnCalls::incrementAndGet);
-        host.advanceBy(500L);
+        host.advanceBy(700L);
         assertTrue(host.deckEditorVisible);
         assertFalse(host.mainMenuShowing);
 
@@ -431,5 +431,103 @@ public class RpgHostTransitionCoordinatorTest {
         assertFalse("MainMenuDialog must stay hidden during 3D Replay", host.mainMenuShowing);
         assertTrue("Replay avatars must stay active", host.rpgAvatarOverrideActive.get());
         assertEquals("No spurious return-to-RPG trigger during 3D replay", 2, returnCalls.get());
+    }
+
+    // ==================== INTERMITTENT DECK EDITOR MAIN-MENU BOUNCE GUARDS ====================
+
+    @Test
+    public void deckEditorBlocksStrayMainMenuWhileTransitioningAndRecoversAtSecondCheckpoint() {
+        RpgHostTransitionCoordinator coordinator = new RpgHostTransitionCoordinator();
+        FakeHostSurface host = new FakeHostSurface();
+        host.mainMenuShowing = true;
+        host.foregroundFocused = false;
+
+        AtomicInteger deckLoadCalls = new AtomicInteger(0);
+        AtomicInteger returnCalls = new AtomicInteger(0);
+
+        coordinator.launchDeckEditorScene(
+                host,
+                host::showDeckEditor,
+                deckLoadCalls::incrementAndGet,
+                returnCalls::incrementAndGet);
+
+        // During foreground transition, any stray MainMenuDialog.showMainMenu() MUST be blocked
+        assertTrue("MainMenu must be blocked while DeckEditor transition is in flight",
+                coordinator.shouldBlockMainMenu(host));
+
+        host.advanceBy(80L);
+        host.foregroundFocused = true;
+        host.advanceBy(350L); // Open at +170ms, 240ms check at +410ms (now at +430ms), before 480ms check at +650ms
+        assertTrue(host.deckEditorVisible);
+        assertFalse(host.mainMenuShowing);
+
+        // Even while actively editing, stray MainMenuDialog.showMainMenu() MUST be blocked
+        assertTrue("MainMenu must be blocked while DeckEditor is visibly open",
+                coordinator.shouldBlockMainMenu(host));
+
+        // Simulate late stray disconnect/race between 240ms first check and 480ms second check
+        host.simulateStrayMainMenuRestore();
+        assertFalse(host.deckEditorVisible);
+        assertTrue(host.mainMenuShowing);
+
+        // Advance past 480ms second checkpoint -> must recover DeckEditor and hide MainMenu!
+        host.advanceBy(300L);
+        assertTrue("480ms second checkpoint must restore DeckEditor after late stray teardown",
+                host.deckEditorVisible);
+        assertFalse("480ms second checkpoint must hide stray MainMenu", host.mainMenuShowing);
+        assertEquals("Stray teardown must not prematurely exit to RPG", 0, returnCalls.get());
+    }
+
+    @Test
+    public void deckEditorExitAfter30MinutesReturnsImmediatelyViaOnMainMenuShown() {
+        RpgHostTransitionCoordinator coordinator = new RpgHostTransitionCoordinator();
+        FakeHostSurface host = new FakeHostSurface();
+        host.foregroundFocused = true;
+
+        AtomicInteger returnCalls = new AtomicInteger(0);
+        coordinator.launchDeckEditorScene(host, host::showDeckEditor, () -> {}, returnCalls::incrementAndGet);
+        host.advanceBy(1_000L);
+        assertTrue(host.deckEditorVisible);
+
+        // Player spends 30 minutes (> old 10-minute timeout) carefully editing their deck
+        host.advanceBy(1_800_000L);
+        assertTrue("DeckEditor still open after 30 minutes", host.deckEditorVisible);
+        assertTrue("MainMenu still blocked while DeckEditor is open", coordinator.shouldBlockMainMenu(host));
+        assertEquals(0, returnCalls.get());
+
+        // Player taps '退出编辑': DeckEditorViewHost.onExitEditor calls hide() -> restoreMainMenu()
+        host.deckEditorVisible = false;
+        assertFalse("MainMenu must NOT be blocked once DeckEditor legitimately hides",
+                coordinator.shouldBlockMainMenu(host));
+        host.mainMenuShowing = true;
+        boolean handled = coordinator.onMainMenuShown(host);
+
+        assertTrue("onMainMenuShown must synchronously handle return to RPG Mode", handled);
+        assertEquals("Must immediately return to RPG Mode even after 30 min editing", 1, returnCalls.get());
+        host.advanceBy(1_000L);
+        assertEquals("Must not fire return callback twice", 1, returnCalls.get());
+    }
+
+    @Test
+    public void deckEditorEarlyLegitimateExitIsNotReopenedBySecondCheckpoint() {
+        RpgHostTransitionCoordinator coordinator = new RpgHostTransitionCoordinator();
+        FakeHostSurface host = new FakeHostSurface();
+        host.foregroundFocused = true;
+
+        AtomicInteger returnCalls = new AtomicInteger(0);
+        coordinator.launchDeckEditorScene(host, host::showDeckEditor, () -> {}, returnCalls::incrementAndGet);
+        host.advanceBy(400L); // Open at +120ms, 240ms check at +360ms, before 480ms check at +600ms
+        assertTrue(host.deckEditorVisible);
+
+        // Player immediately exits DeckEditor at 400ms
+        host.deckEditorVisible = false;
+        host.mainMenuShowing = true;
+        assertTrue(coordinator.onMainMenuShown(host));
+        assertEquals(1, returnCalls.get());
+
+        // Advance past 480ms second checkpoint -> must NOT reopen DeckEditor!
+        host.advanceBy(500L);
+        assertFalse("480ms checkpoint must be cancelled after legitimate exit", host.deckEditorVisible);
+        assertEquals(1, returnCalls.get());
     }
 }

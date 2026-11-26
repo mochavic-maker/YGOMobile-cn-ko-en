@@ -11,9 +11,11 @@ import java.util.concurrent.atomic.AtomicLong;
  *   <li>Native Deck Editor / read-only AI deck viewer ({@link #launchDeckEditorScene})</li>
  * </ol>
  *
- * <p>Kept free of Android framework dependencies so the exact production transition state machine,
- * stale-watcher cancellation, and post-launch self-healing safeguards can be verified directly
- * by fast JVM unit tests.</p>
+ * <p>Provides synchronous {@link #shouldBlockMainMenu(HostSurface)} and
+ * {@link #onMainMenuShown(HostSurface)} hooks so stray {@code MainMenuDialog.showMainMenu()} calls
+ * (e.g., deferred PopupWindow retries or stale dismiss listeners) can never appear on top of an
+ * active Deck Editor / 3D Replay / Waiting Room, while legitimate editor exit returns immediately
+ * to RPG Mode even after long editing sessions (&gt; 10 minutes).</p>
  */
 public final class RpgHostTransitionCoordinator {
 
@@ -22,9 +24,16 @@ public final class RpgHostTransitionCoordinator {
     public static final long SETTLE_FRAME_DELAY_MS = 60L;
     public static final long DECK_LOAD_DELAY_MS = 150L;
     public static final long POST_LAUNCH_VERIFY_DELAY_MS = 240L;
-    public static final long RETURN_WATCHER_START_DELAY_MS = 500L;
+    public static final long POST_LAUNCH_SECOND_VERIFY_DELAY_MS = 480L;
+    public static final long RETURN_WATCHER_START_DELAY_MS = 550L;
     public static final long RETURN_WATCHER_POLL_MS = 250L;
-    public static final long RETURN_WATCHER_TIMEOUT_MS = 600_000L;
+
+    public enum ActiveScene {
+        NONE,
+        WAITING_ROOM,
+        REPLAY,
+        DECK_EDITOR
+    }
 
     /** Abstraction over {@code YGOProActivity} and its dialogs/engine for production & unit tests. */
     public interface HostSurface {
@@ -51,36 +60,106 @@ public final class RpgHostTransitionCoordinator {
     }
 
     private final AtomicLong transitionGen = new AtomicLong(0L);
+    private volatile ActiveScene activeScene = ActiveScene.NONE;
+    private volatile boolean transitionInProgress = false;
+    private volatile long activeReturnGen = -1L;
+    private volatile Runnable activeReturnCallback = null;
 
     /** Returns the current transition generation token (incremented on every new scene launch). */
     public long getCurrentGeneration() {
         return transitionGen.get();
     }
 
+    public ActiveScene getActiveScene() {
+        return activeScene;
+    }
+
     /** Cancels all pending foreground waits, safeguards, and return watchers. */
     public long invalidatePendingTransitions() {
+        transitionInProgress = false;
+        activeScene = ActiveScene.NONE;
+        activeReturnGen = -1L;
+        activeReturnCallback = null;
         return transitionGen.incrementAndGet();
     }
 
     /**
+     * Synchronous guard invoked by {@code MainMenuDialog.showMainMenu()} (and its deferred 1-frame
+     * retry lambda) to block stray MainMenuDialog popups while an RPG scene transition is in flight
+     * or while the user is actively inside Deck Editor, 3D Replay, or Waiting Room.
+     */
+    public boolean shouldBlockMainMenu(final HostSurface host) {
+        if (host == null || !host.isAlive()) return false;
+        if (transitionInProgress) {
+            return true;
+        }
+        ActiveScene scene = activeScene;
+        if (scene == ActiveScene.DECK_EDITOR && host.isDeckEditorVisible()) {
+            return true;
+        }
+        if (scene == ActiveScene.REPLAY && host.isReplaySessionActive()) {
+            return true;
+        }
+        if (scene == ActiveScene.WAITING_ROOM && host.isWaitingDialogShowing()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Synchronous hook invoked when {@code MainMenuDialog.showMainMenu()} actually executes.
+     * <ul>
+     *   <li>If an RPG scene is still visible (stray menu popup), immediately hides MainMenuDialog
+     *       and returns {@code true} (consumed/suppressed).</li>
+     *   <li>If the user legitimately exited an RPG Deck Editor or finished an RPG duel
+     *       ({@code activeReturnCallback != null} and scene is no longer visible), immediately
+     *       consumes the return callback (even after &gt;10 min editing!) and returns {@code true}.</li>
+     *   <li>Otherwise resets {@code activeScene} to {@code NONE} and returns {@code false}
+     *       (caller should clear RPG duel rule/avatar overrides).</li>
+     * </ul>
+     */
+    public boolean onMainMenuShown(final HostSurface host) {
+        if (host == null || !host.isAlive()) return false;
+        if (shouldBlockMainMenu(host)) {
+            host.hideMainMenu();
+            return true;
+        }
+        final long rGen = activeReturnGen;
+        final Runnable rCb = activeReturnCallback;
+        if (rCb != null && rGen == transitionGen.get()) {
+            boolean stillInDeckEditor = activeScene == ActiveScene.DECK_EDITOR && host.isDeckEditorVisible();
+            boolean stillInReplay = activeScene == ActiveScene.REPLAY && host.isReplaySessionActive();
+            if (!stillInDeckEditor && !stillInReplay) {
+                if (transitionGen.compareAndSet(rGen, rGen + 1)) {
+                    activeScene = ActiveScene.NONE;
+                    activeReturnGen = -1L;
+                    activeReturnCallback = null;
+                    rCb.run();
+                    return true;
+                }
+            }
+        }
+        activeScene = ActiveScene.NONE;
+        return false;
+    }
+
+    /**
      * Scene 1: Live manual duel (AI duel / Tournament manual / Canon duel) or 3D spectate.
-     * Cleans stale AI/connection/dialogs, hides MainMenuDialog, waits for foreground window focus,
-     * runs {@code startSceneBody}, then verifies after 240ms that MainMenuDialog stays hidden
-     * and PlayerWaitingDialog actually appeared (retrying once if transient WindowToken dropped it).
      */
     public long launchWaitingRoomScene(final HostSurface host,
                                        final Runnable startSceneBody,
                                        final Runnable restoreOverridesAndSeatName) {
         if (host == null || !host.isAlive()) return -1L;
-        final long gen = transitionGen.incrementAndGet();
+        final long gen = beginSceneTransition(ActiveScene.WAITING_ROOM);
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
+            transitionInProgress = false;
             host.hideMainMenu();
             if (startSceneBody != null) {
                 startSceneBody.run();
             }
-            host.postDelayed(() -> {
+            Runnable verifyWaiting = () -> {
                 if (!isCurrentAndAlive(host, gen)) return;
                 if (host.isEngineDisconnectedOrIdle() || host.isDuelActiveOrStarted()) {
                     return;
@@ -101,25 +180,25 @@ public final class RpgHostTransitionCoordinator {
                         }, 80L);
                     }
                 }
-            }, POST_LAUNCH_VERIFY_DELAY_MS);
+            };
+            host.postDelayed(verifyWaiting, POST_LAUNCH_VERIFY_DELAY_MS);
+            host.postDelayed(verifyWaiting, POST_LAUNCH_SECOND_VERIFY_DELAY_MS);
         });
         return gen;
     }
 
     /**
      * Scene 2: Native 3D replay playback (Quick Duel / Tournament / AI Showdown replay).
-     * Cleans stale AI/connection/dialogs, hides MainMenuDialog, waits for foreground window focus,
-     * executes {@code startReplayBody}, then verifies after 240ms that MainMenuDialog stays hidden
-     * and GameUI stays visible while the replay session is active.
      */
     public long launchReplayScene(final HostSurface host,
                                   final Runnable startReplayBody,
                                   final Runnable restoreAvatarOverrides) {
         if (host == null || !host.isAlive()) return -1L;
-        final long gen = transitionGen.incrementAndGet();
+        final long gen = beginSceneTransition(ActiveScene.REPLAY);
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
+            transitionInProgress = false;
             host.hideMainMenu();
             if (restoreAvatarOverrides != null) {
                 restoreAvatarOverrides.run();
@@ -127,7 +206,7 @@ public final class RpgHostTransitionCoordinator {
             if (startReplayBody != null) {
                 startReplayBody.run();
             }
-            host.postDelayed(() -> {
+            Runnable verifyReplay = () -> {
                 if (!isCurrentAndAlive(host, gen)) return;
                 if (!host.isReplaySessionActive()) return;
                 if (host.isMainMenuShowing()) {
@@ -139,26 +218,26 @@ public final class RpgHostTransitionCoordinator {
                 if (!host.isGameUiVisible()) {
                     host.enterReplayUi();
                 }
-            }, POST_LAUNCH_VERIFY_DELAY_MS);
+            };
+            host.postDelayed(verifyReplay, POST_LAUNCH_VERIFY_DELAY_MS);
+            host.postDelayed(verifyReplay, POST_LAUNCH_SECOND_VERIFY_DELAY_MS);
         });
         return gen;
     }
 
     /**
      * Scene 3: Native Deck Editor (player RPG deck editing or read-only AI deck preview).
-     * Cleans stale dialogs, hides MainMenuDialog, waits for foreground window focus, opens the
-     * Deck Editor, loads the target .ydk after 150ms, verifies visibility at 240ms (recovering
-     * if a stray menu restore covered the editor), and arms a generation-guarded return watcher.
      */
     public long launchDeckEditorScene(final HostSurface host,
                                       final Runnable openEditorBody,
                                       final Runnable loadDeckIntoEditorBody,
                                       final Runnable onReturnToRpgMenu) {
         if (host == null || !host.isAlive()) return -1L;
-        final long gen = transitionGen.incrementAndGet();
+        final long gen = beginSceneTransition(ActiveScene.DECK_EDITOR);
         prepareCleanHost(host);
         waitForForegroundThenRun(host, gen, () -> {
             if (!isCurrentAndAlive(host, gen)) return;
+            transitionInProgress = false;
             host.hideMainMenu();
             if (openEditorBody != null) {
                 openEditorBody.run();
@@ -169,7 +248,7 @@ public final class RpgHostTransitionCoordinator {
                     loadDeckIntoEditorBody.run();
                 }, DECK_LOAD_DELAY_MS);
             }
-            host.postDelayed(() -> {
+            Runnable verifyDeckEditor = () -> {
                 if (!isCurrentAndAlive(host, gen)) return;
                 if (host.isMainMenuShowing()) {
                     host.hideMainMenu();
@@ -184,36 +263,59 @@ public final class RpgHostTransitionCoordinator {
                         }, DECK_LOAD_DELAY_MS);
                     }
                 }
-            }, POST_LAUNCH_VERIFY_DELAY_MS);
+            };
+            host.postDelayed(verifyDeckEditor, POST_LAUNCH_VERIFY_DELAY_MS);
+            host.postDelayed(verifyDeckEditor, POST_LAUNCH_SECOND_VERIFY_DELAY_MS);
             if (onReturnToRpgMenu != null) {
-                scheduleReturnWhenMainMenuReappears(host, gen, onReturnToRpgMenu);
+                armReturnToRpg(host, gen, onReturnToRpgMenu, true);
             }
         });
         return gen;
     }
 
     /**
-     * Arms a generation-guarded watcher that invokes {@code onReturnToRpgMenu} once MainMenuDialog
-     * transitions from hidden -> visible (e.g. after a duel ends or the player exits Deck Editor).
-     * Automatically cancels if any newer RPG scene launch occurs.
+     * Arms a generation-guarded return handler (triggered both synchronously via
+     * {@link #onMainMenuShown(HostSurface)} and via fallback polling) once MainMenuDialog
+     * legitimately reappears after duel end or Deck Editor exit.
      */
     public long scheduleReturnToRpg(final HostSurface host, final Runnable onReturnToRpgMenu) {
         if (host == null || !host.isAlive() || onReturnToRpgMenu == null) return -1L;
+        transitionInProgress = false;
+        activeScene = ActiveScene.NONE;
         final long gen = transitionGen.incrementAndGet();
-        scheduleReturnWhenMainMenuReappears(host, gen, onReturnToRpgMenu);
+        armReturnToRpg(host, gen, onReturnToRpgMenu, !host.isMainMenuShowing());
         return gen;
     }
 
-    private void scheduleReturnWhenMainMenuReappears(final HostSurface host,
-                                                     final long gen,
-                                                     final Runnable onReturnToRpgMenu) {
-        final long deadlineMs = host.nowMs() + RETURN_WATCHER_TIMEOUT_MS;
-        final boolean[] sawMenuHidden = new boolean[]{!host.isMainMenuShowing()};
+    private long beginSceneTransition(ActiveScene scene) {
+        activeReturnGen = -1L;
+        activeReturnCallback = null;
+        activeScene = scene;
+        transitionInProgress = true;
+        return transitionGen.incrementAndGet();
+    }
+
+    private void armReturnToRpg(final HostSurface host,
+                                final long gen,
+                                final Runnable onReturnToRpgMenu,
+                                final boolean initiallyHidden) {
+        activeReturnGen = gen;
+        activeReturnCallback = onReturnToRpgMenu;
+        final boolean[] sawMenuHidden = new boolean[]{initiallyHidden};
         final Runnable watcher = new Runnable() {
             @Override
             public void run() {
                 if (!isCurrentAndAlive(host, gen)) return;
-                if (host.nowMs() > deadlineMs) return;
+                // If Deck Editor is still visibly open, a showing MainMenuDialog is ALWAYS a stray
+                // popup rather than an exit — suppress it and keep editing!
+                if (activeScene == ActiveScene.DECK_EDITOR && host.isDeckEditorVisible()) {
+                    if (host.isMainMenuShowing()) {
+                        host.hideMainMenu();
+                    }
+                    sawMenuHidden[0] = true;
+                    host.postDelayed(this, RETURN_WATCHER_POLL_MS);
+                    return;
+                }
                 boolean menuShowing = host.isMainMenuShowing();
                 if (!menuShowing) {
                     sawMenuHidden[0] = true;
@@ -224,8 +326,10 @@ public final class RpgHostTransitionCoordinator {
                     host.postDelayed(this, RETURN_WATCHER_POLL_MS);
                     return;
                 }
-                // Consume this generation so duplicate callbacks cannot fire twice
                 if (transitionGen.compareAndSet(gen, gen + 1)) {
+                    activeScene = ActiveScene.NONE;
+                    activeReturnGen = -1L;
+                    activeReturnCallback = null;
                     onReturnToRpgMenu.run();
                 }
             }

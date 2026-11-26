@@ -176,10 +176,27 @@ public final class RpgIntegration {
     }
 
     /**
-     * Hook called from {@link cn.garymb.ygomobile.ui.dialogs.lobby.MainMenuDialog#showMainMenu()}:
-     * guarantees RPG in-duel avatar & rule overrides never leak into normal LAN / Single / WindBot duels
-     * even if the player cancels the waiting room or surrenders early.
+     * Hook called from {@link cn.garymb.ygomobile.ui.dialogs.lobby.MainMenuDialog#showMainMenu()}
+     * (and its deferred 1-frame retry): blocks stray MainMenuDialog popups while an RPG scene
+     * transition is in flight or while RPG Deck Editor / 3D Replay / Waiting Room is actively open.
      */
+    public static boolean shouldBlockMainMenu(YGOProActivity activity) {
+        if (activity == null) return false;
+        return sTransitionCoordinator.shouldBlockMainMenu(asHostSurface(activity));
+    }
+
+    /**
+     * Hook called from {@link cn.garymb.ygomobile.ui.dialogs.lobby.MainMenuDialog#showMainMenu()}:
+     * suppresses stray menu popups, immediately returns to RPG Mode on legitimate Deck Editor/duel
+     * exit (even after long editing sessions), and clears RPG overrides when returning to normal menu.
+     */
+    public static void onMainMenuShown(YGOProActivity activity) {
+        if (activity != null && sTransitionCoordinator.onMainMenuShown(asHostSurface(activity))) {
+            return;
+        }
+        onMainMenuShown();
+    }
+
     public static void onMainMenuShown() {
         sActiveDuelPlayerAvatarId = null;
         sActiveDuelOpponentAvatarId = null;
@@ -422,7 +439,12 @@ public final class RpgIntegration {
             @Override
             public boolean isEngineConnected() {
                 GameEngine engine = act.getEngine();
-                return engine != null && engine.getClient() != null && engine.getClient().isConnected();
+                if (engine == null) return false;
+                if (engine.getClient() != null && engine.getClient().isConnected()) return true;
+                GameEngine.GameState st = engine.getState();
+                return st != null && st != GameEngine.GameState.IDLE
+                        && st != GameEngine.GameState.DISCONNECTED
+                        && st != GameEngine.GameState.DUEL_END;
             }
 
             @Override
