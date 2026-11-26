@@ -605,11 +605,35 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     // ==================== TAB 1: 1999 SPECIAL PROMO EVENTS ====================
     private void renderEventsTab() {
-        TextView hint = makeSubtleText("1999 年真实 OCG 期间特典/大会/攻略本单卡赠送活动（时间轴到达活动开启日后可免费领取）");
+        String curDate = profile.currentTimelineDate;
+        List<OcgEvent> visibleEvents = new ArrayList<>();
+        if (catalog.events != null) {
+            for (OcgEvent ev : catalog.events) {
+                if (ev != null && TimelineEngine.isReleasedOnOrBefore(ev.releaseDate, curDate)) {
+                    visibleEvents.add(ev);
+                }
+            }
+        }
+        // Sort descending by releaseDate (newest event first)
+        visibleEvents.sort((a, b) -> {
+            String da = a.releaseDate != null ? a.releaseDate : "";
+            String db = b.releaseDate != null ? b.releaseDate : "";
+            return db.compareTo(da);
+        });
+
+        TextView hint = makeSubtleText("截至 " + curDate + " 已开启 " + visibleEvents.size()
+                + " 项 OCG 特典/大会/攻略本赠送活动（按时间降序）");
         layoutTabActions.addView(hint);
 
-        for (final OcgEvent ev : catalog.events) {
-            boolean unlocked = TimelineEngine.isReleasedOnOrBefore(ev.releaseDate, profile.currentTimelineDate);
+        if (visibleEvents.isEmpty()) {
+            LinearLayout emptyCard = makeCardContainer();
+            emptyCard.addView(makeTitleText("📅 截至 " + curDate + " 暂无已开启的特典活动"));
+            emptyCard.addView(makeSubtleText("推进时间轴即可解锁对应日期的真实 OCG 期间特典与大会纪念卡活动。"));
+            layoutContent.addView(emptyCard);
+            return;
+        }
+
+        for (final OcgEvent ev : visibleEvents) {
             boolean claimed = profile.claimedEventIds != null && profile.claimedEventIds.contains(ev.id);
             int rewardCount = ev.rewardCards != null ? ev.rewardCards.size() : 0;
             String modeNote = ("RANDOM_PICK".equalsIgnoreCase(ev.mode) && ev.randomPickCount > 0)
@@ -624,23 +648,36 @@ public class RpgHomeActivity extends AppCompatActivity {
                     + modeNote));
             card.addView(makeSubtleText(ev.description));
 
+            // Compact bottom row: status or claim action on the left, small "查看卡池" button pinned on the right
+            LinearLayout bottomRow = new LinearLayout(this);
+            bottomRow.setOrientation(LinearLayout.HORIZONTAL);
+            bottomRow.setGravity(Gravity.CENTER_VERTICAL);
+            bottomRow.setPadding(0, dp(6), 0, 0);
+
             Button poolBtn = makeActionButton("查看卡池", "#475569");
+            poolBtn.setTextSize(11f);
+            LinearLayout.LayoutParams poolLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, dp(26));
+            poolLp.setMarginStart(dp(8));
+            poolBtn.setLayoutParams(poolLp);
+            poolBtn.setPadding(dp(10), 0, dp(10), 0);
             poolBtn.setOnClickListener(v -> RpgPackVisualDialogs.showEventPoolVisualDialog(this, catalog, profile, ev));
 
             if (claimed) {
                 TextView done = makeSubtleText("✓ 特典已收入卡库");
                 done.setTextColor(Color.parseColor("#34D399"));
-                done.setPadding(0, dp(6), 0, 0);
-                card.addView(done);
-                card.addView(makeEqualWeightButtonRow(6, poolBtn));
-            } else if (!unlocked) {
-                TextView locked = makeSubtleText("未到活动日期（时间轴 ≥ " + ev.releaseDate + " 开启）");
-                locked.setTextColor(Color.parseColor("#F87171"));
-                locked.setPadding(0, dp(6), 0, 0);
-                card.addView(locked);
-                card.addView(makeEqualWeightButtonRow(6, poolBtn));
+                done.setPadding(0, 0, 0, 0);
+                done.setLayoutParams(new LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                bottomRow.addView(done);
+                bottomRow.addView(poolBtn);
             } else {
                 Button btn = makeActionButton("🎁 领取特典单卡", "#7C3AED");
+                btn.setTextSize(11.5f);
+                LinearLayout.LayoutParams claimLp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, dp(30));
+                btn.setLayoutParams(claimLp);
+                btn.setPadding(dp(12), 0, dp(12), 0);
                 btn.setOnClickListener(v -> {
                     EventClaimEngine.ClaimResult r = EventClaimEngine.claim(profile, ev, new Random());
                     if (!r.success) {
@@ -663,8 +700,13 @@ public class RpgHomeActivity extends AppCompatActivity {
                             .setPositiveButton("收下特典", null)
                             .show();
                 });
-                card.addView(makeEqualWeightButtonRow(8, btn, poolBtn));
+                bottomRow.addView(btn);
+                View spacer = new View(this);
+                spacer.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1f));
+                bottomRow.addView(spacer);
+                bottomRow.addView(poolBtn);
             }
+            card.addView(bottomRow);
             layoutContent.addView(card);
         }
     }
