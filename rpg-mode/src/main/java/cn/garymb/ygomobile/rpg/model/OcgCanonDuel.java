@@ -14,8 +14,12 @@ public class OcgCanonDuel {
     public String episodeLabel;
     /** Exact original Japanese publication/air/release date (YYYY-MM-DD). */
     public String originalDate;
-    /** Timeline unlock date clamped to OCG timeline start (YYYY-MM-DD, >= 1999-02-04). */
+    /** Timeline unlock date = latest Japan OCG first release date among coreCardIds (YYYY-MM-DD). */
     public String timelineDate;
+    /** Selected signature core cards from both sides whose first OCG release determines timelineDate. */
+    public List<Integer> coreCardIds = new ArrayList<>();
+    /** Human-readable Chinese note explaining which core card(s) determine timelineDate. */
+    public String coreUnlockNote;
     public String summary;
     public DuelSide sideA;
     public DuelSide sideB;

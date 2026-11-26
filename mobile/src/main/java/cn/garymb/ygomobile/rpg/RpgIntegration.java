@@ -668,9 +668,58 @@ public final class RpgIntegration {
                 });
             }
 
+            private final java.util.Set<Integer> failedRemotePics =
+                    java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+
             @Override
             public byte[] loadCardImageBytes(int cardId) {
-                return cn.garymb.ygomobile.loader.ImageLoader.findCardImageData(cardId);
+                byte[] local = cn.garymb.ygomobile.loader.ImageLoader.findCardImageData(cardId);
+                if (local != null && local.length > 0) {
+                    return local;
+                }
+                if (cardId <= 0 || failedRemotePics.contains(cardId)) {
+                    return null;
+                }
+                java.net.HttpURLConnection conn = null;
+                try {
+                    String urlStr = cn.garymb.ygomobile.utils.YGOUtil.getCardImageDetailUrl(cardId);
+                    conn = (java.net.HttpURLConnection) new java.net.URL(urlStr).openConnection();
+                    conn.setConnectTimeout(3000);
+                    conn.setReadTimeout(5000);
+                    conn.setInstanceFollowRedirects(true);
+                    if (conn.getResponseCode() == 200) {
+                        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                        try (java.io.InputStream in = conn.getInputStream()) {
+                            byte[] buf = new byte[8192];
+                            int n;
+                            while ((n = in.read(buf)) > 0) {
+                                baos.write(buf, 0, n);
+                            }
+                        }
+                        byte[] bytes = baos.toByteArray();
+                        if (bytes.length > 512) {
+                            try {
+                                File picDir = new File(AppsSettings.get().getCardImagePath());
+                                if (!picDir.exists()) {
+                                    //noinspection ResultOfMethodCallIgnored
+                                    picDir.mkdirs();
+                                }
+                                File outFile = new File(picDir, cardId + Constants.IMAGE_URL_EX);
+                                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outFile)) {
+                                    fos.write(bytes);
+                                }
+                            } catch (Throwable ignored) {
+                            }
+                            return bytes;
+                        }
+                    }
+                    failedRemotePics.add(cardId);
+                } catch (Throwable ignored) {
+                    failedRemotePics.add(cardId);
+                } finally {
+                    if (conn != null) conn.disconnect();
+                }
+                return null;
             }
 
             @Override

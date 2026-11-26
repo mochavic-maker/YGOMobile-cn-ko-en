@@ -1,1430 +1,7 @@
 {
-  "version": "1999-canon-v1",
+  "version": "1999-canon-core-gated-v2",
   "maxOriginalDate": "1999-12-31",
-  "canonCardCatalog": [
-    {
-      "id": 14181608,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "蘑菇人",
-      "nameJp": "きのこマン",
-      "nameEn": "Mushroom Man",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "EARTH",
-      "race": "Plant",
-      "level": 2,
-      "atk": 800,
-      "def": 600,
-      "descCn": "在潮湿的地方发挥力量！从蘑菇帽中吐丝攻击。"
-    },
-    {
-      "id": 66602787,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "暗道化师 扎奇",
-      "nameJp": "闇・道化師のサギー",
-      "nameEn": "Saggi the Dark Clown",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Spellcaster",
-      "level": 3,
-      "atk": 600,
-      "def": 1500,
-      "descCn": "不知从哪里出现的道化师。用不可思议的动作来躲开攻击。"
-    },
-    {
-      "id": 2906250,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "捕猎蛇",
-      "nameJp": "グラップラー",
-      "nameEn": "Grappler",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "WATER",
-      "race": "Reptile",
-      "level": 4,
-      "atk": 1300,
-      "def": 1200,
-      "descCn": "狡猾的蛇。用又粗又长的身体勒紧对手的攻击必须注意！"
-    },
-    {
-      "id": 28546905,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "无脸幻想师",
-      "nameJp": "幻想師・ノー・フェイス",
-      "nameEn": "Illusionist Faceless Mage",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Spellcaster",
-      "level": 5,
-      "atk": 1200,
-      "def": 2200,
-      "descCn": "施展幻影，轻快地躲开攻击。"
-    },
-    {
-      "id": 90020065,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "定时炸弹",
-      "nameJp": "タイム・ボマー",
-      "nameEn": "Jigen Bakudan",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|反转|效果]",
-      "attribute": "FIRE",
-      "race": "Pyro",
-      "level": 2,
-      "atk": 200,
-      "def": 1000,
-      "descCn": "反转：自己的准备阶段把这张卡作为祭品。全部自己的怪兽破坏，给与对方那个总攻击力一半数值的伤害。"
-    },
-    {
-      "id": 52648457,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "戈耳工之眼",
-      "nameJp": "ゴーゴンの眼",
-      "nameEn": "Gorgon's Eye",
-      "frameType": "trap",
-      "cardType": "Normal Trap Card",
-      "typesCn": "[陷阱]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "结束阶段结束前，场上存在的守备表示的怪兽的效果无效化。"
-    },
-    {
-      "id": 27827272,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "魔雾雨",
-      "nameJp": "魔霧雨",
-      "nameEn": "Makiu, the Magical Mist",
-      "frameType": "spell",
-      "cardType": "Normal Spell Card",
-      "typesCn": "[魔法]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "这张卡发动的回合，自己不能进行战斗阶段。\r\n①：以自己的怪兽区域1只「恶魔召唤」或者雷族怪兽为对象才能发动。持有那只怪兽的攻击力以下的守备力的对方场上的怪兽全部破坏。"
-    },
-    {
-      "id": 24294108,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "燃烧的大地",
-      "nameJp": "燃えさかる大地",
-      "nameEn": "Burning Land",
-      "frameType": "spell",
-      "cardType": "Continuous Spell Card",
-      "typesCn": "[魔法|永续]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "这张卡的发动时，场上的场地魔法卡全部破坏。此外，双方的准备阶段时，回合玩家受到500分伤害。"
-    },
-    {
-      "id": 64047146,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "独角兽之角",
-      "nameJp": "一角獣のホーン",
-      "nameEn": "Horn of the Unicorn",
-      "frameType": "spell",
-      "cardType": "Equip Spell Card",
-      "typesCn": "[魔法|装备]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：装备怪兽的攻击力·守备力上升700。\r\n②：这张卡从场上送去墓地的场合发动。这张卡回到卡组最上面。"
-    },
-    {
-      "id": 22359980,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "银幕之镜壁",
-      "nameJp": "銀幕の鏡壁",
-      "nameEn": "Mirror Wall",
-      "frameType": "trap",
-      "cardType": "Continuous Trap Card",
-      "typesCn": "[陷阱|永续]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "这张卡的控制者在每次自己准备阶段支付2000基本分。或者不支付基本分让这张卡破坏。\r\n①：只要这张卡在魔法与陷阱区域存在，对方的攻击怪兽的攻击力变成一半。"
-    },
-    {
-      "id": 14851496,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "水母",
-      "nameJp": "海月－ジェリーフィッシュ－",
-      "nameEn": "Jellyfish",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "WATER",
-      "race": "Aqua",
-      "level": 4,
-      "atk": 1200,
-      "def": 1500,
-      "descCn": "漂浮在海面上的海蜇，半透明的身体使人难以察觉。"
-    },
-    {
-      "id": 62337487,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "要塞鲸",
-      "nameJp": "要塞クジラ",
-      "nameEn": "Fortress Whale",
-      "frameType": "ritual",
-      "cardType": "Ritual Monster",
-      "typesCn": "[怪兽|仪式]",
-      "attribute": "WATER",
-      "race": "Fish",
-      "level": 7,
-      "atk": 2350,
-      "def": 2150,
-      "descCn": "借由「要塞鲸的誓言」降临。必须从场上或者手札，牺牲奉献等级合计为7个以上的卡。"
-    },
-    {
-      "id": 77454922,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "要塞鲸的誓言",
-      "nameJp": "要塞クジラの誓い",
-      "nameEn": "Fortress Whale's Oath",
-      "frameType": "spell",
-      "cardType": "Ritual Spell Card",
-      "typesCn": "[魔法|仪式]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "「要塞鲸」的降临必要。必须从场上或者手札，牺牲奉献等级合计为7个以上的卡。"
-    },
-    {
-      "id": 18605135,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "龙卷海流壁",
-      "nameJp": "竜巻海流壁",
-      "nameEn": "Tornado Wall",
-      "frameType": "trap",
-      "cardType": "Continuous Trap Card",
-      "typesCn": "[陷阱|永续]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "场上有「海」存在的场合才能把这张卡发动。\r\n①：只要场上有「海」存在，自己受到的战斗伤害变成0。\r\n②：场上没有「海」存在的场合这张卡破坏。"
-    },
-    {
-      "id": 81210420,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "魔术礼帽",
-      "nameJp": "マジカルシルクハット",
-      "nameEn": "Magical Hats",
-      "frameType": "trap",
-      "cardType": "Normal Trap Card",
-      "typesCn": "[陷阱]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：对方战斗阶段才能发动。从卡组选2张魔法·陷阱卡，那2张卡当作通常怪兽卡（攻/守0）使用，和自己的主要怪兽区域1只怪兽混合洗切并里侧守备表示盖放。这个效果从卡组特殊召唤的卡不在战斗阶段内不能存在，战斗阶段结束时破坏。"
-    },
-    {
-      "id": 44095762,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "神圣防护罩 -反射镜力-",
-      "nameJp": "聖なるバリア －ミラーフォース－",
-      "nameEn": "Mirror Force",
-      "frameType": "trap",
-      "cardType": "Normal Trap Card",
-      "typesCn": "[陷阱]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：对方怪兽的攻击宣言时才能发动。对方场上的攻击表示怪兽全部破坏。"
-    },
-    {
-      "id": 18807108,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "六芒星之咒缚",
-      "nameJp": "六芒星の呪縛",
-      "nameEn": "Spellbinding Circle",
-      "frameType": "trap",
-      "cardType": "Continuous Trap Card",
-      "typesCn": "[陷阱|永续]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "选择对方场上存在的1只怪兽发动。选择的怪兽不能攻击，也不能把表示形式变更。选择的怪兽破坏时，这张卡破坏。"
-    },
-    {
-      "id": 14315573,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "攻击无力化",
-      "nameJp": "攻撃の無力化",
-      "nameEn": "Negate Attack",
-      "frameType": "trap",
-      "cardType": "Counter Trap Card",
-      "typesCn": "[陷阱|反击]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：对方怪兽的攻击宣言时，以那1只攻击怪兽为对象才能发动。那次攻击无效。那之后，战斗阶段结束。"
-    },
-    {
-      "id": 40453765,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "野蛮人2号",
-      "nameJp": "バーバリアン２号",
-      "nameEn": "Swamp Battleguard",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "EARTH",
-      "race": "Warrior",
-      "level": 5,
-      "atk": 1800,
-      "def": 1500,
-      "descCn": "①：自己场上的「野蛮人1号」每有1只，这张卡的攻击力上升500。"
-    },
-    {
-      "id": 20394040,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "野蛮人1号",
-      "nameJp": "バーバリアン１号",
-      "nameEn": "Lava Battleguard",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "EARTH",
-      "race": "Warrior",
-      "level": 5,
-      "atk": 1550,
-      "def": 1800,
-      "descCn": "①：自己场上的「野蛮人2号」每有1只，这张卡的攻击力上升500。"
-    },
-    {
-      "id": 75390004,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "巨身多角龙",
-      "nameJp": "メガザウラー",
-      "nameEn": "Megazowler",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "EARTH",
-      "race": "Dinosaur",
-      "level": 6,
-      "atk": 1800,
-      "def": 2000,
-      "descCn": "全身长满角的恐龙。突击攻击很强烈！"
-    },
-    {
-      "id": 95727991,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "弹射龟",
-      "nameJp": "カタパルト・タートル",
-      "nameEn": "Catapult Turtle",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "WATER",
-      "race": "Aqua",
-      "level": 5,
-      "atk": 1000,
-      "def": 2000,
-      "descCn": "1回合1次，把自己场上1只怪兽解放才能发动。给与对方基本分解放的怪兽的攻击力一半数值的伤害。"
-    },
-    {
-      "id": 62121,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "暗晦之城",
-      "nameJp": "闇晦ましの城",
-      "nameEn": "Castle of Dark Illusions",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|反转|效果]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 4,
-      "atk": 920,
-      "def": 1930,
-      "descCn": "反转：场上表侧表示的全部不死族的怪兽攻击力·守备力加200。只要这张卡在场上表侧表示存在，自己的每个准备阶段不死族的攻守力都会加200。这个效果持续到自己的第4个准备阶段。"
-    },
-    {
-      "id": 69455834,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "暗魔界的霸王",
-      "nameJp": "闇魔界の覇王",
-      "nameEn": "King of Yamimakai",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 5,
-      "atk": 2000,
-      "def": 1530,
-      "descCn": "使用强大的暗之力量，破坏周围的一切。"
-    },
-    {
-      "id": 32344688,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "暗黑奇美拉",
-      "nameJp": "ダーク・キメラ",
-      "nameEn": "Dark Chimera",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 5,
-      "atk": 1610,
-      "def": 1460,
-      "descCn": "生息在魔界的怪兽。吐出暗炎攻击。"
-    },
-    {
-      "id": 68339286,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "金属守护者",
-      "nameJp": "メタル・ガーディアン",
-      "nameEn": "Metal Guardian",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 5,
-      "atk": 1150,
-      "def": 2150,
-      "descCn": "守护魔界宝物的恶魔。在黑暗中守备相当强。"
-    },
-    {
-      "id": 94905343,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "牛头人马兽",
-      "nameJp": "ミノケンタウロス",
-      "nameEn": "Rabid Horseman",
-      "frameType": "fusion",
-      "cardType": "Fusion Monster",
-      "typesCn": "[怪兽|融合]",
-      "attribute": "EARTH",
-      "race": "Beast-Warrior",
-      "level": 6,
-      "atk": 2000,
-      "def": 1700,
-      "descCn": "「牛头人」＋「人马兽」"
-    },
-    {
-      "id": 3573512,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "地星剑士",
-      "nameJp": "ランドスターの剣士",
-      "nameEn": "Swordsman of Landstar",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "EARTH",
-      "race": "Warrior",
-      "level": 3,
-      "atk": 500,
-      "def": 1200,
-      "descCn": "虽然剑术不太成熟，但却有不可思议力量的妖精剑士。"
-    },
-    {
-      "id": 52097679,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "右手持盾左手持剑",
-      "nameJp": "右手に盾を左手に剣を",
-      "nameEn": "Shield & Sword",
-      "frameType": "spell",
-      "cardType": "Normal Spell Card",
-      "typesCn": "[魔法]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "这张卡的发动时场上表侧表示存在的全部怪兽的原本攻击力与原本守备力直到结束阶段时交换。"
-    },
-    {
-      "id": 30090452,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "铠武者 斩鬼",
-      "nameJp": "鎧武者斬鬼",
-      "nameEn": "Zanki",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "EARTH",
-      "race": "Warrior",
-      "level": 5,
-      "atk": 1500,
-      "def": 1700,
-      "descCn": "喜好单挑，能抓住一瞬间的机会发动反击。"
-    },
-    {
-      "id": 93889755,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "杀人小丑",
-      "nameJp": "マーダーサーカス",
-      "nameEn": "Crass Clown",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 4,
-      "atk": 1350,
-      "def": 1400,
-      "descCn": "这张卡的表示形式从守备表示变成攻击表示时，对方场上的1只怪兽回到持有者手卡。"
-    },
-    {
-      "id": 92667214,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "杀人小丑僵尸",
-      "nameJp": "マーダーサーカス・ゾンビ",
-      "nameEn": "Clown Zombie",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Zombie",
-      "level": 2,
-      "atk": 1350,
-      "def": 0,
-      "descCn": "使用黑暗力量重生的小丑，利用摇晃的舞蹈将对方引向死亡。"
-    },
-    {
-      "id": 29155212,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "幽灵王-南瓜王-",
-      "nameJp": "ゴースト王－パンプキング－",
-      "nameEn": "Pumpking the King of Ghosts",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "DARK",
-      "race": "Zombie",
-      "level": 6,
-      "atk": 1800,
-      "def": 2000,
-      "descCn": "只要「暗晦之城」在场上表侧表示存在，这张卡的攻击力·守备力上升100。此外，每次自己的准备阶段再上升100。这个效果持续到自己的第4个准备阶段。"
-    },
-    {
-      "id": 97077563,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "活死人的呼声",
-      "nameJp": "リビングデッドの呼び声",
-      "nameEn": "Call of the Haunted",
-      "frameType": "trap",
-      "cardType": "Continuous Trap Card",
-      "typesCn": "[陷阱|永续]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：以自己墓地1只怪兽为对象才能把这张卡发动。那只怪兽攻击表示特殊召唤。这张卡从场上离开时那只怪兽破坏。那只怪兽破坏时这张卡破坏。"
-    },
-    {
-      "id": 67284908,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "迷宫壁",
-      "nameJp": "迷宮壁－ラビリンス・ウォール－",
-      "nameEn": "Labyrinth Wall",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "EARTH",
-      "race": "Rock",
-      "level": 5,
-      "atk": 0,
-      "def": 3000,
-      "descCn": "出现结界般的厚壁，制造出没有出口的迷宫。"
-    },
-    {
-      "id": 63162310,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "墙壁之影",
-      "nameJp": "ウォール・シャドウ",
-      "nameEn": "Wall Shadow",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "DARK",
-      "race": "Warrior",
-      "level": 7,
-      "atk": 1600,
-      "def": 3000,
-      "descCn": "不用「迷宫变化」的效果不能特殊召唤。"
-    },
-    {
-      "id": 97612389,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "地狱的魔物使",
-      "nameJp": "地獄の魔物使い",
-      "nameEn": "Monster Tamer",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "EARTH",
-      "race": "Warrior",
-      "level": 5,
-      "atk": 1800,
-      "def": 1600,
-      "descCn": "能自由自在地操纵怪兽攻击的怪兽使。"
-    },
-    {
-      "id": 94773007,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "地雷蜘蛛",
-      "nameJp": "地雷蜘蛛",
-      "nameEn": "Jirai Gumo",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "EARTH",
-      "race": "Insect",
-      "level": 4,
-      "atk": 2200,
-      "def": 100,
-      "descCn": "这张卡攻击宣言时，猜硬币的正反。猜中的话就继续攻击。猜不中的话自己的基本分减半再攻击。"
-    },
-    {
-      "id": 99551425,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "迷宫的魔战车",
-      "nameJp": "迷宮の魔戦車",
-      "nameEn": "Labyrinth Tank",
-      "frameType": "fusion",
-      "cardType": "Fusion Monster",
-      "typesCn": "[怪兽|融合]",
-      "attribute": "DARK",
-      "race": "Machine",
-      "level": 7,
-      "atk": 2400,
-      "def": 2400,
-      "descCn": "「高科技狼」＋「加农炮兵」"
-    },
-    {
-      "id": 64389297,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "迷宫变化",
-      "nameJp": "迷宮変化",
-      "nameEn": "Magical Labyrinth",
-      "frameType": "spell",
-      "cardType": "Equip Spell Card",
-      "typesCn": "[魔法|装备]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "给「迷宫壁」装备。把「迷宫壁」和装备的这张卡作为祭品，从卡组把「墙壁之影」特殊召唤。"
-    },
-    {
-      "id": 40640057,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "栗子球",
-      "nameJp": "クリボー",
-      "nameEn": "Kuriboh",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 1,
-      "atk": 300,
-      "def": 200,
-      "descCn": "①：对方怪兽的攻击要让自己受到战斗伤害的伤害计算时，把这张卡从手卡丢弃才能发动。那次战斗发生的对自己的战斗伤害变成0。"
-    },
-    {
-      "id": 40703222,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "增殖",
-      "nameJp": "増殖",
-      "nameEn": "Multiply",
-      "frameType": "spell",
-      "cardType": "Quick-Play Spell Card",
-      "typesCn": "[魔法|速攻]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "把自己场上表侧表示存在的1只「栗子球」解放才能发动。在自己场上把「栗子球衍生物」（恶魔族·暗·1星·攻300/守200）尽可能守备表示特殊召唤。这衍生物不能为上级召唤而解放。"
-    },
-    {
-      "id": 93260132,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "魔法效果之矢",
-      "nameJp": "魔法効果の矢",
-      "nameEn": "Spell Shattering Arrow",
-      "frameType": "spell",
-      "cardType": "Quick-Play Spell Card",
-      "typesCn": "[魔法|速攻]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：对方场上的表侧表示的魔法卡全部破坏，给与对方破坏数量×500伤害。"
-    },
-    {
-      "id": 95286165,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "融合解除",
-      "nameJp": "融合解除",
-      "nameEn": "De-Fusion",
-      "frameType": "spell",
-      "cardType": "Quick-Play Spell Card",
-      "typesCn": "[魔法|速攻]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：以场上1只融合怪兽为对象才能发动。那只融合怪兽回到持有者的额外卡组。那之后，若回到额外卡组的那只怪兽的融合召唤使用过的一组融合素材怪兽在自己墓地齐集，可以把那一组在自己场上特殊召唤。"
-    },
-    {
-      "id": 29267084,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "暗之咒缚",
-      "nameJp": "闇の呪縛",
-      "nameEn": "Shadow Spell",
-      "frameType": "trap",
-      "cardType": "Continuous Trap Card",
-      "typesCn": "[陷阱|永续]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "以对方场上1只表侧表示怪兽为对象才能把这张卡发动。\r\n①：作为对象的怪兽的攻击力下降700，不能攻击，也不能作表示形式的变更。那只怪兽从场上离开时这张卡破坏。"
-    },
-    {
-      "id": 48642904,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "催眠术",
-      "nameJp": "催眠術",
-      "nameEn": "Mesmeric Control",
-      "frameType": "spell",
-      "cardType": "Normal Spell Card",
-      "typesCn": "[魔法]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：下次的对方回合，对方不能把怪兽的表示形式变更。"
-    },
-    {
-      "id": 98299011,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "圣精灵的祝福",
-      "nameJp": "ホーリー・エルフの祝福",
-      "nameEn": "Gift of The Mystical Elf",
-      "frameType": "trap",
-      "cardType": "Normal Trap Card",
-      "typesCn": "[陷阱]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：自己回复场上的怪兽数量×300基本分。"
-    },
-    {
-      "id": 15259703,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "卡通世界",
-      "nameJp": "トゥーン・ワールド",
-      "nameEn": "Toon World",
-      "frameType": "spell",
-      "cardType": "Continuous Spell Card",
-      "typesCn": "[魔法|永续]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "支付1000基本分才能把这张卡发动。"
-    },
-    {
-      "id": 53183600,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "青眼卡通龙",
-      "nameJp": "ブルーアイズ・トゥーン・ドラゴン",
-      "nameEn": "Blue-Eyes Toon Dragon",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|卡通|效果]",
-      "attribute": "LIGHT",
-      "race": "Dragon",
-      "level": 8,
-      "atk": 3000,
-      "def": 2500,
-      "descCn": "这张卡不能通常召唤。自己场上有「卡通世界」存在的状态，把自己场上2只怪兽解放的场合可以特殊召唤。\r\n①：这张卡在特殊召唤的回合不能攻击。\r\n②：这张卡的攻击宣言之际，自己必须支付500基本分。\r\n③：这张卡在对方场上没有卡通怪兽存在的场合，可以直接攻击。存在的场合，只能选择卡通怪兽作为攻击对象。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。"
-    },
-    {
-      "id": 65458948,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "卡通人鱼",
-      "nameJp": "トゥーン・マーメイド",
-      "nameEn": "Toon Mermaid",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|卡通|效果]",
-      "attribute": "WATER",
-      "race": "Aqua",
-      "level": 4,
-      "atk": 1400,
-      "def": 1500,
-      "descCn": "这张卡不能通常召唤。自己场上有「卡通世界」存在的场合可以特殊召唤。\r\n①：这张卡在特殊召唤的回合不能攻击。\r\n②：这张卡的攻击宣言之际，自己必须支付500基本分。\r\n③：这张卡在对方场上没有卡通怪兽存在的场合，可以直接攻击。存在的场合，只能选择卡通怪兽作为攻击对象。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。"
-    },
-    {
-      "id": 38369349,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "卡通蛋龙",
-      "nameJp": "トゥーン・ドラゴン・エッガー",
-      "nameEn": "Manga Ryu-Ran",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|卡通|效果]",
-      "attribute": "FIRE",
-      "race": "Dragon",
-      "level": 7,
-      "atk": 2200,
-      "def": 2600,
-      "descCn": "这张卡不能通常召唤。自己场上有「卡通世界」存在，把自己场上2只怪兽解放的场合可以特殊召唤。\r\n①：这张卡在特殊召唤的回合不能攻击。\r\n②：这张卡的攻击宣言之际，自己必须支付500基本分。\r\n③：对方场上没有卡通怪兽存在的场合，这张卡可以直接攻击。存在的场合，必须把卡通怪兽作为攻击对象。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。"
-    },
-    {
-      "id": 2964201,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "蛋龙",
-      "nameJp": "ドラゴン・エッガー",
-      "nameEn": "Ryu-Ran",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "FIRE",
-      "race": "Dragon",
-      "level": 7,
-      "atk": 2200,
-      "def": 2600,
-      "descCn": "被蛋壳包围的龙。如果认为只是个小鬼的话会吃苦头的哦。"
-    },
-    {
-      "id": 59383041,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "卡通鳄鱼",
-      "nameJp": "トゥーン・アリゲーター",
-      "nameEn": "Toon Alligator",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "WATER",
-      "race": "Reptile",
-      "level": 4,
-      "atk": 800,
-      "def": 1600,
-      "descCn": "从美国卡通世界中出现的鳄鱼型怪兽。"
-    },
-    {
-      "id": 88032456,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "复制猫",
-      "nameJp": "コピーキャット",
-      "nameEn": "Mimicat",
-      "frameType": "spell",
-      "cardType": "Normal Spell Card",
-      "typesCn": "[魔法]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "「复制猫」在1回合只能发动1张。\r\n①：自己场上有「卡通世界」以及卡通怪兽存在的场合，以对方墓地1张卡为对象才能发动。那张卡是怪兽的场合，那只怪兽在自己场上特殊召唤。那张卡是魔法·陷阱卡的场合，那张卡在自己场上盖放。"
-    },
-    {
-      "id": 25655502,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "恶魔箱",
-      "nameJp": "デビル・ボックス",
-      "nameEn": "Bickuribox",
-      "frameType": "fusion",
-      "cardType": "Fusion Monster",
-      "typesCn": "[怪兽|融合]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 7,
-      "atk": 2300,
-      "def": 2000,
-      "descCn": "「杀人小丑」＋「梦幻小丑」"
-    },
-    {
-      "id": 87910978,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "洗脑",
-      "nameJp": "洗脳－ブレインコントロール",
-      "nameEn": "Brain Control",
-      "frameType": "spell",
-      "cardType": "Normal Spell Card",
-      "typesCn": "[魔法]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：支付800基本分，以对方场上1只可以通常召唤的表侧表示怪兽为对象才能发动。那只表侧表示怪兽的控制权直到结束阶段得到。"
-    },
-    {
-      "id": 93108433,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "怪兽回收",
-      "nameJp": "モンスター回収",
-      "nameEn": "Monster Recovery",
-      "frameType": "spell",
-      "cardType": "Quick-Play Spell Card",
-      "typesCn": "[魔法|速攻]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "选择原本持有者是自己的自己场上1只怪兽才能发动。选择的怪兽和自己手卡全部加入卡组洗切。那之后，从卡组抽出原本的手卡数量的卡。原本持有者是对方的卡在自己手卡的场合，这张卡不能发动。"
-    },
-    {
-      "id": 58621589,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "诱惑之影",
-      "nameJp": "誘惑のシャドウ",
-      "nameEn": "Shadow of Eyes",
-      "frameType": "trap",
-      "cardType": "Normal Trap Card",
-      "typesCn": "[陷阱]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "对方场上有怪兽被盖放时才能发动。那1只盖放的怪兽变成表侧攻击表示。（这个时候，反转效果怪兽的效果不发动。）"
-    },
-    {
-      "id": 61705417,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "盗墓者",
-      "nameJp": "墓荒らし",
-      "nameEn": "Graverobber",
-      "frameType": "trap",
-      "cardType": "Normal Trap Card",
-      "typesCn": "[陷阱]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "选择对方墓地的1张魔法卡，直到回合结束时可以作为自己的手卡使用。使用那张魔法卡的场合，受到2000分伤害。"
-    },
-    {
-      "id": 26376390,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "模仿的幻想师",
-      "nameJp": "ものマネ幻想師",
-      "nameEn": "Copycat",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "LIGHT",
-      "race": "Spellcaster",
-      "level": 1,
-      "atk": 0,
-      "def": 0,
-      "descCn": "这张卡召唤·反转召唤·特殊召唤成功时，选择对方场上表侧表示存在的1只怪兽发动。这张卡的攻击力·守备力变成和选择的怪兽的原本的攻击力·守备力相同数值。"
-    },
-    {
-      "id": 81480460,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "左轮手枪龙",
-      "nameJp": "リボルバー・ドラゴン",
-      "nameEn": "Barrel Dragon",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "DARK",
-      "race": "Machine",
-      "level": 7,
-      "atk": 2600,
-      "def": 2200,
-      "descCn": "①：1回合1次，以对方场上1只怪兽为对象才能发动。进行3次投掷硬币，那之内2次以上是表的场合，那只怪兽破坏。"
-    },
-    {
-      "id": 3797883,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "角子老虎机AM-7",
-      "nameJp": "スロットマシーンＡＭ－７",
-      "nameEn": "Slot Machine",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Machine",
-      "level": 7,
-      "atk": 2000,
-      "def": 2300,
-      "descCn": "据说根据插件集齐的数量能力会发生变化的机器。"
-    },
-    {
-      "id": 24433920,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "单摆刃拷问机械",
-      "nameJp": "振り子刃の拷問機械",
-      "nameEn": "Pendulum Machine",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Machine",
-      "level": 6,
-      "atk": 1750,
-      "def": 2000,
-      "descCn": "大型单摆刀刃把对方劈成两半！很恐怖的拷问机械。"
-    },
-    {
-      "id": 87322377,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "TM-1火箭炮蜘蛛",
-      "nameJp": "ＴＭ－１ランチャースパイダー",
-      "nameEn": "Launcher Spider",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "FIRE",
-      "race": "Machine",
-      "level": 7,
-      "atk": 2200,
-      "def": 2500,
-      "descCn": "开着火箭炮乱放一通，爆杀对手的机械蜘蛛。"
-    },
-    {
-      "id": 26302522,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "球体时限炸弹",
-      "nameJp": "スフィア・ボム 球体時限爆弾",
-      "nameEn": "Blast Sphere",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "DARK",
-      "race": "Machine",
-      "level": 4,
-      "atk": 1400,
-      "def": 1400,
-      "descCn": "①：里侧守备表示的这张卡被对方怪兽攻击的伤害计算前发动。这张卡当作装备卡使用给那只攻击怪兽装备。\r\n②：用这张卡的效果把这张卡装备的下次的对方准备阶段发动。装备怪兽破坏，给与对方那个攻击力数值的伤害。"
-    },
-    {
-      "id": 86198326,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "7卡",
-      "nameJp": "７カード",
-      "nameEn": "7 Completed",
-      "frameType": "spell",
-      "cardType": "Equip Spell Card",
-      "typesCn": "[魔法|装备]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "机械族怪兽才能装备。装备怪兽的攻击力或者守备力上升700。"
-    },
-    {
-      "id": 80987696,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "时间机械",
-      "nameJp": "時の機械－タイム・マシーン",
-      "nameEn": "Time Machine",
-      "frameType": "trap",
-      "cardType": "Normal Trap Card",
-      "typesCn": "[陷阱]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：自己或者对方的怪兽1只被战斗破坏送去墓地时才能发动。在那只怪兽被破坏时的控制者场上以相同表示形式把那只怪兽特殊召唤。"
-    },
-    {
-      "id": 76792184,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "混沌-黑魔术的仪式",
-      "nameJp": "カオス－黒魔術の儀式",
-      "nameEn": "Black Magic Ritual",
-      "frameType": "spell",
-      "cardType": "Ritual Spell Card",
-      "typesCn": "[魔法|仪式]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "「黑混沌之魔术师」的降临必需。必须从自己的手卡·场上把等级合计直到8以上的怪兽解放。"
-    },
-    {
-      "id": 25774450,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "死之魔术箱",
-      "nameJp": "死のマジック・ボックス",
-      "nameEn": "Mystic Box",
-      "frameType": "spell",
-      "cardType": "Normal Spell Card",
-      "typesCn": "[魔法]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "①：以自己以及对方场上的怪兽各1只为对象才能发动。那只对方怪兽破坏。那之后，那只自己怪兽的控制权移给对方。"
-    },
-    {
-      "id": 91842653,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "卡通恶魔",
-      "nameJp": "トゥーン・デーモン",
-      "nameEn": "Toon Summoned Skull",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|卡通|效果]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 6,
-      "atk": 2500,
-      "def": 1200,
-      "descCn": "这张卡不能通常召唤。自己场上有「卡通世界」存在的状态，把自己场上1只怪兽解放的场合可以特殊召唤。\r\n①：这张卡在特殊召唤的回合不能攻击。\r\n②：这张卡的攻击宣言之际，自己必须支付500基本分。\r\n③：这张卡在对方场上没有卡通怪兽存在的场合，可以直接攻击。存在的场合，只能选择卡通怪兽作为攻击对象。\r\n④：场上的「卡通世界」被破坏时这张卡破坏。"
-    },
-    {
-      "id": 64631466,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "纳祭之魔",
-      "nameJp": "サクリファイス",
-      "nameEn": "Relinquished",
-      "frameType": "ritual",
-      "cardType": "Ritual Monster",
-      "typesCn": "[怪兽|仪式|效果]",
-      "attribute": "DARK",
-      "race": "Spellcaster",
-      "level": 1,
-      "atk": 0,
-      "def": 0,
-      "descCn": "「幻想的仪式」降临。\r\n①：1回合1次，以对方场上1只怪兽为对象才能发动。那只对方怪兽当作装备卡使用给这张卡装备（只有1只可以装备）。\r\n②：这张卡的攻击力·守备力变成这张卡的效果装备的怪兽的各自数值，这张卡被战斗破坏的场合，作为代替把装备的那只怪兽破坏。\r\n③：用这张卡的效果把怪兽装备的这张卡的战斗让自己受到战斗伤害时，对方也受到相同数值的效果伤害。"
-    },
-    {
-      "id": 41426869,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "幻想的仪式",
-      "nameJp": "イリュージョンの儀式",
-      "nameEn": "Black Illusion Ritual",
-      "frameType": "spell",
-      "cardType": "Ritual Spell Card",
-      "typesCn": "[魔法|仪式]",
-      "attribute": "",
-      "race": "",
-      "level": 0,
-      "atk": 0,
-      "def": 0,
-      "descCn": "「纳祭之魔」的降临必需。\r\n①：等级合计直到1以上的自己的手卡·场上的怪兽解放，从手卡把「纳祭之魔」仪式召唤。"
-    },
-    {
-      "id": 27125110,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "千眼邪教神",
-      "nameJp": "千眼の邪教神",
-      "nameEn": "Thousand-Eyes Idol",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Spellcaster",
-      "level": 1,
-      "atk": 0,
-      "def": 0,
-      "descCn": "操纵人心的邪神。千只邪眼会看透人的负面之心并使其增大。"
-    },
-    {
-      "id": 38247752,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "暗眼幻想师",
-      "nameJp": "ダーク・アイズ・イリュージョニスト",
-      "nameEn": "Dark-Eyes Illusionist",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|反转|效果]",
-      "attribute": "DARK",
-      "race": "Spellcaster",
-      "level": 2,
-      "atk": 0,
-      "def": 1400,
-      "descCn": "反转：这张卡场上存在的时候，指定的1只怪兽永续不能攻击。"
-    },
-    {
-      "id": 63519819,
-      "setCode": "CANON",
-      "rarity": "UR",
-      "quantity": 1,
-      "nameCn": "千眼纳祭神",
-      "nameJp": "サウザンド・アイズ・サクリファイス",
-      "nameEn": "Thousand-Eyes Restrict",
-      "frameType": "fusion",
-      "cardType": "Fusion Monster",
-      "typesCn": "[怪兽|融合|效果]",
-      "attribute": "DARK",
-      "race": "Spellcaster",
-      "level": 1,
-      "atk": 0,
-      "def": 0,
-      "descCn": "「纳祭之魔」＋「千眼邪教神」\r\n①：只要这张卡在怪兽区域存在，这张卡以外的场上的怪兽不能攻击，也不能作表示形式的变更。\r\n②：1回合1次，以对方场上1只怪兽为对象才能发动。那只对方怪兽当作装备卡使用给这张卡装备（只有1只可以装备）。\r\n③：这张卡的攻击力·守备力变成这张卡的效果装备的怪兽的各自数值，这张卡被战斗破坏的场合，作为代替把装备的那只怪兽破坏。"
-    },
-    {
-      "id": 42035044,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "漆黑之豹战士",
-      "nameJp": "漆黒の豹戦士パンサーウォリアー",
-      "nameEn": "Panther Warrior",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "EARTH",
-      "race": "Beast-Warrior",
-      "level": 4,
-      "atk": 2000,
-      "def": 1600,
-      "descCn": "①：只要这张卡在怪兽区域存在，这张卡的攻击宣言之际，自己必须把这张卡以外的自己场上1只怪兽解放。"
-    },
-    {
-      "id": 64428736,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "翼龙战士",
-      "nameJp": "ワイバーンの戦士",
-      "nameEn": "Alligator's Sword",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "EARTH",
-      "race": "Beast",
-      "level": 4,
-      "atk": 1500,
-      "def": 1200,
-      "descCn": "剑技出色的蜥蜴人，音速般地挥舞着剑。"
-    },
-    {
-      "id": 5640330,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "汉尼拔死灵师",
-      "nameJp": "ハンニバル・ネクロマンサー",
-      "nameEn": "Hannibal Necromancer",
-      "frameType": "effect",
-      "cardType": "Effect Monster",
-      "typesCn": "[怪兽|效果]",
-      "attribute": "DARK",
-      "race": "Spellcaster",
-      "level": 4,
-      "atk": 1400,
-      "def": 1800,
-      "descCn": "①：这张卡召唤成功的场合发动。给这张卡放置1个魔力指示物（最多1个）。\r\n②：把这张卡1个魔力指示物取除，以场上1张表侧表示的陷阱卡为对象才能发动。那张表侧表示的陷阱卡破坏。"
-    },
-    {
-      "id": 78423643,
-      "setCode": "CANON",
-      "rarity": "SR",
-      "quantity": 1,
-      "nameCn": "三头基多",
-      "nameJp": "三ツ首のギドー",
-      "nameEn": "Three-Headed Geedo",
-      "frameType": "normal",
-      "cardType": "Normal Monster",
-      "typesCn": "[怪兽|通常]",
-      "attribute": "DARK",
-      "race": "Fiend",
-      "level": 4,
-      "atk": 1200,
-      "def": 1400,
-      "descCn": "有三个头的怪兽，性格非常凶暴。"
-    }
-  ],
+  "canonCardCatalog": [],
   "canonDuels": [
     {
       "id": "canon_1996_11_19_manga_yugi_kaiba_school",
@@ -1432,7 +9,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘9~10（1996年51号）",
       "originalDate": "1996-11-19",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-07-22",
       "summary": "海马调包武藤双六的青眼白龙后，暗游戏在教室开启暗黑决斗。青眼拒绝攻击旧主自毁，暗游戏以「死者苏生」反杀海马。",
       "sideA": {
         "characterId": "yami_yugi",
@@ -1449,8 +26,6 @@
           "DARK"
         ],
         "canonCardIds": [
-          87564352,
-          14181608,
           15025844,
           32274490,
           70781052,
@@ -1474,13 +49,18 @@
           "DARK"
         ],
         "canonCardIds": [
-          5053103,
           89631139,
           15303296,
           4614116
         ],
         "canonExtraIds": []
-      }
+      },
+      "coreCardIds": [
+        89631139,
+        83764718,
+        70781052
+      ],
+      "coreUnlockNote": "核心卡：青眼白龙、死者苏生、恶魔召唤（Vol.4 首发）"
     },
     {
       "id": "canon_1997_07_01_manga_yugi_kaiba_deatht",
@@ -1488,7 +68,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘36~39（1997年31号）",
       "originalDate": "1997-07-01",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-08-26",
       "summary": "海马连招三只「青眼白龙」压境，暗游戏以「光之护封剑」拖延回合，最终凑齐五张「被封印的艾克佐迪亚」逆转取胜！",
       "sideA": {
         "characterId": "yami_yugi",
@@ -1515,9 +95,6 @@
           6368038,
           46986414,
           40374923,
-          67724379,
-          41392891,
-          69669405,
           91152256,
           72302403,
           83764718
@@ -1544,78 +121,17 @@
           89631139,
           89631139,
           76184692,
-          66602787,
-          30113682,
-          26378150,
-          5053103,
           6285791,
-          2906250,
           4614116
         ],
         "canonExtraIds": []
-      }
-    },
-    {
-      "id": "canon_1997_12_22_manga_yugi_pegasus_tv",
-      "title": "录像带暗黑决斗：千年眼初现",
-      "mediaType": "MANGA",
-      "episodeLabel": "原作漫画 遊闘60~62（1998年4・5号）",
-      "originalDate": "1997-12-22",
-      "timelineDate": "1999-02-04",
-      "summary": "贝卡斯寄来神秘录像带，以千年眼读心术和 15 分钟倒计时逼入暗游戏绝境，强行夺走双六的灵魂并开启决斗者王国篇。",
-      "sideA": {
-        "characterId": "yami_yugi",
-        "characterName": "暗游戏",
-        "avatarId": "ai_vol1_yugi",
-        "deckName": "暗游戏 · 王国前夜卡组",
-        "fillStyle": "GOOD_STUFF",
-        "preferredRaces": [
-          "Spellcaster",
-          "Warrior",
-          "Dragon"
-        ],
-        "preferredAttributes": [
-          "DARK"
-        ],
-        "canonCardIds": [
-          46986414,
-          70781052,
-          66672569,
-          15025844,
-          90357090,
-          80813021,
-          91152256,
-          32452818,
-          83764718
-        ],
-        "canonExtraIds": []
       },
-      "sideB": {
-        "characterId": "pegasus",
-        "characterName": "贝卡斯",
-        "avatarId": "char_pegasus",
-        "deckName": "贝卡斯 · 幻想师与读心控场",
-        "fillStyle": "FLIP_CONTROL",
-        "preferredRaces": [
-          "Spellcaster",
-          "Fiend",
-          "Dragon"
-        ],
-        "preferredAttributes": [
-          "DARK",
-          "LIGHT"
-        ],
-        "canonCardIds": [
-          28546905,
-          55763552,
-          50045299,
-          99261403,
-          62762898,
-          90020065,
-          52648457
-        ],
-        "canonExtraIds": []
-      }
+      "coreCardIds": [
+        89631139,
+        72302403,
+        33396948
+      ],
+      "coreUnlockNote": "核心卡：青眼白龙、光之护封剑、被封印的艾克佐迪亚（东京巨蛋 PP1 集齐）"
     },
     {
       "id": "canon_1998_02_10_manga_yugi_weevil",
@@ -1623,7 +139,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘65~68（1998年11号）",
       "originalDate": "1998-02-10",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-11-18",
       "summary": "羽蛾将艾克佐迪亚丢入大海后，在森林地形召唤「大飞蛾」与机甲昆虫军团。暗游戏用「魔雾雨」配合「恶魔召唤」雷击破敌！",
       "sideA": {
         "characterId": "yami_yugi",
@@ -1648,10 +164,7 @@
           91152256,
           15025844,
           53829412,
-          27827272,
-          24294108,
-          24094653,
-          64047146
+          24094653
         ],
         "canonExtraIds": [
           66889139
@@ -1684,7 +197,16 @@
           87430998
         ],
         "canonExtraIds": []
-      }
+      },
+      "coreCardIds": [
+        66889139,
+        70781052,
+        48579379,
+        40240595,
+        58192742,
+        14141448
+      ],
+      "coreUnlockNote": "核心卡：龙骑士 盖亚、恶魔召唤、进化之茧、究极完全态大飞蛾、大飞蛾（Vol.6 首发）"
     },
     {
       "id": "canon_1998_02_24_manga_joey_mai",
@@ -1692,7 +214,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘69~70（1998年13号）",
       "originalDate": "1998-02-24",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-11-18",
       "summary": "孔雀舞凭「万华镜-华丽的分身-」展开鹰身女郎三姐妹猛攻，城之内以游戏赠予的「时间魔术师」令「宝贝龙」进化为「千年龙」逆转！",
       "sideA": {
         "characterId": "joey",
@@ -1713,7 +235,6 @@
           88819587,
           71625222,
           48305365,
-          14977074,
           55550921,
           1184620,
           44287299,
@@ -1745,11 +266,18 @@
           90219263,
           63224564,
           37820550,
-          98252586,
-          22359980
+          98252586
         ],
         "canonExtraIds": []
-      }
+      },
+      "coreCardIds": [
+        76812113,
+        12206212,
+        71625222,
+        88819587,
+        41462083
+      ],
+      "coreUnlockNote": "核心卡：鹰身女郎三姐妹、时间魔术师、宝贝龙＆千年龙（Vol.6 首发）"
     },
     {
       "id": "canon_1998_03_10_manga_yugi_mako",
@@ -1757,7 +285,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘71~72（1998年15号）",
       "originalDate": "1998-03-10",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-12-01",
       "summary": "梶木渔太依托「海」场地与「海龙神」隐藏海怪群，暗游戏令「岩石巨兵」击碎「满月」退潮，以「魔雾雨」电击全场海怪！",
       "sideA": {
         "characterId": "yami_yugi",
@@ -1782,7 +310,6 @@
           15025844,
           70781052,
           36607978,
-          27827272,
           83764718
         ],
         "canonExtraIds": []
@@ -1805,78 +332,19 @@
           76634149,
           13429800,
           77456781,
-          14851496,
-          62337487,
-          77454922,
           22702055,
-          18605135,
           58831685
         ],
         "canonExtraIds": []
-      }
-    },
-    {
-      "id": "canon_1998_04_07_manga_yugi_puppeteer",
-      "title": "死之腹语师：被窃取的青眼卡组",
-      "mediaType": "MANGA",
-      "episodeLabel": "原作漫画 遊闘74~76（1998年19号）",
-      "originalDate": "1998-04-07",
-      "timelineDate": "1999-02-04",
-      "summary": "死之腹语师盗用海马卡组操控人偶召唤三只青眼白龙！暗游戏以「魔术礼帽」+「六芒星的咒缚」诱敌，再以「死者苏生」借青眼反击。",
-      "sideA": {
-        "characterId": "yami_yugi",
-        "characterName": "暗游戏",
-        "avatarId": "ai_vol1_yugi",
-        "deckName": "暗游戏 · 魔术礼帽与圣防卡组",
-        "fillStyle": "FLIP_CONTROL",
-        "preferredRaces": [
-          "Spellcaster",
-          "Warrior",
-          "Dragon"
-        ],
-        "preferredAttributes": [
-          "DARK",
-          "LIGHT"
-        ],
-        "canonCardIds": [
-          46986414,
-          28279543,
-          91152256,
-          41392891,
-          15025844,
-          81210420,
-          83764718,
-          44095762,
-          18807108
-        ],
-        "canonExtraIds": []
       },
-      "sideB": {
-        "characterId": "puppeteer",
-        "characterName": "死之腹语师",
-        "avatarId": "char_puppeteer",
-        "deckName": "死之腹语师 · 盗取的青眼卡组",
-        "fillStyle": "NO_TRIBUTE_BEAT",
-        "preferredRaces": [
-          "Dragon",
-          "Beast-Warrior",
-          "Aqua"
-        ],
-        "preferredAttributes": [
-          "LIGHT",
-          "DARK"
-        ],
-        "canonCardIds": [
-          89631139,
-          89631139,
-          89631139,
-          5053103,
-          2906250,
-          63102017,
-          14315573
-        ],
-        "canonExtraIds": []
-      }
+      "coreCardIds": [
+        13039848,
+        36607978,
+        70781052,
+        22702055,
+        76634149
+      ],
+      "coreUnlockNote": "核心卡：岩石巨兵、魔性之月、恶魔召唤、海、海龙神（Booster 6 首发）"
     },
     {
       "id": "canon_1998_04_18_toei_ep03_yugi_kaiba",
@@ -1884,7 +352,7 @@
       "mediaType": "TOEI_ANIME",
       "episodeLabel": "东映动画 第3话（1998-04-18）",
       "originalDate": "1998-04-18",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-07-22",
       "summary": "1998 年东映版动画第 3 话：海马强夺双六的青眼白龙，与暗游戏在暗黑决斗中展开经典对攻，最终以青眼白龙苏生与平局收场。",
       "sideA": {
         "characterId": "yami_yugi",
@@ -1901,11 +369,9 @@
           "DARK"
         ],
         "canonCardIds": [
-          67724379,
           15025844,
           70781052,
           32274490,
-          14181608,
           83764718
         ],
         "canonExtraIds": []
@@ -1928,13 +394,18 @@
         "canonCardIds": [
           89631139,
           15303296,
-          5053103,
-          41392891,
           46986414,
           4614116
         ],
         "canonExtraIds": []
-      }
+      },
+      "coreCardIds": [
+        46986414,
+        89631139,
+        83764718,
+        70781052
+      ],
+      "coreUnlockNote": "核心卡：黑魔术师、青眼白龙、死者苏生、恶魔召唤（Vol.4 首发）"
     },
     {
       "id": "canon_1998_04_28_manga_joey_rex",
@@ -1942,7 +413,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘77~79（1998年22・23号）",
       "originalDate": "1998-04-28",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-11-18",
       "summary": "全美亚军恐龙龙崎赌上稀有卡「真红眼黑龙」对决城之内！城之内再次发动「时间魔术师」令「真红眼黑龙」化石化，夺得一生之魂卡！",
       "sideA": {
         "characterId": "joey",
@@ -1963,8 +434,6 @@
           88819587,
           71625222,
           48305365,
-          40453765,
-          20394040,
           15480588,
           32268901,
           37390589
@@ -1993,76 +462,20 @@
           94119974,
           38289717,
           1784619,
-          13069066,
-          75390004,
           66516792,
           23424603,
           51267887
         ],
         "canonExtraIds": []
-      }
-    },
-    {
-      "id": "canon_1998_06_02_manga_yugi_panik",
-      "title": "暗晦之城：光之护封剑与弹射龟",
-      "mediaType": "MANGA",
-      "episodeLabel": "原作漫画 遊闘80~83（1998年27号）",
-      "originalDate": "1998-06-02",
-      "timelineDate": "1999-02-04",
-      "summary": "玩家杀手以「暗晦之城」和「暗魔界之霸王」构筑黑暗要塞。暗游戏用「光之护封剑」封锁浮游环，并以「弹射龟」射出「龙骑士盖亚」一举摧毁城堡！",
-      "sideA": {
-        "characterId": "yami_yugi",
-        "characterName": "暗游戏",
-        "avatarId": "ai_vol1_yugi",
-        "deckName": "暗游戏 · 弹射龟龙骑士卡组",
-        "fillStyle": "FUSION_COMBO",
-        "preferredRaces": [
-          "Spellcaster",
-          "Warrior",
-          "Dragon"
-        ],
-        "preferredAttributes": [
-          "DARK",
-          "EARTH"
-        ],
-        "canonCardIds": [
-          6368038,
-          28279543,
-          95727991,
-          91152256,
-          32452818,
-          72302403,
-          24094653,
-          18807108
-        ],
-        "canonExtraIds": [
-          66889139
-        ]
       },
-      "sideB": {
-        "characterId": "panik",
-        "characterName": "暗黑玩家杀手",
-        "avatarId": "char_panik",
-        "deckName": "暗黑玩家杀手 · 暗晦之城要塞",
-        "fillStyle": "DARK_VIRUS",
-        "preferredRaces": [
-          "Fiend"
-        ],
-        "preferredAttributes": [
-          "DARK"
-        ],
-        "canonCardIds": [
-          62121,
-          69455834,
-          32344688,
-          68339286,
-          33066139,
-          59197169
-        ],
-        "canonExtraIds": [
-          6840573
-        ]
-      }
+      "coreCardIds": [
+        74677422,
+        94119974,
+        71625222,
+        88819587,
+        41462083
+      ],
+      "coreUnlockNote": "核心卡：真红眼黑龙、双头恐龙王、时间魔术师、宝贝龙＆千年龙（Vol.6 首发）"
     },
     {
       "id": "canon_1998_06_30_manga_kaiba_joey",
@@ -2070,7 +483,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘85~87（1998年31号）",
       "originalDate": "1998-06-30",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-12-01",
       "summary": "苏醒归来的海马携带试作型决斗盘登场，以压倒性的「血腥魔兽人」「牛头人」与「青眼白龙」给城之内上了残酷的一课。",
       "sideA": {
         "characterId": "seto_kaiba",
@@ -2091,17 +504,12 @@
           89631139,
           89631139,
           5053103,
-          68516705,
           97590747,
-          50005633,
           26378150,
           24094653,
-          57728570,
-          66602787
+          57728570
         ],
-        "canonExtraIds": [
-          94905343
-        ]
+        "canonExtraIds": []
       },
       "sideB": {
         "characterId": "joey",
@@ -2121,7 +529,6 @@
           74677422,
           48305365,
           14977074,
-          3573512,
           88819587,
           71625222,
           37390589
@@ -2130,69 +537,15 @@
           41462083,
           45231177
         ]
-      }
-    },
-    {
-      "id": "canon_1998_07_28_manga_joey_bonz",
-      "title": "墓场不死狂潮：活死人的呼声 vs 盾与剑",
-      "mediaType": "MANGA",
-      "episodeLabel": "原作漫画 遊闘88~91（1998年35号）",
-      "originalDate": "1998-07-28",
-      "timelineDate": "1999-02-04",
-      "summary": "鬼骨冢在盗贼基斯指点下发动「活死人的呼声」配合「幽灵王 南瓜灯」不断强化不死大军。城之内靠「真红眼黑龙」与「右持盾左持剑」一击清盘！",
-      "sideA": {
-        "characterId": "joey",
-        "characterName": "城之内克也",
-        "avatarId": "ai_weekend_challenger",
-        "deckName": "城之内 · 真红眼盾与剑卡组",
-        "fillStyle": "LOWER_BEAT",
-        "preferredRaces": [
-          "Warrior",
-          "Dragon"
-        ],
-        "preferredAttributes": [
-          "EARTH",
-          "DARK"
-        ],
-        "canonCardIds": [
-          74677422,
-          48305365,
-          55550921,
-          49791927,
-          52097679,
-          37390589
-        ],
-        "canonExtraIds": [
-          45231177,
-          51828629
-        ]
       },
-      "sideB": {
-        "characterId": "bonz",
-        "characterName": "鬼骨冢",
-        "avatarId": "char_bonz",
-        "deckName": "鬼骨冢 · 活死人南瓜不死卡组",
-        "fillStyle": "MID_TIER_THEME",
-        "preferredRaces": [
-          "Zombie",
-          "Fiend"
-        ],
-        "preferredAttributes": [
-          "DARK"
-        ],
-        "canonCardIds": [
-          30090452,
-          67494157,
-          93889755,
-          20277860,
-          66672569,
-          92667214,
-          29155212,
-          97077563,
-          15052462
-        ],
-        "canonExtraIds": []
-      }
+      "coreCardIds": [
+        89631139,
+        57728570,
+        74677422,
+        41462083,
+        5053103
+      ],
+      "coreUnlockNote": "核心卡：青眼白龙、死之卡组破坏病毒、真红眼黑龙、千年龙、牛头人（Booster 6 首发）"
     },
     {
       "id": "canon_1998_09_12_toei_ep24_yugi_kaiba",
@@ -2200,7 +553,7 @@
       "mediaType": "TOEI_ANIME",
       "episodeLabel": "东映动画 第24话（1998-09-12）",
       "originalDate": "1998-09-12",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-08-26",
       "summary": "1998 年东映版动画第 24 话：面对海马三体青眼白龙的绝望攻势，暗游戏在伙伴羁绊的鼓舞下抽齐五张「被封印的艾克佐迪亚」！",
       "sideA": {
         "characterId": "yami_yugi",
@@ -2225,8 +578,6 @@
           87796900,
           6368038,
           40374923,
-          67724379,
-          41392891,
           72302403
         ],
         "canonExtraIds": []
@@ -2250,12 +601,18 @@
           89631139,
           89631139,
           76184692,
-          66602787,
           6285791,
           4614116
         ],
         "canonExtraIds": []
-      }
+      },
+      "coreCardIds": [
+        89631139,
+        87796900,
+        72302403,
+        33396948
+      ],
+      "coreUnlockNote": "核心卡：青眼白龙、守城的翼龙、光之护封剑、被封印的艾克佐迪亚（东京巨蛋 PP1 集齐）"
     },
     {
       "id": "canon_1998_09_22_manga_yugijoey_paradox",
@@ -2263,7 +620,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘92~98（1998年43号）",
       "originalDate": "1998-09-22",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-09-23",
       "summary": "迷宫兄弟以「迷宫壁」与「雷风魔神」三魔神合体召唤「门之守护神」；暗游戏与城之内联手融合出「暗黑魔龙」并巧用「魔术礼帽」破局！",
       "sideA": {
         "characterId": "yami_yugi",
@@ -2286,11 +643,9 @@
           70781052,
           74677422,
           91152256,
-          5053103,
           48305365,
           24094653,
           83764718,
-          81210420,
           37390589,
           91595718
         ],
@@ -2317,22 +672,22 @@
           "DARK"
         ],
         "canonCardIds": [
-          67284908,
-          63162310,
-          30778711,
-          97612389,
           51228280,
           25955164,
           62340868,
           98434877,
-          25833572,
-          94773007,
-          64389297
+          25833572
         ],
-        "canonExtraIds": [
-          99551425
-        ]
-      }
+        "canonExtraIds": []
+      },
+      "coreCardIds": [
+        25833572,
+        25955164,
+        62340868,
+        98434877,
+        11901678
+      ],
+      "coreUnlockNote": "核心卡：门之守护神、雷/风/水三魔神、暗黑魔龙（Vol.5 首发）"
     },
     {
       "id": "canon_1998_11_17_manga_yugi_kaiba_castle",
@@ -2340,7 +695,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘100~106（1998年51号）",
       "originalDate": "1998-11-17",
-      "timelineDate": "1999-02-04",
+      "timelineDate": "1999-12-18",
       "summary": "海马以「死之卡组破坏病毒」重创暗游戏并融合出 ATK 4500 的「青眼究极龙」；暗游戏仪式召唤「混沌战士」并以「增殖栗子球」+「融合解除」绝地反击！",
       "sideA": {
         "characterId": "yami_yugi",
@@ -2360,8 +715,6 @@
         "canonCardIds": [
           5405694,
           55761792,
-          40640057,
-          40703222,
           6368038,
           28279543,
           46986414,
@@ -2370,9 +723,7 @@
           40374923,
           69669405,
           24094653,
-          93260132,
-          83764718,
-          44095762
+          83764718
         ],
         "canonExtraIds": [
           66889139
@@ -2397,105 +748,32 @@
           89631139,
           89631139,
           89631139,
-          66602787,
           57728570,
           97590747,
           5053103,
           50005633,
           26378150,
-          24094653,
-          95286165,
-          29267084,
-          48642904,
-          98299011
-        ],
-        "canonExtraIds": [
-          23995346
-        ]
-      }
-    },
-    {
-      "id": "canon_1999_01_12_manga_kaiba_pegasus",
-      "title": "卡通世界初降临：海马 vs 贝卡斯",
-      "mediaType": "MANGA",
-      "episodeLabel": "原作漫画 遊闘108~111（1999年6号）",
-      "originalDate": "1999-01-12",
-      "timelineDate": "1999-02-04",
-      "summary": "为解救圭平，海马挑战贝卡斯。「死之卡组破坏病毒」也被千年眼识破，贝卡斯发动「卡通世界」将海马的青眼化作「青眼卡通龙」击败海马。",
-      "sideA": {
-        "characterId": "seto_kaiba",
-        "characterName": "海马濑人",
-        "avatarId": "ai_starter_kaiba",
-        "deckName": "海马濑人 · 复仇青眼死毒卡组",
-        "fillStyle": "DARK_VIRUS",
-        "preferredRaces": [
-          "Dragon",
-          "Fiend",
-          "Beast-Warrior"
-        ],
-        "preferredAttributes": [
-          "LIGHT",
-          "DARK"
-        ],
-        "canonCardIds": [
-          89631139,
-          89631139,
-          89631139,
-          66602787,
-          57728570,
-          24611934,
-          97590747,
-          5053103,
-          50005633,
-          30113682,
-          4614116,
-          24094653,
-          29267084
+          24094653
         ],
         "canonExtraIds": [
           23995346
         ]
       },
-      "sideB": {
-        "characterId": "pegasus",
-        "characterName": "贝卡斯",
-        "avatarId": "char_pegasus",
-        "deckName": "贝卡斯 · 卡通世界初阵卡组",
-        "fillStyle": "GOOD_STUFF",
-        "preferredRaces": [
-          "Dragon",
-          "Spellcaster",
-          "Aqua"
-        ],
-        "preferredAttributes": [
-          "DARK",
-          "LIGHT"
-        ],
-        "canonCardIds": [
-          15259703,
-          15259703,
-          53183600,
-          65458948,
-          38369349,
-          2964201,
-          62762898,
-          99261403,
-          59383041,
-          88032456,
-          50045299
-        ],
-        "canonExtraIds": [
-          25655502
-        ]
-      }
+      "coreCardIds": [
+        23995346,
+        89631139,
+        55761792,
+        5405694
+      ],
+      "coreUnlockNote": "核心卡：青眼究极龙、混沌的仪式、混沌战士（Jump Festa PP2 首发）"
     },
     {
       "id": "canon_1999_03_02_manga_yugi_mai",
-      "title": "王国半决赛①：银幕镜壁 vs 混沌战士",
+      "title": "王国半决赛①：鹰身宠物龙 vs 混沌战士",
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘114~119（WSJ 1999年14号）",
       "originalDate": "1999-03-02",
-      "timelineDate": "1999-03-02",
+      "timelineDate": "1999-12-18",
       "summary": "孔雀舞以「银幕的镜壁」+「鹰身女妖的羽毛扫」+「鹰身女郎的宠物龙」连番压制！重拾信念的暗游戏以「洗脑」+「弹射龟」破壁并仪式召唤「混沌战士」！",
       "sideA": {
         "characterId": "yami_yugi",
@@ -2518,17 +796,11 @@
           6368038,
           5405694,
           55761792,
-          95727991,
-          40640057,
           91152256,
           15025844,
           41392891,
           69669405,
-          87910978,
-          93108433,
-          83764718,
-          44095762,
-          18807108
+          83764718
         ],
         "canonExtraIds": []
       },
@@ -2555,12 +827,18 @@
           63224564,
           37820550,
           18144506,
-          22359980,
-          58621589,
           98252586
         ],
         "canonExtraIds": []
-      }
+      },
+      "coreCardIds": [
+        12206212,
+        18144506,
+        52040216,
+        55761792,
+        5405694
+      ],
+      "coreUnlockNote": "核心卡：鹰身女郎三姐妹、鹰身女妖的宠物龙、混沌的仪式、混沌战士（Jump Festa PP2 首发）"
     },
     {
       "id": "canon_1999_03_06_movie_yugi_kaiba",
@@ -2568,7 +846,7 @@
       "mediaType": "MOVIE",
       "episodeLabel": "东映剧场版《遊☆戯☆王》（1999-03-06 上映）",
       "originalDate": "1999-03-06",
-      "timelineDate": "1999-03-06",
+      "timelineDate": "1999-08-26",
       "summary": "1999 年 3 月 6 日东映动画剧场版！承载着青山翔吾勇气与可能性的「真红眼黑龙」与「陨石龙」融合为「陨石黑龙」，正面击破海马的三体青眼白龙！",
       "sideA": {
         "characterId": "yami_yugi",
@@ -2594,13 +872,9 @@
           28279543,
           91152256,
           32452818,
-          41392891,
           76184692,
-          75390004,
           24094653,
-          1435851,
-          81210420,
-          18807108
+          1435851
         ],
         "canonExtraIds": [
           90660762,
@@ -2626,8 +900,6 @@
           89631139,
           89631139,
           89631139,
-          5053103,
-          24311372,
           83764718,
           63102017,
           24094653
@@ -2635,162 +907,14 @@
         "canonExtraIds": [
           23995346
         ]
-      }
-    },
-    {
-      "id": "canon_1999_03_30_manga_joey_keith",
-      "title": "王国半决赛②：重金属机械 vs 真红眼黑铁龙",
-      "mediaType": "MANGA",
-      "episodeLabel": "原作漫画 遊闘120~123（WSJ 1999年18号）",
-      "originalDate": "1999-03-30",
-      "timelineDate": "1999-03-30",
-      "summary": "盗贼基斯亮出「左轮手枪龙」「金属恶魔佐亚」与藏牌「7卡片」连击！城之内发动「盗墓者」夺来「时间机械」与「金属化」，召唤「真红眼黑铁龙」逆转晋级！",
-      "sideA": {
-        "characterId": "joey",
-        "characterName": "城之内克也",
-        "avatarId": "ai_weekend_challenger",
-        "deckName": "城之内 · 真红眼黑铁龙反击",
-        "fillStyle": "EQUIP_LIGHT_EARTH",
-        "preferredRaces": [
-          "Warrior",
-          "Dragon",
-          "Machine"
-        ],
-        "preferredAttributes": [
-          "DARK",
-          "EARTH"
-        ],
-        "canonCardIds": [
-          74677422,
-          64335804,
-          68540058,
-          48305365,
-          14977074,
-          88819587,
-          71625222,
-          61705417,
-          37390589,
-          52097679,
-          26376390
-        ],
-        "canonExtraIds": [
-          41462083,
-          45231177
-        ]
       },
-      "sideB": {
-        "characterId": "keith",
-        "characterName": "盗贼基斯",
-        "avatarId": "char_keith",
-        "deckName": "盗贼基斯 · 左轮龙重金属机械",
-        "fillStyle": "EQUIP_LIGHT_EARTH",
-        "preferredRaces": [
-          "Machine",
-          "Fiend"
-        ],
-        "preferredAttributes": [
-          "DARK"
-        ],
-        "canonCardIds": [
-          81480460,
-          3797883,
-          24311372,
-          50705071,
-          68540058,
-          24433920,
-          7359741,
-          87322377,
-          26302522,
-          86198326,
-          86198326,
-          86198326,
-          25769732,
-          80987696
-        ],
-        "canonExtraIds": []
-      }
-    },
-    {
-      "id": "canon_1999_06_08_manga_yugi_pegasus_final",
-      "title": "决斗者王国决赛：千眼纳祭神 vs 黑混沌魔术师",
-      "mediaType": "MANGA",
-      "episodeLabel": "原作漫画 遊闘124~131（WSJ 1999年28号）",
-      "originalDate": "1999-06-08",
-      "timelineDate": "1999-06-08",
-      "summary": "决斗者王国巅峰决赛！面对贝卡斯的「卡通世界」与「纳祭之魔」→「千眼纳祭神」，表里游戏以心灵洗牌破除千年眼，召唤「黑混沌之魔术师」与「增殖栗子球」斩断千眼！",
-      "sideA": {
-        "characterId": "yami_yugi",
-        "characterName": "暗游戏",
-        "avatarId": "ai_vol1_yugi",
-        "deckName": "暗游戏 · 王国决赛黑混沌卡组",
-        "fillStyle": "GOOD_STUFF",
-        "preferredRaces": [
-          "Spellcaster",
-          "Fiend",
-          "Warrior"
-        ],
-        "preferredAttributes": [
-          "DARK"
-        ],
-        "canonCardIds": [
-          46986414,
-          30208479,
-          76792184,
-          70781052,
-          28279543,
-          6368038,
-          40640057,
-          40703222,
-          15025844,
-          91152256,
-          41392891,
-          95727991,
-          81210420,
-          25774450,
-          83764718,
-          87910978,
-          19159413,
-          44095762,
-          18807108
-        ],
-        "canonExtraIds": []
-      },
-      "sideB": {
-        "characterId": "pegasus",
-        "characterName": "贝卡斯",
-        "avatarId": "char_pegasus",
-        "deckName": "贝卡斯 · 卡通世界＆千眼纳祭神",
-        "fillStyle": "FUSION_COMBO",
-        "preferredRaces": [
-          "Spellcaster",
-          "Dragon",
-          "Fiend"
-        ],
-        "preferredAttributes": [
-          "DARK",
-          "LIGHT"
-        ],
-        "canonCardIds": [
-          15259703,
-          15259703,
-          53183600,
-          91842653,
-          65458948,
-          38369349,
-          64631466,
-          41426869,
-          27125110,
-          38247752,
-          28546905,
-          88032456,
-          24094653,
-          52648457
-        ],
-        "canonExtraIds": [
-          63519819,
-          25655502
-        ]
-      }
+      "coreCardIds": [
+        74677422,
+        64271667,
+        90660762,
+        23995346
+      ],
+      "coreUnlockNote": "核心卡：真红眼黑龙、流星之龙、流星黑龙、青眼究极龙（东京巨蛋大会首发）"
     },
     {
       "id": "canon_1999_11_09_manga_joey_rarehunter",
@@ -2798,7 +922,7 @@
       "mediaType": "MANGA",
       "episodeLabel": "原作漫画 遊闘151（WSJ 1999年50号）",
       "originalDate": "1999-11-09",
-      "timelineDate": "1999-11-09",
+      "timelineDate": "1999-11-18",
       "summary": "决斗都市开幕前夜，古鲁斯稀罕猎人盯上城之内的「真红眼黑龙」！猎人连拍「天使的施舍」极速集齐伪艾克佐迪亚，伏击击败城之内夺走真红眼。",
       "sideA": {
         "characterId": "joey",
@@ -2817,15 +941,10 @@
         ],
         "canonCardIds": [
           74677422,
-          42035044,
           48305365,
-          64428736,
           88819587,
           71625222,
-          3573512,
-          37390589,
-          52097679,
-          61705417
+          37390589
         ],
         "canonExtraIds": [
           41462083,
@@ -2851,8 +970,6 @@
           7902349,
           8124921,
           44519536,
-          5640330,
-          78423643,
           79571449,
           79571449,
           55144522,
@@ -2861,7 +978,15 @@
           72302403
         ],
         "canonExtraIds": []
-      }
+      },
+      "coreCardIds": [
+        74677422,
+        33396948,
+        26202165,
+        78010363,
+        41462083
+      ],
+      "coreUnlockNote": "核心卡：真红眼黑龙、被封印的艾克佐迪亚、三眼怪、黑森林的魔女、千年龙（Vol.6 首发）"
     }
   ]
 }

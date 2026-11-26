@@ -134,23 +134,30 @@
 
 ## 9. 原著漫画 / 动画 / 电影「🎬 对决还原」扩展强制规范
 
-每次将时间线扩展至新时期（例如 2000 年起的决斗都市漫画连载、2000-04-18 起播出的《遊☆戯☆王 DM》TV 动画、后续剧场版/GX/5D's 等）时，**必须同步扩展 `rpg-mode/src/main/assets/rpg/ocg_canon_duels.json`**：
+每次将时间线扩展至新时期（例如 2000 年起的 Series 2、决斗都市漫画连载、2000-04-18 起播出的《遊☆戯☆王 DM》TV 动画、后续剧场版/GX/5D's 等）时，**必须同步核查 `rpg-mode/docs/CANON_DUELS_FUTURE_BACKLOG.md` 并扩展 `rpg-mode/src/main/assets/rpg/ocg_canon_duels.json`**：
 
-1. **精准日期考据（跨集仅取最终集日期）**：
-   - **原作漫画**：按《周刊少年 Jump》日本实际发售日（2003 年 5 月前为每周二，2003 年 5 月起为每周一）登记，可参考 `jajanken.net` 刊号索引与日文维基；
-   - **TV 动画 / 剧场版**：按日本东京电视台首播日 / 日本院线上映日登记；
-   - **跨越多集/多话的单局对决**：严格**仅取该对决最后一集/最后一话的日期**作为 `originalDate` 与 `timelineDate`（OCG 发售日 `1999-02-04` 之前的早期原著对决保留真实 `originalDate`，`timelineDate` 钳位至 `1999-02-04` 供创世日即可体验）。
-2. **双方卡组还原规则（原著用卡 100% 保留 + 当期 OCG 卡池补足至 40 张）**：
-   - 从 Fandom Wiki / Yugipedia 对应集数/话数页面检索双方使用过的全部卡片，核对 `mobile/assets/data/cards.cdb` 中的真实 YGOPro 密码（注意：凡在 OCG 中属于融合/同调/超量/连接怪兽的卡必须放入 `canonExtraIds`，不可放入主卡组 `canonCardIds`）；
-   - 若某张原著用卡当时尚未在 OCG 实卡化，将其中文/日文/英文元信息收录进 `ocg_canon_duels.json` 的 `canonCardCatalog`（通过 `RpgCatalog.findCardOrCanon` 仅用于还原卡组展示与 AI 识别，**严禁泄漏进商店/合成/玩家组卡池**）；
-   - 不足 40 张的部分由 `CanonDuelDeckBuilder` 自动从该对决日期的 OCG 实卡池中按角色种族/属性/流派挑选搭配卡牌补足至 40 张。
-3. **日期事项与四模式对战接入**：
-   - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates` 与 `TimelineDigest.newCanonDuels`（日历浅绿圆点高亮 + 当期动态展示），到达该日期即在「🎬 对决还原」标签页解锁；
-   - 玩家既可扮演 A/B 任意一方使用还原卡组（并在 3D 决斗中同步显示双方角色头像与姓名），也可用自己 RPG 组卡的合规卡组挑战任意一方。
+1. **原著日期考据 + 核心卡 OCG 首次发售日定档（严禁跨时代超模卡提前解锁）**：
+   - **原著日期 (`originalDate`)**：
+     - **原作漫画**：按《周刊少年 Jump》日本实际发售日登记（2003 年 5 月前为每周二，2003 年 5 月起为每周一，参考 `jajanken.net` 与日文维基）；
+     - **TV 动画 / 剧场版**：按日本东京电视台首播日 / 日本院线上映日登记；
+     - **跨越多集/多话的单局对决**：严格**仅取该对决最后一集/最后一话的日期**作为 `originalDate`。
+   - **核心卡定档解锁日 (`timelineDate` + `coreCardIds`)**：
+     - 从双方原著用卡中挑选若干最能代表该对决灵魂的**核心卡**写入 `coreCardIds`（如 `青眼白龙` / `恶魔召唤` / `艾克佐迪亚` / `暗黑魔龙`＆`三魔神` / `混沌战士` / `卡通世界` / `左轮手枪龙` / `千眼纳祭神` 等）；
+     - 核查所有 `coreCardIds` 在**日本 OCG 的首次正式发售日期**，取其中**最晚日期**作为该对决还原事件的时间轴解锁日期 `timelineDate`（并在 `coreUnlockNote` 中写明依据）；
+     - **未来待办文档同步 (`rpg-mode/docs/CANON_DUELS_FUTURE_BACKLOG.md`)**：若某场原著对决的核心卡首次 OCG 发售日超出了当前版本的时间轴上限（例如 1999 版本中核心卡在 2000+ 才发售的卡通世界/左轮手枪龙/千眼纳祭神等），**必须将其完整登记至 `rpg-mode/docs/CANON_DUELS_FUTURE_BACKLOG.md`**（含原著日期、核心卡及日本 OCG 首发日、目标解锁日、双方完整用卡与头像），切勿塞入当前早期环境；每次延长时间轴时，**第一步即检查该待办文档**，将所有目标解锁日落入新时间区间的对决迁入 `ocg_canon_duels.json`，保证永不遗漏。
+2. **双方卡组还原规则（仅保留当期已发售原著卡 + 新时间点 OCG 卡池补足至 40 张）**：
+   - 从 Fandom Wiki / Yugipedia 对应集数/话数页面检索双方使用过的全部卡片，核对 `mobile/assets/data/cards.cdb` 密码（凡在 OCG 中属于融合/同调/超量/连接怪兽的卡必须放入 `canonExtraIds`，不可放入主卡组 `canonCardIds`）；
+   - **严格环境对齐**：仅保留在 `timelineDate` 当日及之前已于日本 OCG 正式发售的原著用卡（`TimelineEngine.isCardReleased(catalog, cid, duel.timelineDate) == true`），避免未来卡强度远超当期环境或缺失本地卡图；
+   - 不足 40 张的部分由 `CanonDuelDeckBuilder` 自动从该对决新的 `timelineDate` 对应的 OCG 实卡池中按角色种族/属性/流派挑选搭配卡牌补足至 40 张。
+3. **展示排序、日期事项与四模式通关记录**：
+   - 「🎬 对决还原」列表严格**按原著日期 `originalDate` 升序排列**（同日再按 `timelineDate`、`id` 升序）；
+   - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates` 与 `TimelineDigest.newCanonDuels`（日历浅绿圆点高亮 + 当期动态展示），到达该日期即解锁；
+   - 每场对决提供 4 种挑战模式（`ROLE_A` 扮演 A、`ROLE_B` 扮演 B、`OWN_VS_A` 自组挑战 A、`OWN_VS_B` 自组挑战 B）及与 AI 对战一致的分屏可视化查看卡组弹窗（带 `原著` 筛选与徽章）；玩家在任意模式下获胜后，通过 `RpgProfile.clearedCanonDuelModes` 持久化记录，并在对应挑战按钮右上角显示绿色 **`✔ 成功`** 标签。
 4. **角色头像复用与新角色补绘**：
    - 同一角色在不同集数的对决中复用同一头像 ID（如 `ai_vol1_yugi`、`ai_starter_kaiba`、`ai_weekend_challenger`、`char_pegasus` 等）；
    - 凡新登场的原著角色，必须为其绘制 1:1 游戏王动画风格头像并压缩为 `256×256` WebP 放入 `rpg-mode/src/main/assets/rpg/avatars/char_<id>.webp`（由 `RpgEnginesTest#canonDuels1999LoadReconstruct40CardsHaveAvatarsAndRegisterTimelineDates` 自动守卫校验）。
 5. **专属战术 AI 补充**：
    - 为原著卡组中引入的新标志性单卡（如仪式、卡通、纳祭之魔、银幕镜壁、左轮手枪龙、神之卡等）在 `RpgAiCardKnowledge.java` 和 `RpgAiStrategy.java` 中补充单卡知识与战术逻辑，确保 AI 能流畅发挥还原卡组的特色打法。
+
 
 

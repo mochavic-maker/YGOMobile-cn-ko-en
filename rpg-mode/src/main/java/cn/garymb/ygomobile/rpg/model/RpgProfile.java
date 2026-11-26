@@ -82,6 +82,44 @@ public class RpgProfile {
         this.tabOrder = getNormalizedTabOrder(tabCount);
     }
 
+    public static final String CANON_MODE_ROLE_A = "ROLE_A";
+    public static final String CANON_MODE_ROLE_B = "ROLE_B";
+    public static final String CANON_MODE_OWN_VS_A = "OWN_VS_A";
+    public static final String CANON_MODE_OWN_VS_B = "OWN_VS_B";
+
+    /**
+     * Cleared canon duel challenge modes, keyed by "<duelId>|<mode>"
+     * where mode is one of ROLE_A / ROLE_B / OWN_VS_A / OWN_VS_B.
+     */
+    public Set<String> clearedCanonDuelModes = new LinkedHashSet<>();
+
+    public static String canonModeKey(String duelId, String mode) {
+        return (duelId != null ? duelId : "") + "|" + (mode != null ? mode : "");
+    }
+
+    public void recordCanonDuelClear(String duelId, String mode) {
+        if (duelId == null || duelId.isEmpty() || mode == null || mode.isEmpty()) return;
+        if (clearedCanonDuelModes == null) {
+            clearedCanonDuelModes = new LinkedHashSet<>();
+        }
+        clearedCanonDuelModes.add(canonModeKey(duelId, mode));
+    }
+
+    public boolean isCanonDuelModeCleared(String duelId, String mode) {
+        if (clearedCanonDuelModes == null || duelId == null || mode == null) return false;
+        return clearedCanonDuelModes.contains(canonModeKey(duelId, mode));
+    }
+
+    public int getCanonDuelClearedCount(String duelId) {
+        if (clearedCanonDuelModes == null || duelId == null || duelId.isEmpty()) return 0;
+        int count = 0;
+        if (isCanonDuelModeCleared(duelId, CANON_MODE_ROLE_A)) count++;
+        if (isCanonDuelModeCleared(duelId, CANON_MODE_ROLE_B)) count++;
+        if (isCanonDuelModeCleared(duelId, CANON_MODE_OWN_VS_A)) count++;
+        if (isCanonDuelModeCleared(duelId, CANON_MODE_OWN_VS_B)) count++;
+        return count;
+    }
+
     public static class SavedDeck {
         public String id;
         public String name;

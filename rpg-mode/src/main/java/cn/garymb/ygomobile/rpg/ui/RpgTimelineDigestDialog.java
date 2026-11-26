@@ -307,6 +307,9 @@ public final class RpgTimelineDigestDialog {
                         "[" + cd.getMediaLabelCn() + "] " + cd.title, "#FBCFE8"));
                 info.addView(makeBodyText(activity,
                         vsNames + " · " + cd.episodeLabel + "（原作 " + cd.originalDate + "）", "#38BDF8"));
+                if (cd.coreUnlockNote != null && !cd.coreUnlockNote.isEmpty()) {
+                    info.addView(makeBodyText(activity, "🔑 " + cd.coreUnlockNote, "#FDE68A"));
+                }
                 if (cd.summary != null && !cd.summary.isEmpty()) {
                     info.addView(makeBodyText(activity, cd.summary, "#E2E8F0"));
                 }

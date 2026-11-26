@@ -827,37 +827,59 @@ public class RpgEnginesTest {
     @Test
     public void canonDuels1999LoadReconstruct40CardsHaveAvatarsAndRegisterTimelineDates() {
         List<cn.garymb.ygomobile.rpg.model.OcgCanonDuel> duels = catalog.getCanonDuels();
-        assertEquals("Should contain all 21 curated 1996-1999 canon duels", 21, duels.size());
+        assertEquals("Should contain all 14 core-card-gated 1999 canon duels", 14, duels.size());
 
         File avatarsDir = new File("src/main/assets/rpg/avatars");
         List<String> eventDates = TimelineEngine.getTimelineEventDates(catalog, AiDeckGenerator.getDemoOpponents());
 
-        // Exact 1999 canon dates must appear as selectable calendar event dates
-        String[] expected1999Dates = {"1999-03-02", "1999-03-06", "1999-03-30", "1999-06-08", "1999-11-09"};
-        for (String d : expected1999Dates) {
-            assertTrue("Canon duel date " + d + " must be registered as a timeline event date",
+        // Exact core-card OCG first-release unlock dates must register as timeline events
+        String[] expectedUnlockDates = {
+                "1999-07-22", "1999-08-26", "1999-09-23",
+                "1999-11-18", "1999-12-01", "1999-12-18"
+        };
+        for (String d : expectedUnlockDates) {
+            assertTrue("Canon duel unlock date " + d + " must be registered as a timeline event date",
                     eventDates.contains(d));
             TimelineEngine.TimelineDigest digest = TimelineEngine.buildDigestAtDate(
                     catalog, AiDeckGenerator.getDemoOpponents(), d);
-            assertFalse("TimelineDigest at " + d + " must include canon duel",
+            assertFalse("TimelineDigest at " + d + " must include canon duel(s)",
                     digest.newCanonDuels.isEmpty());
         }
 
-        // Verify progressive unlocking across 1999
-        int atStart = TimelineEngine.getAvailableCanonDuels(catalog, "1999-02-04").size();
-        int atYearEnd = TimelineEngine.getAvailableCanonDuels(catalog, "1999-12-31").size();
-        assertEquals("16 pre-OCG duels should unlock on 1999-02-04", 16, atStart);
-        assertEquals("All 21 duels should unlock by 1999-12-31", 21, atYearEnd);
+        // Verify progressive unlocking across 1999 (0 on Vol.1 launch day, all 14 by year-end)
+        assertEquals("No canon duel should unlock prematurely on 1999-02-04",
+                0, TimelineEngine.getAvailableCanonDuels(catalog, "1999-02-04").size());
+        assertEquals("2 duels unlock on 1999-07-22 (Vol.4 Summoned Skull)",
+                2, TimelineEngine.getAvailableCanonDuels(catalog, "1999-07-22").size());
+        assertEquals("All 14 core-card-gated duels should unlock by 1999-12-31",
+                14, TimelineEngine.getAvailableCanonDuels(catalog, "1999-12-31").size());
 
-        // Verify every canon duel reconstructs 40-card decks retaining 100% of canon cards,
-        // has bundled character avatars, valid AI fillStyle, and zero shop leakage
+        // Verify ascending order by originalDate in JSON, strict core-card OCG date matching,
+        // zero unreleased/future card leakage, 40-card deck reconstruction, and bundled avatars
+        String prevOrigDate = "";
         for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel duel : duels) {
             assertNotNull(duel.id);
             assertTrue("Original date must be <= 1999-12-31: " + duel.id,
                     duel.originalDate.compareTo("1999-12-31") <= 0);
+            assertTrue("Canon duels must be sorted ascending by originalDate: " + duel.id,
+                    duel.originalDate.compareTo(prevOrigDate) >= 0);
+            prevOrigDate = duel.originalDate;
+
+            assertNotNull("coreCardIds must be defined for " + duel.id, duel.coreCardIds);
+            assertFalse("coreCardIds must be non-empty for " + duel.id, duel.coreCardIds.isEmpty());
+            String maxCoreRelease = "";
+            for (Integer coreId : duel.coreCardIds) {
+                String relDate = catalog.getEarliestReleaseDate(coreId);
+                assertNotNull("Core card " + coreId + " in " + duel.id + " must exist in 1999 OCG catalog", relDate);
+                if (relDate.compareTo(maxCoreRelease) > 0) {
+                    maxCoreRelease = relDate;
+                }
+            }
+            assertEquals("duel.timelineDate must equal max first OCG release date of coreCardIds for " + duel.id,
+                    maxCoreRelease, duel.timelineDate);
+
             assertNotNull(duel.sideA);
             assertNotNull(duel.sideB);
-
             cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide[] sides = {duel.sideA, duel.sideB};
             for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide side : sides) {
                 assertTrue("AI fillStyle must be registered in SUPPORTED_STYLES: " + side.fillStyle,
@@ -870,18 +892,19 @@ public class RpgEnginesTest {
                         cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.buildDeck(catalog, duel, side, duel.timelineDate);
                 assertEquals("Reconstructed canon deck must be exactly 40 cards: " + duel.id + "/" + side.characterName,
                         40, built.main.size());
-                // Every canon main card must be preserved
+                // Every canon card must already be released in OCG on or before duel.timelineDate
                 for (Integer cid : side.canonCardIds) {
-                    RpgCard meta = catalog.findCardOrCanon(cid);
-                    assertNotNull("Missing card metadata for canon card " + cid, meta);
-                    if (meta.isExtraDeckCard()) {
-                        assertTrue("Extra deck card should reside in extra: " + cid, built.extra.contains(cid));
-                    } else {
-                        assertTrue("Canon card must be preserved in main deck: " + cid, built.main.contains(cid));
-                    }
+                    assertTrue("Canon card " + cid + " in " + duel.id + " must be released <= " + duel.timelineDate,
+                            TimelineEngine.isCardReleased(catalog, cid, duel.timelineDate));
+                    RpgCard meta = catalog.findCard(cid);
+                    assertNotNull("Missing OCG catalog card " + cid, meta);
+                    assertFalse("Main canon card must not be Extra Deck: " + cid, meta.isExtraDeckCard());
+                    assertTrue("Canon card must be preserved in main deck: " + cid, built.main.contains(cid));
                 }
                 for (Integer eid : side.canonExtraIds) {
-                    assertNotNull("Missing extra card metadata " + eid, catalog.findCardOrCanon(eid));
+                    assertTrue("Canon extra card " + eid + " in " + duel.id + " must be released <= " + duel.timelineDate,
+                            TimelineEngine.isCardReleased(catalog, eid, duel.timelineDate));
+                    assertNotNull("Missing OCG catalog extra card " + eid, catalog.findCard(eid));
                     assertTrue("Canon extra card must be preserved: " + eid, built.extra.contains(eid));
                 }
                 assertFalse("canonCardIds should be populated for visual deck tagging", built.canonCardIds.isEmpty());
@@ -891,18 +914,35 @@ public class RpgEnginesTest {
                 for (Integer eid : side.canonExtraIds) {
                     assertTrue("canonCardIds must include canon extra card " + eid, built.canonCardIds.contains(eid));
                 }
-                // Main deck must never contain Extra Deck cards
+                // Main deck must never contain Extra Deck or unreleased cards
                 for (Integer mid : built.main) {
-                    RpgCard mc = catalog.findCardOrCanon(mid);
-                    assertNotNull("Every built main card must have metadata: " + mid, mc);
+                    assertTrue("Built main card " + mid + " must be released <= " + duel.timelineDate,
+                            TimelineEngine.isCardReleased(catalog, mid, duel.timelineDate));
+                    RpgCard mc = catalog.findCard(mid);
+                    assertNotNull("Every built main card must exist in 1999 OCG catalog: " + mid, mc);
                     assertFalse("Main deck must not contain Extra Deck card: " + mid, mc.isExtraDeckCard());
                 }
             }
         }
+    }
 
-        // Verify post-1999 canon-only cards (e.g. Toon World 15259703) NEVER leak into 1999 shop/crafting pool
-        assertNull("Toon World must NOT leak into 1999 OCG shop catalog", catalog.findCard(15259703));
-        assertNotNull("Toon World must resolve via findCardOrCanon", catalog.findCardOrCanon(15259703));
+    @Test
+    public void profileCanonDuelClearTrackingWorks() {
+        RpgProfile p = new RpgProfile();
+        String duelId = "canon_1996_11_19_manga_yugi_kaiba_school";
+        assertEquals(0, p.getCanonDuelClearedCount(duelId));
+        assertFalse(p.isCanonDuelModeCleared(duelId, RpgProfile.CANON_MODE_ROLE_A));
+
+        p.recordCanonDuelClear(duelId, RpgProfile.CANON_MODE_ROLE_A);
+        p.recordCanonDuelClear(duelId, RpgProfile.CANON_MODE_ROLE_A); // duplicate idempotent
+        assertTrue(p.isCanonDuelModeCleared(duelId, RpgProfile.CANON_MODE_ROLE_A));
+        assertFalse(p.isCanonDuelModeCleared(duelId, RpgProfile.CANON_MODE_ROLE_B));
+        assertEquals(1, p.getCanonDuelClearedCount(duelId));
+
+        p.recordCanonDuelClear(duelId, RpgProfile.CANON_MODE_ROLE_B);
+        p.recordCanonDuelClear(duelId, RpgProfile.CANON_MODE_OWN_VS_A);
+        p.recordCanonDuelClear(duelId, RpgProfile.CANON_MODE_OWN_VS_B);
+        assertEquals(4, p.getCanonDuelClearedCount(duelId));
     }
 
     @Test
