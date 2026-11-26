@@ -41,6 +41,7 @@ import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
 import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
+import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
 import cn.garymb.ygomobile.rpg.model.Rarity;
 import cn.garymb.ygomobile.rpg.model.RpgCard;
 import cn.garymb.ygomobile.rpg.model.RpgCatalog;
@@ -518,6 +519,75 @@ public final class RpgPackVisualDialogs {
         }
     }
 
+    public static View createPlayerDeckEmbeddedView(final Activity activity,
+                                                    final RpgCatalog catalog,
+                                                    final RpgProfile profile) {
+        Map<Integer, Integer> deckCopies = new LinkedHashMap<>();
+        List<RpgCard> orderedCards = new ArrayList<>();
+        collectDeckCards(catalog, profile.activeDeckMain, deckCopies, orderedCards);
+        collectDeckCards(catalog, profile.activeDeckExtra, deckCopies, orderedCards);
+        RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
+        String deckTitle = activeSaved != null ? activeSaved.name : "当前构筑";
+        int mainSize = profile.activeDeckMain != null ? profile.activeDeckMain.size() : 0;
+        int extraSize = profile.activeDeckExtra != null ? profile.activeDeckExtra.size() : 0;
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        String inferredStyle = mainSize > 0
+                ? RpgAiStrategy.getStyleDisplayName(
+                        RpgAiStrategy.inferStyleFromDeck(profile.activeDeckMain, profile.activeDeckExtra, activeRule))
+                : "";
+        String subNote = "主卡组 " + mainSize + " 张 · 额外 " + extraSize + " 张"
+                + (!inferredStyle.isEmpty() ? (" · 风格: " + inferredStyle) : "");
+        return buildCardPoolSplitView(
+                activity,
+                catalog,
+                profile,
+                "🃏 当前卡组 · ",
+                deckTitle,
+                null,
+                subNote,
+                false,
+                false,
+                null,
+                deckCopies,
+                orderedCards,
+                true,
+                null,
+                () -> showPlayerDeckVisualDialog(activity, catalog, profile));
+    }
+
+    public static void showPlayerDeckVisualDialog(final Activity activity,
+                                                  final RpgCatalog catalog,
+                                                  final RpgProfile profile) {
+        Map<Integer, Integer> deckCopies = new LinkedHashMap<>();
+        List<RpgCard> orderedCards = new ArrayList<>();
+        collectDeckCards(catalog, profile.activeDeckMain, deckCopies, orderedCards);
+        collectDeckCards(catalog, profile.activeDeckExtra, deckCopies, orderedCards);
+        RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
+        String deckTitle = activeSaved != null ? activeSaved.name : "当前构筑";
+        int mainSize = profile.activeDeckMain != null ? profile.activeDeckMain.size() : 0;
+        int extraSize = profile.activeDeckExtra != null ? profile.activeDeckExtra.size() : 0;
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        String inferredStyle = mainSize > 0
+                ? RpgAiStrategy.getStyleDisplayName(
+                        RpgAiStrategy.inferStyleFromDeck(profile.activeDeckMain, profile.activeDeckExtra, activeRule))
+                : "";
+        String subNote = "主卡组 " + mainSize + " 张 · 额外 " + extraSize + " 张"
+                + (!inferredStyle.isEmpty() ? (" · 风格: " + inferredStyle) : "");
+        showCardPoolSplitDialog(
+                activity,
+                catalog,
+                profile,
+                "🃏 当前卡组 · ",
+                deckTitle,
+                null,
+                subNote,
+                false,
+                false,
+                null,
+                deckCopies,
+                orderedCards);
+    }
+
     private static void showCardPoolSplitDialog(final Activity activity,
                                                 final RpgCatalog catalog,
                                                 final RpgProfile profile,
@@ -531,9 +601,45 @@ public final class RpgPackVisualDialogs {
                                                 final Map<Integer, Integer> deckCopyCounts,
                                                 final List<RpgCard> rawCards) {
         final Dialog dialog = createFullWidthDialog(activity);
+        View root = buildCardPoolSplitView(
+                activity,
+                catalog,
+                profile,
+                titlePrefix,
+                poolName,
+                packCoverIdOrNull,
+                extraSubtitleNote,
+                showBoxQuantity,
+                banlistMode,
+                explicitBanlist,
+                deckCopyCounts,
+                rawCards,
+                false,
+                dialog::dismiss,
+                null);
+        dialog.setContentView(root);
+        sizeDialogToScreen(activity, dialog, 0.97f, 0.94f);
+        dialog.show();
+    }
+
+    private static View buildCardPoolSplitView(final Activity activity,
+                                               final RpgCatalog catalog,
+                                               final RpgProfile profile,
+                                               final String titlePrefix,
+                                               final String poolName,
+                                               final String packCoverIdOrNull,
+                                               final String extraSubtitleNote,
+                                               final boolean showBoxQuantity,
+                                               final boolean banlistMode,
+                                               final OcgBanlist explicitBanlist,
+                                               final Map<Integer, Integer> deckCopyCounts,
+                                               final List<RpgCard> rawCards,
+                                               final boolean embeddedInPage,
+                                               final Runnable onCloseAction,
+                                               final Runnable onExpandFullscreenAction) {
         final boolean landscape = isLandscape(activity);
         final int cols = landscape ? 6 : 4;
-        final int cardWidthPx = computeCardWidthPx(activity, cols, 36);
+        final int cardWidthPx = computeCardWidthPx(activity, cols, embeddedInPage ? 56 : 36);
         final boolean deckMode = deckCopyCounts != null;
         final OcgBanlist activeBanlist = explicitBanlist != null
                 ? explicitBanlist
@@ -598,7 +704,7 @@ public final class RpgPackVisualDialogs {
             }
         }
 
-        // Compact header bar with pack cover (or first card thumbnail), title, progress, and inline Close button
+        // Compact header bar with pack cover (or first card thumbnail), title, progress, and Close/Fullscreen button
         LinearLayout poolHeader = new LinearLayout(activity);
         poolHeader.setOrientation(LinearLayout.HORIZONTAL);
         poolHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -655,22 +761,36 @@ public final class RpgPackVisualDialogs {
 
         poolHeader.addView(pHeaderText);
 
-        Button btnClose = makeDialogButton(activity, "关闭", "#475569");
-        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 32));
-        closeLp.setMarginStart(dp(activity, 6));
-        btnClose.setLayoutParams(closeLp);
-        btnClose.setPadding(dp(activity, 12), 0, dp(activity, 12), 0);
-        btnClose.setOnClickListener(v -> dialog.dismiss());
-        poolHeader.addView(btnClose);
+        if (!embeddedInPage && onCloseAction != null) {
+            Button btnClose = makeDialogButton(activity, "关闭", "#475569");
+            LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 32));
+            closeLp.setMarginStart(dp(activity, 6));
+            btnClose.setLayoutParams(closeLp);
+            btnClose.setPadding(dp(activity, 12), 0, dp(activity, 12), 0);
+            btnClose.setOnClickListener(v -> onCloseAction.run());
+            poolHeader.addView(btnClose);
+        } else if (embeddedInPage && onExpandFullscreenAction != null) {
+            Button btnFull = makeDialogButton(activity, "🔍 全屏", "#334155");
+            LinearLayout.LayoutParams fullLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 30));
+            fullLp.setMarginStart(dp(activity, 6));
+            btnFull.setLayoutParams(fullLp);
+            btnFull.setPadding(dp(activity, 10), 0, dp(activity, 10), 0);
+            btnFull.setOnClickListener(v -> onExpandFullscreenAction.run());
+            poolHeader.addView(btnFull);
+        }
         root.addView(poolHeader);
 
         // ==================== TOP PANE: PERSISTENT CARD DETAIL PANEL ====================
         LinearLayout detailPanel = new LinearLayout(activity);
         detailPanel.setOrientation(LinearLayout.HORIZONTAL);
         detailPanel.setGravity(Gravity.TOP);
-        LinearLayout.LayoutParams detailLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, landscape ? 0.42f : 0.36f);
+        LinearLayout.LayoutParams detailLp = embeddedInPage
+                ? new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(activity, landscape ? 148 : 172))
+                : new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, landscape ? 0.42f : 0.36f);
         detailLp.bottomMargin = dp(activity, 6);
         detailPanel.setLayoutParams(detailLp);
         GradientDrawable detailBg = new GradientDrawable();
@@ -761,23 +881,37 @@ public final class RpgPackVisualDialogs {
         filterScroll.addView(filterRow);
         root.addView(filterScroll);
 
-        // ==================== BOTTOM PANE: SCROLLABLE CARD POOL LIST ====================
-        final ScrollView gridScroll = new ScrollView(activity);
-        LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, landscape ? 0.58f : 0.64f);
-        gridScroll.setLayoutParams(scrollLp);
+        // ==================== BOTTOM PANE: CARD POOL / DECK GRID ====================
         GradientDrawable listBg = new GradientDrawable();
         listBg.setColor(Color.parseColor("#0F172A"));
         listBg.setCornerRadius(dp(activity, 8));
         listBg.setStroke(dp(activity, 1), Color.parseColor("#1E293B"));
-        gridScroll.setBackground(listBg);
-        gridScroll.setPadding(dp(activity, 4), dp(activity, 4), dp(activity, 4), dp(activity, 4));
 
         final GridLayout grid = new GridLayout(activity);
         grid.setColumnCount(cols);
         grid.setUseDefaultMargins(false);
-        gridScroll.addView(grid);
-        root.addView(gridScroll);
+
+        final ScrollView gridScroll;
+        if (embeddedInPage) {
+            gridScroll = null;
+            LinearLayout gridWrapper = new LinearLayout(activity);
+            gridWrapper.setOrientation(LinearLayout.VERTICAL);
+            gridWrapper.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            gridWrapper.setBackground(listBg);
+            gridWrapper.setPadding(dp(activity, 4), dp(activity, 4), dp(activity, 4), dp(activity, 4));
+            gridWrapper.addView(grid);
+            root.addView(gridWrapper);
+        } else {
+            gridScroll = new ScrollView(activity);
+            LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, landscape ? 0.58f : 0.64f);
+            gridScroll.setLayoutParams(scrollLp);
+            gridScroll.setBackground(listBg);
+            gridScroll.setPadding(dp(activity, 4), dp(activity, 4), dp(activity, 4), dp(activity, 4));
+            gridScroll.addView(grid);
+            root.addView(gridScroll);
+        }
 
         final RpgCard[] selectedCardRef = new RpgCard[1];
         final PoolTileHolder[] selectedHolderRef = new PoolTileHolder[1];
@@ -805,6 +939,12 @@ public final class RpgPackVisualDialogs {
                         ? extraSubtitleNote
                         : "当前环境所有已发售卡片均可投入最多 3 张");
                 tvDetailMeta.setText("推进时间轴至 1999-08-26 及以后可查看历次禁限卡表");
+                tvDetailDesc.setText("");
+            } else if (deckMode && uniqueCards.isEmpty()) {
+                tvDetailName.setText("当前卡组为空");
+                tvDetailName.setTextColor(Color.parseColor("#94A3B8"));
+                tvDetailStats.setText("点击上方「🛠️ 原版卡组编辑器」或「智能组卡」开始构筑");
+                tvDetailMeta.setText("也可点击「📂 读取卡组」载入已保存构筑");
                 tvDetailDesc.setText("");
             } else {
                 tvDetailName.setText("当前筛选条件下暂无卡片");
@@ -1070,7 +1210,9 @@ public final class RpgPackVisualDialogs {
                 grid.addView(tile);
             }
 
-            gridScroll.scrollTo(0, 0);
+            if (gridScroll != null) {
+                gridScroll.scrollTo(0, 0);
+            }
             if (currentStillVisible && selectedCardRef[0] != null) {
                 selectCard.accept(selectedCardRef[0]);
             } else {
@@ -1101,10 +1243,7 @@ public final class RpgPackVisualDialogs {
             filterRow.addView(fb);
         }
         renderPoolGrid.run();
-
-        dialog.setContentView(root);
-        sizeDialogToScreen(activity, dialog, 0.97f, 0.94f);
-        dialog.show();
+        return root;
     }
 
     public static void showCardDetailDialog(final Activity activity,

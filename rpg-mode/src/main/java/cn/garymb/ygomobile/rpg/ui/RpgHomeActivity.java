@@ -835,6 +835,8 @@ public class RpgHomeActivity extends AppCompatActivity {
         saveDeckBtn.setOnClickListener(v -> showSaveDeckDialog());
         Button loadDeckBtn = makeActionButton("📂 读取卡组", "#0D9488");
         loadDeckBtn.setOnClickListener(v -> showLoadDeckDialog());
+        Button deleteDeckBtn = makeActionButton("🗑 删除卡组", "#B91C1C");
+        deleteDeckBtn.setOnClickListener(v -> showDeleteDeckDialog());
         Button clearBtn = makeActionButton("清空卡组", "#475569");
         clearBtn.setOnClickListener(v -> {
             profile.activeDeckMain.clear();
@@ -854,6 +856,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         actionRow.addView(autoBtn);
         actionRow.addView(saveDeckBtn);
         actionRow.addView(loadDeckBtn);
+        actionRow.addView(deleteDeckBtn);
         actionRow.addView(clearBtn);
         actionScroll.addView(actionRow);
         layoutTabActions.addView(actionScroll);
@@ -861,6 +864,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
         LinearLayout statusCard = makeCardContainer();
         RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
+        int savedCount = profile.savedDecks != null ? profile.savedDecks.size() : 0;
         TextView statusTitle = makeTitleText(
                 "当前 RPG 卡组" + (activeSaved != null ? " [" + activeSaved.name + "]" : "")
                         + "：主卡组 " + profile.activeDeckMain.size()
@@ -868,7 +872,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                         + (val.valid ? "✔ 合规可出战" : "✘ 未通过校验"));
         statusTitle.setTextColor(Color.parseColor(val.valid ? "#34D399" : "#F87171"));
         statusCard.addView(statusTitle);
-        statusCard.addView(makeSubtleText("💡 点击上方「🛠️ 原版卡组编辑器」可直接使用 YGOMobile 原版可视化卡组编辑器组卡，保存并退出后自动同步回 RPG 模式并校验合规性。"));
+        statusCard.addView(makeSubtleText("💡 点击上方「🛠️ 原版卡组编辑器」即可可视化增删卡片（自动同步并校验）· 已保存槽位 " + savedCount + " 套，可通过上方菜单保存/读取/删除。"));
         if (!val.valid) {
             StringBuilder errs = new StringBuilder();
             for (String e : val.errors) {
@@ -878,147 +882,13 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
         layoutContent.addView(statusCard);
 
-        // Multi-deck saved slots section
-        LinearLayout savedSection = makeCardContainer();
-        int savedCount = profile.savedDecks != null ? profile.savedDecks.size() : 0;
-        TextView savedHeader = makeTitleText("📚 多卡组槽位管理（已保存 " + savedCount + " 套）");
-        savedHeader.setTextColor(Color.parseColor("#38BDF8"));
-        savedSection.addView(savedHeader);
-        if (savedCount == 0) {
-            savedSection.addView(makeSubtleText("暂无已保存卡组。点击上方「💾 保存卡组」可命名保存当前构筑，随时读取、覆盖或删除。"));
-        } else {
-            for (final RpgProfile.SavedDeck sd : profile.savedDecks) {
-                if (sd == null) continue;
-                boolean isCur = sd.id != null && sd.id.equals(profile.activeDeckId);
-                int mSize = sd.main != null ? sd.main.size() : 0;
-                int eSize = sd.extra != null ? sd.extra.size() : 0;
-                TextView nameTv = makeSubtleText((isCur ? "▶ [当前] " : "• ") + sd.name
-                        + "（主 " + mSize + " / 额外 " + eSize
-                        + (sd.savedAtDate != null ? " · 存自 " + sd.savedAtDate : "") + "）");
-                nameTv.setTextColor(Color.parseColor(isCur ? "#34D399" : "#E2E8F0"));
-                savedSection.addView(nameTv);
-
-                LinearLayout dRow = new LinearLayout(this);
-                dRow.setOrientation(LinearLayout.HORIZONTAL);
-                dRow.setPadding(0, dp(4), 0, dp(8));
-
-                Button loadBtn = makeActionButton("📂 读取", "#059669");
-                loadBtn.setOnClickListener(v -> {
-                    if (profile.loadSavedDeck(sd.id)) {
-                        saveProfileSafe();
-                        Toast.makeText(this, "已读取卡组「" + sd.name + "」", Toast.LENGTH_SHORT).show();
-                        refreshAll();
-                    }
-                });
-                dRow.addView(loadBtn);
-
-                Button overwriteBtn = makeActionButton("💾 覆盖", "#0284C7");
-                overwriteBtn.setOnClickListener(v -> {
-                    if (profile.overwriteSavedDeck(sd.id)) {
-                        saveProfileSafe();
-                        Toast.makeText(this, "已用当前构筑覆盖「" + sd.name + "」", Toast.LENGTH_SHORT).show();
-                        refreshAll();
-                    }
-                });
-                dRow.addView(overwriteBtn);
-
-                Button delBtn = makeActionButton("🗑 删除", "#B91C1C");
-                delBtn.setOnClickListener(v -> new AlertDialog.Builder(this)
-                        .setTitle("删除卡组")
-                        .setMessage("确认删除已保存卡组「" + sd.name + "」？（不会清空当前编辑中的卡组）")
-                        .setPositiveButton("删除", (dlg, which) -> {
-                            if (profile.deleteSavedDeck(sd.id)) {
-                                saveProfileSafe();
-                                Toast.makeText(this, "已删除卡组「" + sd.name + "」", Toast.LENGTH_SHORT).show();
-                                refreshAll();
-                            }
-                        })
-                        .setNegativeButton("取消", null)
-                        .show());
-                dRow.addView(delBtn);
-
-                savedSection.addView(dRow);
-            }
-        }
-        layoutContent.addView(savedSection);
-
-        Map<Integer, Integer> inDeckCounts = countDeckCards();
-        OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
-        List<RpgCard> released = TimelineEngine.getReleasedCards(catalog, profile.currentTimelineDate);
-
-        for (final RpgCard card : released) {
-            int owned = profile.getOwnedCount(card.id);
-            int inDeck = inDeckCounts.getOrDefault(card.id, 0);
-            if (owned <= 0 && inDeck <= 0) continue;
-
-            int legalMax = Math.min(owned, banlist.getMaxCopies(card.id));
-            LinearLayout box = makeCardContainer();
-            box.setOrientation(LinearLayout.HORIZONTAL);
-            box.setGravity(Gravity.CENTER_VERTICAL);
-
-            ImageView thumb = new ImageView(this);
-            LinearLayout.LayoutParams thumbLp = new LinearLayout.LayoutParams(dp(52), dp(76));
-            thumbLp.setMarginEnd(dp(10));
-            thumb.setLayoutParams(thumbLp);
-            thumb.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            RpgCardArtLoader.loadInto(thumb, card.id, dp(52));
-            thumb.setOnClickListener(v -> RpgPackVisualDialogs.showCardDetailDialog(this, catalog, profile, card));
-            box.addView(thumb);
-
-            LinearLayout infoCol = new LinearLayout(this);
-            infoCol.setOrientation(LinearLayout.VERTICAL);
-            infoCol.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-            String badge = banlist.getLimitBadge(card.id);
-            String errataBadge = CardErrataEngine.getVersionBadge(catalog, card.id, profile.currentTimelineDate);
-            TextView tv = makeTitleText("[" + card.rarity + "] " + card.getDisplayName()
-                    + (badge.isEmpty() ? "" : " 【" + badge + "】")
-                    + (errataBadge.isEmpty() ? "" : " ⟪" + errataBadge + "⟫"));
-            tv.setTextColor(Color.parseColor(card.getRarityEnum().colorHex));
-            infoCol.addView(tv);
-            infoCol.addView(makeSubtleText("已投入 " + inDeck + " / 上限 " + legalMax + "（拥有 " + owned + " 张）"));
-            if (!errataBadge.isEmpty()) {
-                TextView tvErrDesc = makeSubtleText(CardErrataEngine.getEffectiveDescCn(catalog, card, profile.currentTimelineDate));
-                tvErrDesc.setTextColor(Color.parseColor("#FDE68A"));
-                infoCol.addView(tvErrDesc);
-            }
-
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, dp(6), 0, 0);
-
-            Button addBtn = makeActionButton("+ 投入", "#0284C7");
-            addBtn.setEnabled(inDeck < legalMax);
-            addBtn.setOnClickListener(v -> {
-                if (card.isExtraDeckCard()) {
-                    if (profile.activeDeckExtra.size() < DeckValidator.MAX_EXTRA_DECK) {
-                        profile.activeDeckExtra.add(card.id);
-                    }
-                } else {
-                    if (profile.activeDeckMain.size() < DeckValidator.MAX_MAIN_DECK) {
-                        profile.activeDeckMain.add(card.id);
-                    }
-                }
-                saveProfileSafe();
-                refreshAll();
-            });
-
-            Button rmBtn = makeActionButton("- 移出", "#64748B");
-            rmBtn.setEnabled(inDeck > 0);
-            rmBtn.setOnClickListener(v -> {
-                if (!profile.activeDeckMain.remove(Integer.valueOf(card.id))) {
-                    profile.activeDeckExtra.remove(Integer.valueOf(card.id));
-                }
-                saveProfileSafe();
-                refreshAll();
-            });
-
-            row.addView(addBtn);
-            row.addView(rmBtn);
-            infoCol.addView(row);
-            box.addView(infoCol);
-            layoutContent.addView(box);
-        }
+        // Reuse the same split-screen visual deck viewer used for AI opponent decks
+        View deckVisualView = RpgPackVisualDialogs.createPlayerDeckEmbeddedView(this, catalog, profile);
+        LinearLayout.LayoutParams dvLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dvLp.bottomMargin = dp(10);
+        deckVisualView.setLayoutParams(dvLp);
+        layoutContent.addView(deckVisualView);
     }
 
     private void launchNativeDeckEditor() {
@@ -1099,6 +969,44 @@ public class RpgHomeActivity extends AppCompatActivity {
                         Toast.makeText(this, "已读取卡组「" + sd.name + "」", Toast.LENGTH_SHORT).show();
                         refreshAll();
                     }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void showDeleteDeckDialog() {
+        List<RpgProfile.SavedDeck> savedList = profile.savedDecks;
+        if (savedList == null || savedList.isEmpty()) {
+            Toast.makeText(this, "暂无已保存卡组可删除", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels = new String[savedList.size()];
+        for (int i = 0; i < savedList.size(); i++) {
+            RpgProfile.SavedDeck sd = savedList.get(i);
+            boolean isCur = sd.id != null && sd.id.equals(profile.activeDeckId);
+            int mSize = sd.main != null ? sd.main.size() : 0;
+            int eSize = sd.extra != null ? sd.extra.size() : 0;
+            labels[i] = (isCur ? "▶ [当前] " : "") + sd.name
+                    + "（主 " + mSize + " / 额外 " + eSize
+                    + (sd.savedAtDate != null ? " · " + sd.savedAtDate : "") + "）";
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("🗑 选择要删除的已保存卡组（共 " + savedList.size() + " 套）")
+                .setItems(labels, (dialog, which) -> {
+                    final RpgProfile.SavedDeck sd = savedList.get(which);
+                    if (sd == null) return;
+                    new AlertDialog.Builder(this)
+                            .setTitle("删除卡组")
+                            .setMessage("确认删除已保存卡组「" + sd.name + "」？（不会清空当前编辑中的卡组）")
+                            .setPositiveButton("删除", (dlg, w) -> {
+                                if (profile.deleteSavedDeck(sd.id)) {
+                                    saveProfileSafe();
+                                    Toast.makeText(this, "已删除卡组「" + sd.name + "」", Toast.LENGTH_SHORT).show();
+                                    refreshAll();
+                                }
+                            })
+                            .setNegativeButton("取消", null)
+                            .show();
                 })
                 .setNegativeButton("取消", null)
                 .show();
