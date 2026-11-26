@@ -1519,7 +1519,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     allowedCaps.put(c.id, cap);
                 }
             }
-            bridge.openNativeDeckEditor(this, playerYdk.getAbsolutePath(), allowedCaps);
+            bridge.openNativeDeckEditor(this, playerYdk.getAbsolutePath(), allowedCaps, banlist);
             finish();
         } catch (IOException e) {
             Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();

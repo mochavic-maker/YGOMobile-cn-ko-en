@@ -155,11 +155,46 @@ public final class RpgIntegration {
 
     private static volatile java.util.Map<Integer, Integer> sRpgDeckAllowedCaps = null;
     private static volatile java.util.Map<Integer, Integer> sRpgDeckCurrentCounts = null;
+    private static volatile ocgcore.data.LimitList sRpgDeckLimitList = null;
     private static volatile OcgRuleSet sActiveRpgDuelRuleSet = null;
     private static volatile int sSpectateReturnTab = RpgHomeActivity.TAB_AI_SHOWDOWN;
     private static volatile Context sAppContext = null;
     private static volatile String sActiveDuelPlayerAvatarId = null;
     private static volatile String sActiveDuelOpponentAvatarId = null;
+
+    /**
+     * Hook called from {@code DeckEditorManagerBase.refreshLimitList()} and
+     * {@code DeckEditorManagerMid.setupRecyclerViews()}: returns the selected RPG timeline's
+     * historical OCG {@link ocgcore.data.LimitList} while editing an RPG deck, or {@code null}
+     * outside RPG Mode so normal YGOMobile uses the user's configured banlist.
+     */
+    public static ocgcore.data.LimitList getRpgDeckLimitListOverride() {
+        return sRpgDeckLimitList;
+    }
+
+    private static ocgcore.data.LimitList buildRpgLimitList(OcgBanlist banlist) {
+        String name = (banlist != null && banlist.name != null && !banlist.name.isEmpty())
+                ? banlist.name : "OCG RPG 无禁限";
+        ocgcore.data.LimitList ll = new ocgcore.data.LimitList(name);
+        if (banlist != null) {
+            if (banlist.forbidden != null) {
+                for (Integer id : banlist.forbidden) {
+                    if (id != null && id > 0) ll.addForbidden(id);
+                }
+            }
+            if (banlist.limited != null) {
+                for (Integer id : banlist.limited) {
+                    if (id != null && id > 0) ll.addLimit(id);
+                }
+            }
+            if (banlist.semiLimited != null) {
+                for (Integer id : banlist.semiLimited) {
+                    if (id != null && id > 0) ll.addSemiLimit(id);
+                }
+            }
+        }
+        return ll;
+    }
 
     /**
      * Hook called from {@link cn.garymb.ygomobile.render.field.TextureLoader#getAvatar(boolean)}:
@@ -201,6 +236,7 @@ public final class RpgIntegration {
         sActiveDuelPlayerAvatarId = null;
         sActiveDuelOpponentAvatarId = null;
         sActiveRpgDuelRuleSet = null;
+        sRpgDeckLimitList = null;
     }
 
     private static String resolveOpponentIdByName(String displayName) {
@@ -530,6 +566,7 @@ public final class RpgIntegration {
             if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
             sRpgDeckAllowedCaps = null;
             sRpgDeckCurrentCounts = null;
+            sRpgDeckLimitList = null;
             if (editedYdkToSyncBack != null && editedYdkToSyncBack.exists()) {
                 parseAndPublishEditedDeck(editedYdkToSyncBack);
             }
@@ -724,7 +761,8 @@ public final class RpgIntegration {
             @Override
             public void openNativeDeckEditor(Context context,
                                              String playerDeckYdkPath,
-                                             java.util.Map<Integer, Integer> allowedCardCaps) {
+                                             java.util.Map<Integer, Integer> allowedCardCaps,
+                                             OcgBanlist activeBanlist) {
                 if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
                 activity.runOnUiThread(() -> {
                     final File syncedFile = syncYdkToNativeDeckDir(playerDeckYdkPath);
@@ -732,14 +770,17 @@ public final class RpgIntegration {
                             ? new java.util.HashMap<>(allowedCardCaps)
                             : new java.util.HashMap<>();
                     final java.util.Map<Integer, Integer> countsCopy = countCardsInYdk(syncedFile);
+                    final ocgcore.data.LimitList timelineLimit = buildRpgLimitList(activeBanlist);
+                    final String banlistLabel = timelineLimit.getName();
                     sTransitionCoordinator.launchDeckEditorScene(
                             asHostSurface(activity),
                             () -> {
                                 sRpgDeckAllowedCaps = capsCopy;
                                 sRpgDeckCurrentCounts = countsCopy;
+                                sRpgDeckLimitList = timelineLimit;
                                 activity.showDeckEditorView();
                                 Toast.makeText(activity,
-                                        "RPG 组卡限制已启用：仅显示已拥有且未达上限的卡片，保存并退出后自动同步",
+                                        "RPG 组卡限制已启用（禁限表：" + banlistLabel + "）：保存并退出后自动同步",
                                         Toast.LENGTH_LONG).show();
                             },
                             () -> openRpgDeckInNativeEditor(activity, syncedFile.getAbsolutePath(), "rpg_player_active", "RPG"),
@@ -750,7 +791,8 @@ public final class RpgIntegration {
             @Override
             public void openReadonlyAiDeckViewer(Context context,
                                                  String aiDeckYdkPath,
-                                                 String displayTitle) {
+                                                 String displayTitle,
+                                                 OcgBanlist activeBanlist) {
                 if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
                 activity.runOnUiThread(() -> {
                     // Place the preview file under aiDeckDir so DeckHistory.isReadonlyDeck()
@@ -777,12 +819,14 @@ public final class RpgIntegration {
                     }
                     final String label = (displayTitle != null && !displayTitle.isEmpty())
                             ? displayTitle : "AI 卡组";
+                    final ocgcore.data.LimitList timelineLimit = buildRpgLimitList(activeBanlist);
                     sTransitionCoordinator.launchDeckEditorScene(
                             asHostSurface(activity),
                             () -> {
                                 // Empty allowed caps double-locks card search and card addition
                                 sRpgDeckAllowedCaps = Collections.emptyMap();
                                 sRpgDeckCurrentCounts = Collections.emptyMap();
+                                sRpgDeckLimitList = timelineLimit;
                                 activity.showDeckEditorView();
                                 Toast.makeText(activity,
                                         "只读查看 AI 卡组：" + label + "（不可修改，点「退出编辑」返回选对手页）",
@@ -802,6 +846,7 @@ public final class RpgIntegration {
                     if (mgr instanceof cn.garymb.ygomobile.game.deck.DeckEditorManager) {
                         cn.garymb.ygomobile.game.deck.DeckEditorManager dem =
                                 (cn.garymb.ygomobile.game.deck.DeckEditorManager) mgr;
+                        dem.refreshLimitList();
                         dem.openDeckForRpg(path, deckName, category);
                         cn.garymb.ygomobile.game.deck.CardSearcherManager searcher =
                                 dem.getCardSearcherManager();

@@ -702,9 +702,112 @@ public class RpgAiStrategyTest {
         }
     }
 
+    @Test
+    public void suppressedMonsterSetsFaceDownAndRepositionsToDefenseAgainstStrongerAttacker() {
+        final int CELTIC_GUARDIAN = 91152256; // 1400/1200 Lv4 (Vol.2)
+        final int GAIA = 6368038;             // 2300/2100 Lv7
+        final int MAMMOTH = 40374923;         // 1200/800 Lv3
+
+        // Exact Vol.2 Kaiba scenario: Opponent controls lone Blue-Eyes (3000/2500).
+        // AI has an existing ATK-position Celtic Guardian (1400/1200) on field and a second
+        // Celtic Guardian in hand, with no removal and no battle traps.
+        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-03-27");
+        state.turnCount = 4;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        placeMonster(state, 1, 2, RpgAiCardKnowledge.BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
+        placeMonster(state, 0, 2, CELTIC_GUARDIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 1400, 1200);
+        addHandCard(state, CELTIC_GUARDIAN);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "NO_TRIBUTE_BEAT");
+
+        // 1) Second Celtic Guardian in hand MUST be Set face-down (opcode 3), NOT Attack-Summoned (opcode 0)
+        RpgAiStrategy.IdleCmdPrompt p1 = new RpgAiStrategy.IdleCmdPrompt();
+        p1.summonable.add(new RpgAiStrategy.CmdEntry(CELTIC_GUARDIAN, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p1.msetable.add(new RpgAiStrategy.CmdEntry(CELTIC_GUARDIAN, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p1.reposable.add(new RpgAiStrategy.CmdEntry(CELTIC_GUARDIAN, 0, 0, RpgAiDuelState.LOC_MZONE, 2, 0, 0, 0));
+        p1.canBattle = true;
+        p1.canEnd = true;
+        assertEquals("Suppressed Celtic Guardian in hand must be Normal Set face-down vs Blue-Eyes",
+                (0 << 16) + 3, strategy.chooseIdleCmd(p1));
+
+        // 2) After Setting the hand Celtic Guardian, existing ATK Celtic Guardian MUST switch to DEF (opcode 2)
+        state.hand[0].clear();
+        placeMonster(state, 0, 1, CELTIC_GUARDIAN, RpgAiDuelState.POS_FACEDOWN_DEFENSE, 1400, 1200);
+        RpgAiStrategy.IdleCmdPrompt p2 = new RpgAiStrategy.IdleCmdPrompt();
+        p2.reposable.add(new RpgAiStrategy.CmdEntry(CELTIC_GUARDIAN, 0, 0, RpgAiDuelState.LOC_MZONE, 2, 0, 0, 0));
+        p2.canBattle = true;
+        p2.canEnd = true;
+        assertEquals("Existing ATK Celtic Guardian (1400/1200) must reposition to DEF vs Blue-Eyes (3000)",
+                (0 << 16) + 2, strategy.chooseIdleCmd(p2));
+
+        // 3) Once switched to DEF, AI ends Main Phase directly (7) instead of entering empty Battle Phase
+        state.mzone[0][2].position = RpgAiDuelState.POS_FACEUP_DEFENSE;
+        RpgAiStrategy.IdleCmdPrompt p3 = new RpgAiStrategy.IdleCmdPrompt();
+        p3.canBattle = true;
+        p3.canEnd = true;
+        assertEquals("After switching to DEF with no profitable attacks, end turn directly",
+                7, strategy.chooseIdleCmd(p3));
+
+        // Positive control A: AI controls Blue-Eyes (3000) vs opponent's Gaia (2300) in Main 1 ->
+        // Blue-Eyes clears Gaia, so AI SHOULD Attack-Summon Celtic Guardian (0) to push direct damage!
+        state.reset();
+        state.turnCount = 5;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        placeMonster(state, 0, 2, RpgAiCardKnowledge.BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
+        placeMonster(state, 1, 2, GAIA, RpgAiDuelState.POS_FACEUP_ATTACK, 2300, 2100);
+        addHandCard(state, CELTIC_GUARDIAN);
+        RpgAiStrategy.IdleCmdPrompt pFollowUp = new RpgAiStrategy.IdleCmdPrompt();
+        pFollowUp.summonable.add(new RpgAiStrategy.CmdEntry(CELTIC_GUARDIAN, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pFollowUp.msetable.add(new RpgAiStrategy.CmdEntry(CELTIC_GUARDIAN, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pFollowUp.canBattle = true;
+        pFollowUp.canEnd = true;
+        assertEquals("When AI already controls 3000 Blue-Eyes over 2300 Gaia, Attack-Summon Celtic Guardian to follow up",
+                0 << 16, strategy.chooseIdleCmd(pFollowUp));
+
+        // Positive control B: AI has Summoned Skull (2500) + Set Reinforcements (+500 -> 3000 >= 3000)
+        // vs opponent's Blue-Eyes (3000) -> keep Summoned Skull in ATK to spring Reinforcements!
+        state.reset();
+        state.turnCount = 6;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        placeMonster(state, 0, 2, RpgAiCardKnowledge.SUMMONED_SKULL, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 1200);
+        placeSetBackrow(state, 0, 2, RpgAiCardKnowledge.REINFORCEMENTS);
+        placeMonster(state, 1, 2, RpgAiCardKnowledge.BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
+        RpgAiStrategy.IdleCmdPrompt pTrick = new RpgAiStrategy.IdleCmdPrompt();
+        pTrick.reposable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.SUMMONED_SKULL, 0, 0, RpgAiDuelState.LOC_MZONE, 2, 0, 0, 0));
+        pTrick.canBattle = true;
+        pTrick.canEnd = true;
+        assertEquals("With set Reinforcements capable of matching Blue-Eyes, keep Summoned Skull in ATK",
+                7, strategy.chooseIdleCmd(pTrick));
+
+        // Positive control C: Opponent has Blue-Eyes (3000) AND 1200 Mammoth in Main 1 ->
+        // Celtic Guardian (1400) can profitably kill Mammoth, so enter Battle Phase (6) instead of switching to DEF!
+        state.reset();
+        state.turnCount = 6;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        placeMonster(state, 0, 2, CELTIC_GUARDIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 1400, 1200);
+        placeMonster(state, 1, 2, RpgAiCardKnowledge.BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
+        placeMonster(state, 1, 1, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        RpgAiStrategy.IdleCmdPrompt pTarget = new RpgAiStrategy.IdleCmdPrompt();
+        pTarget.reposable.add(new RpgAiStrategy.CmdEntry(CELTIC_GUARDIAN, 0, 0, RpgAiDuelState.LOC_MZONE, 2, 0, 0, 0));
+        pTarget.canBattle = true;
+        pTarget.canEnd = true;
+        assertEquals("With a weaker 1200 Mammoth target in Main 1, enter Battle Phase instead of switching to DEF",
+                6, strategy.chooseIdleCmd(pTarget));
+    }
+
     private void placeSetBackrow(RpgAiDuelState state, int localPlayer, int seq) {
+        placeSetBackrow(state, localPlayer, seq, 0);
+    }
+
+    private void placeSetBackrow(RpgAiDuelState state, int localPlayer, int seq, int code) {
         RpgAiDuelState.CardSlot s = new RpgAiDuelState.CardSlot();
-        s.code = 0;
+        s.code = code;
         s.controller = localPlayer;
         s.owner = localPlayer;
         s.location = RpgAiDuelState.LOC_SZONE;

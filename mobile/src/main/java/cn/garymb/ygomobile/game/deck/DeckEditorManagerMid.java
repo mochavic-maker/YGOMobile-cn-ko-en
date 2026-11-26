@@ -190,10 +190,13 @@ abstract class DeckEditorManagerMid extends DeckEditorManagerBase {
         if (tv != null) tv.setText(mStringManager.getSystemString(index, def));
     }
     protected void setupRecyclerViews() {
-        mLimitList = isBanListActive()
-                ? (AppsSettings.get().getGenesysMode() == 1
-                   ? cardLoader.getGenesysLimitList() : cardLoader.getLimitList())
-                : null;
+        LimitList rpgLimit = cn.garymb.ygomobile.rpg.RpgIntegration.getRpgDeckLimitListOverride();
+        mLimitList = rpgLimit != null
+                ? rpgLimit
+                : (isBanListActive()
+                   ? (AppsSettings.get().getGenesysMode() == 1
+                      ? cardLoader.getGenesysLimitList() : cardLoader.getLimitList())
+                   : null);
         mImageTop = new ImageTop(activity);
         mCardTypeImage = new CardTypeImage(activity);
         if (mCardTypeImage != null) {

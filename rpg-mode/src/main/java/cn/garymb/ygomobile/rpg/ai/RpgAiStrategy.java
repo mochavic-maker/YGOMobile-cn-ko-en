@@ -856,7 +856,8 @@ public class RpgAiStrategy {
         CmdEntry bestSummon = null;
         int bestSummonScore = Integer.MIN_VALUE;
         for (CmdEntry e : p.summonable) {
-            int score = scoreNormalSummon(e, oppStrongest, myStrongestOnField, oppBoardEmpty, hasBoardAdvantage, hasStolen);
+            int score = scoreNormalSummon(e, oppStrongest, oppStrongestFaceUpAtk, myStrongestOnField,
+                    oppBoardEmpty, hasBoardAdvantage, hasStolen, p.canBattle);
             if (preferTrapHoleBait && score > 0) {
                 int atk = state.getCardBaseAtk(e.code);
                 int def = state.getCardBaseDef(e.code);
@@ -880,7 +881,8 @@ public class RpgAiStrategy {
         CmdEntry bestSet = null;
         int bestSetScore = Integer.MIN_VALUE;
         for (CmdEntry e : p.msetable) {
-            int score = scoreMonsterSet(e, oppStrongest, myStrongestOnField, myBoardEmpty, oppBoardEmpty, hasBoardAdvantage);
+            int score = scoreMonsterSet(e, oppStrongest, oppStrongestFaceUpAtk, myStrongestOnField,
+                    myBoardEmpty, oppBoardEmpty, hasBoardAdvantage, p.canBattle);
             if (score > bestSetScore) {
                 bestSetScore = score;
                 bestSet = e;
@@ -899,8 +901,9 @@ public class RpgAiStrategy {
         return null;
     }
 
-    private int scoreNormalSummon(CmdEntry e, int oppStrongest, int myStrongestOnField,
-                                  boolean oppBoardEmpty, boolean hasBoardAdvantage, boolean hasStolen) {
+    private int scoreNormalSummon(CmdEntry e, int oppStrongest, int oppStrongestFaceUpAtk, int myStrongestOnField,
+                                  boolean oppBoardEmpty, boolean hasBoardAdvantage, boolean hasStolen,
+                                  boolean canBattle) {
         int code = e.code;
         int atk = state.getCardBaseAtk(code);
         int def = state.getCardBaseDef(code);
@@ -974,15 +977,27 @@ public class RpgAiStrategy {
                 && effectiveAtk < state.eraTypicalLowerAtk && def > atk) {
             score -= 400;
         }
-        // Only penalize Attack Summon when opponent strictly outclasses BOTH our field AND this monster
-        if (!hasBoardAdvantage && oppStrongest > Math.max(effectiveAtk, myStrongestOnField) && def >= atk) {
+        // NEVER Attack-Summon a monster that is suppressed by opponent's stronger face-up attacker
+        // when we have no way to beat over it this turn and no battle trick —
+        // Setting it face-down absorbs the attack for 0 LP damage and hides information!
+        boolean isIgnitionUtility = code == RpgAiCardKnowledge.CANNON_SOLDIER
+                || code == RpgAiCardKnowledge.TIME_WIZARD
+                || code == RpgAiCardKnowledge.CYBER_STEIN
+                || code == RpgAiCardKnowledge.BARREL_DRAGON
+                || code == RpgAiCardKnowledge.RELINQUISHED;
+        boolean suppressedByFaceUp = !oppBoardEmpty
+                && isSuppressedByFaceUpAttacker(effectiveAtk, oppStrongestFaceUpAtk, myStrongestOnField, canBattle);
+        if (suppressedByFaceUp && !isIgnitionUtility) {
+            score -= 1300;
+        } else if (!hasBoardAdvantage && oppStrongest > Math.max(effectiveAtk, myStrongestOnField) && def >= atk) {
             score -= 600;
         }
         return score;
     }
 
-    private int scoreMonsterSet(CmdEntry e, int oppStrongest, int myStrongestOnField,
-                                boolean myBoardEmpty, boolean oppBoardEmpty, boolean hasBoardAdvantage) {
+    private int scoreMonsterSet(CmdEntry e, int oppStrongest, int oppStrongestFaceUpAtk, int myStrongestOnField,
+                                boolean myBoardEmpty, boolean oppBoardEmpty, boolean hasBoardAdvantage,
+                                boolean canBattle) {
         int code = e.code;
         int atk = state.getCardBaseAtk(code);
         int def = state.getCardBaseDef(code);
@@ -1034,10 +1049,15 @@ public class RpgAiStrategy {
             return base;
         }
 
-        // When opponent outclasses our board and this monster can't beat over them even with an equip,
-        // Setting a defensive blocker saves LP (NEVER defensively set an offensive beater when we have
-        // board advantage or opponent board is empty!)
+        // When opponent has a face-up monster strictly stronger than this card and we have no
+        // way to clear it or battle trick to win, Setting face-down saves LP (0 battle damage vs
+        // taking oppAtk - myAtk) and conceals our card — even if we already have another monster on board!
         int effectiveAtk = atk + getBestHandEquipBonusFor(code);
+        boolean suppressedByFaceUp = !oppBoardEmpty
+                && isSuppressedByFaceUpAttacker(effectiveAtk, oppStrongestFaceUpAtk, myStrongestOnField, canBattle);
+        if (suppressedByFaceUp) {
+            return Math.max(def, Math.min(effectiveAtk, state.eraTypicalLowerAtk)) + 550;
+        }
         if (!hasBoardAdvantage && !oppBoardEmpty && oppStrongest > Math.max(effectiveAtk, myStrongestOnField)) {
             if (def >= atk || def >= state.eraWallDefThreshold) {
                 return Math.max(def, state.eraTypicalLowerAtk) + 450;
@@ -1115,6 +1135,8 @@ public class RpgAiStrategy {
     private Integer tryReposition(IdleCmdPrompt p) {
         if (p.reposable.isEmpty()) return null;
         int oppStrongest = state.getStrongestThreatValue(1);
+        int oppStrongestFaceUpAtk = state.getStrongestAtk(1);
+        int myStrongestOnField = state.getStrongestAtk(0);
         int attackFloor = Math.min(1000, state.eraTypicalLowerAtk);
         for (CmdEntry e : p.reposable) {
             RpgAiDuelState.CardSlot slot = state.getCard(0, e.location, e.sequence);
@@ -1126,15 +1148,75 @@ public class RpgAiStrategy {
                     return reposIdle(e);
                 }
             } else if (slot.isAttackPos()) {
-                // Switch weak/flipped monsters (Magician of Faith, Man-Eater Bug, Sangan, low ATK wall) to DEF
+                // Switch weak/flipped monsters (Magician of Faith, Man-Eater Bug, Sangan, low ATK wall)
+                // OR ANY monster suppressed by opponent's stronger face-up attacker (e.g., Celtic Guardian
+                // 1400/1200 facing Blue-Eyes 3000 with no removal or battle trick) to Defense Position
+                // so it absorbs the attack for 0 LP damage instead of taking free battle damage!
                 boolean isWeakUtility = slot.atk < state.eraTypicalLowerAtk && slot.def > slot.atk;
                 boolean outclassedWall = slot.def > slot.atk && oppStrongest > slot.atk;
-                if ((state.isMain2() || !canMonsterAttackProfitably(slot.atk)) && (isWeakUtility || outclassedWall)) {
+                boolean suppressedByFaceUp = isSuppressedByFaceUpAttacker(
+                        slot.atk, oppStrongestFaceUpAtk, myStrongestOnField, p.canBattle);
+                if (suppressedByFaceUp
+                        || ((state.isMain2() || !p.canBattle || !canMonsterAttackProfitably(slot.atk))
+                        && (isWeakUtility || outclassedWall))) {
                     return reposIdle(e);
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * Returns true when opponent controls a face-up monster with strictly higher ATK than
+     * {@code myAtk}, we have no lethal battle trick to beat or trade with it, and we cannot
+     * profitably clear it or attack around it during this turn's Battle Phase.
+     */
+    private boolean isSuppressedByFaceUpAttacker(int myAtk, int oppStrongestFaceUpAtk,
+                                                   int myStrongestOnField, boolean canBattle) {
+        if (oppStrongestFaceUpAtk <= myAtk) return false;
+        if (hasLethalBattleTrickAgainst(myAtk, oppStrongestFaceUpAtk)) return false;
+        if (!state.isMain2() && canBattle) {
+            // If we already control a stronger attacker to clear opponent's boss, or this monster
+            // itself can profitably attack another target this turn, stay aggressive in Main 1.
+            if (myStrongestOnField > oppStrongestFaceUpAtk) return false;
+            if (canMonsterAttackProfitably(myAtk)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Checks whether AI currently controls (or can Set from hand) a combat-swing trap capable of
+     * letting a face-up Attack-Position monster with {@code myAtk} defeat or trade with
+     * opponent's {@code oppFaceUpAtk} attacker.
+     */
+    private boolean hasLethalBattleTrickAgainst(int myAtk, int oppFaceUpAtk) {
+        if (oppFaceUpAtk <= 0) return false;
+        for (RpgAiDuelState.CardSlot s : state.getSpellTraps(0)) {
+            if (isBattleTrickCapableOfWinning(s.code, myAtk, oppFaceUpAtk)) {
+                return true;
+            }
+        }
+        if (state.getFreeMainSzoneCount(0) > 0) {
+            for (RpgAiDuelState.CardSlot h : state.hand[0]) {
+                if (h != null && isBattleTrickCapableOfWinning(h.code, myAtk, oppFaceUpAtk)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isBattleTrickCapableOfWinning(int code, int myAtk, int oppFaceUpAtk) {
+        if (code == RpgAiCardKnowledge.REINFORCEMENTS || code == RpgAiCardKnowledge.KUNAI_WITH_CHAIN) {
+            return myAtk + 500 >= oppFaceUpAtk;
+        }
+        if (code == RpgAiCardKnowledge.MIRROR_WALL) {
+            return (oppFaceUpAtk / 2) <= myAtk;
+        }
+        if (code == RpgAiCardKnowledge.METALMORPH) {
+            return myAtk + 300 >= oppFaceUpAtk;
+        }
+        return false;
     }
 
     private Integer tryUtilitySpellsAndEffects(IdleCmdPrompt p) {

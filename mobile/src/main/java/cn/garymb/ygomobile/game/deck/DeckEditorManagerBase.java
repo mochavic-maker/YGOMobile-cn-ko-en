@@ -211,11 +211,14 @@ abstract class DeckEditorManagerBase {
         });
     }
     public void refreshLimitList() {
-        mLimitList = isBanListActive()
-                ? (AppsSettings.get().getGenesysMode() == 1
-                   ? cardLoader.getGenesysLimitList()
-                   : cardLoader.getLimitList())
-                : null;
+        LimitList rpgLimit = cn.garymb.ygomobile.rpg.RpgIntegration.getRpgDeckLimitListOverride();
+        mLimitList = rpgLimit != null
+                ? rpgLimit
+                : (isBanListActive()
+                   ? (AppsSettings.get().getGenesysMode() == 1
+                      ? cardLoader.getGenesysLimitList()
+                      : cardLoader.getLimitList())
+                   : null);
         if (cgvMain != null) cgvMain.updateTopImage(mImageTop, mLimitList);
         if (cgvExtra != null) cgvExtra.updateTopImage(mImageTop, mLimitList);
         if (cgvSide != null) cgvSide.updateTopImage(mImageTop, mLimitList);

@@ -50,6 +50,13 @@ public interface RpgDuelHostBridge {
     default void openNativeDeckEditor(Context context,
                                       String playerDeckYdkPath,
                                       java.util.Map<Integer, Integer> allowedCardCaps) {
+        openNativeDeckEditor(context, playerDeckYdkPath, allowedCardCaps, null);
+    }
+
+    default void openNativeDeckEditor(Context context,
+                                      String playerDeckYdkPath,
+                                      java.util.Map<Integer, Integer> allowedCardCaps,
+                                      OcgBanlist activeBanlist) {
     }
 
     /**
@@ -59,6 +66,13 @@ public interface RpgDuelHostBridge {
     default void openReadonlyAiDeckViewer(Context context,
                                           String aiDeckYdkPath,
                                           String displayTitle) {
+        openReadonlyAiDeckViewer(context, aiDeckYdkPath, displayTitle, null);
+    }
+
+    default void openReadonlyAiDeckViewer(Context context,
+                                          String aiDeckYdkPath,
+                                          String displayTitle,
+                                          OcgBanlist activeBanlist) {
     }
 
     /**
