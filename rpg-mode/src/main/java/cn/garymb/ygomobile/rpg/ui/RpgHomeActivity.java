@@ -7,23 +7,29 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.android.material.tabs.TabLayout;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -69,6 +75,7 @@ import cn.garymb.ygomobile.rpg.model.RpgProfile;
  * - Tab 5: OCG Timeline Tournament (4-player / 8-player randomized elimination bracket)
  * - Tab 6: OCG Official Card Errata History Archive (Series 1 ~ Series 13)
  * - Tab 7: Real ocgcore AI-vs-AI Showdown (Headless Batch Win-Rate + Live 3D Spectate)
+ * - Tab 8: Canon Manga/Anime/Movie Duel Recreation
  */
 public class RpgHomeActivity extends AppCompatActivity {
 
@@ -82,12 +89,26 @@ public class RpgHomeActivity extends AppCompatActivity {
     public static final int TAB_ERRATA = 6;
     public static final int TAB_AI_SHOWDOWN = 7;
     public static final int TAB_CANON_DUELS = 8;
+    public static final int TAB_COUNT = 9;
+
+    private static final String[] TAB_TITLES = {
+            "卡包商店",
+            "特典活动",
+            "卡片合成",
+            "RPG 组卡",
+            "AI 对战",
+            "🏆 锦标赛",
+            "效果勘误",
+            "⚔️ AI 对决",
+            "🎬 对决还原"
+    };
 
     private RpgCatalog catalog;
     private RpgRepository repository;
     private RpgProfile profile;
     private final PackOpeningEngine packEngine = new PackOpeningEngine();
 
+    private ScrollView scrollRpgBody;
     private TextView tvTokens;
     private TextView tvDust;
     private TextView tvTimelineDate;
@@ -102,7 +123,9 @@ public class RpgHomeActivity extends AppCompatActivity {
     private List<String> timelineEventDates = new ArrayList<>();
     private LinearLayout layoutTabActions;
     private LinearLayout layoutContent;
-    private TabLayout tabLayout;
+    private RecyclerView rvNavTabs;
+    private RpgNavTabAdapter navTabAdapter;
+    private List<Integer> tabOrder = new ArrayList<>();
 
     private int activeTab = 0;
     private boolean collectionOnlyOwned = false;
@@ -133,6 +156,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "旧存档多余卡(>3张)已自动分解：" + legacySurplus.message, Toast.LENGTH_LONG).show();
         }
 
+        scrollRpgBody = findViewById(R.id.scroll_rpg_body);
         tvTokens = findViewById(R.id.tv_rpg_tokens);
         tvDust = findViewById(R.id.tv_rpg_dust);
         tvTimelineDate = findViewById(R.id.tv_timeline_date);
@@ -146,7 +170,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         btnNextMilestone = findViewById(R.id.btn_next_milestone);
         layoutTabActions = findViewById(R.id.layout_tab_actions);
         layoutContent = findViewById(R.id.layout_rpg_content);
-        tabLayout = findViewById(R.id.tab_rpg_nav);
+        rvNavTabs = findViewById(R.id.rv_rpg_nav_tabs);
 
         timelineEventDates = TimelineEngine.getTimelineEventDates(catalog, AiDeckGenerator.getDemoOpponents());
 
@@ -166,37 +190,194 @@ public class RpgHomeActivity extends AppCompatActivity {
         btnActiveBanlist.setOnClickListener(v -> openActiveBanlistDialog());
         tvActiveBanlist.setOnClickListener(v -> openActiveBanlistDialog());
 
-        tabLayout.setTabMode(TabLayout.MODE_SCROLLABLE);
-        tabLayout.addTab(tabLayout.newTab().setText("卡包商店"));
-        tabLayout.addTab(tabLayout.newTab().setText("特典活动"));
-        tabLayout.addTab(tabLayout.newTab().setText("卡片合成"));
-        tabLayout.addTab(tabLayout.newTab().setText("RPG 组卡"));
-        tabLayout.addTab(tabLayout.newTab().setText("AI 对战"));
-        tabLayout.addTab(tabLayout.newTab().setText("🏆 锦标赛"));
-        tabLayout.addTab(tabLayout.newTab().setText("效果勘误"));
-        tabLayout.addTab(tabLayout.newTab().setText("⚔️ AI 对决"));
-        tabLayout.addTab(tabLayout.newTab().setText("🎬 对决还原"));
-        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                activeTab = tab.getPosition();
-                renderCurrentTab();
-            }
-
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {}
-
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {
-                renderCurrentTab();
-            }
-        });
+        tabOrder = profile.getNormalizedTabOrder(TAB_COUNT);
+        activeTab = tabOrder.isEmpty() ? TAB_SHOP : tabOrder.get(0);
+        setupDraggableNavTabs();
 
         RpgSessionManager.setCachedCatalog(catalog);
         currentTimelineDigest = TimelineEngine.buildDigestAtDate(
                 catalog, AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
         applyInitialTabFromIntent(getIntent());
         refreshAll();
+    }
+
+    private void setupDraggableNavTabs() {
+        rvNavTabs.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        navTabAdapter = new RpgNavTabAdapter();
+        rvNavTabs.setAdapter(navTabAdapter);
+
+        final boolean[] orderChanged = {false};
+        ItemTouchHelper.SimpleCallback dragCallback = new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT, 0) {
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return true;
+            }
+
+            @Override
+            public boolean isItemViewSwipeEnabled() {
+                return false;
+            }
+
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView,
+                                  @NonNull RecyclerView.ViewHolder viewHolder,
+                                  @NonNull RecyclerView.ViewHolder target) {
+                int fromPos = viewHolder.getBindingAdapterPosition();
+                int toPos = target.getBindingAdapterPosition();
+                if (fromPos == RecyclerView.NO_POSITION || toPos == RecyclerView.NO_POSITION
+                        || fromPos == toPos) {
+                    return false;
+                }
+                if (fromPos < toPos) {
+                    for (int i = fromPos; i < toPos; i++) {
+                        Collections.swap(tabOrder, i, i + 1);
+                    }
+                } else {
+                    for (int i = fromPos; i > toPos; i--) {
+                        Collections.swap(tabOrder, i, i - 1);
+                    }
+                }
+                navTabAdapter.notifyItemMoved(fromPos, toPos);
+                orderChanged[0] = true;
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                // Swipe disabled
+            }
+
+            @Override
+            public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
+                super.onSelectedChanged(viewHolder, actionState);
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder instanceof RpgNavTabAdapter.TabVH) {
+                    orderChanged[0] = false;
+                    if (scrollRpgBody != null) {
+                        scrollRpgBody.requestDisallowInterceptTouchEvent(true);
+                    }
+                    viewHolder.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                    ((RpgNavTabAdapter.TabVH) viewHolder).setDragging(true);
+                }
+            }
+
+            @Override
+            public void clearView(@NonNull RecyclerView recyclerView,
+                                  @NonNull RecyclerView.ViewHolder viewHolder) {
+                super.clearView(recyclerView, viewHolder);
+                if (scrollRpgBody != null) {
+                    scrollRpgBody.requestDisallowInterceptTouchEvent(false);
+                }
+                if (viewHolder instanceof RpgNavTabAdapter.TabVH) {
+                    ((RpgNavTabAdapter.TabVH) viewHolder).setDragging(false);
+                }
+                if (orderChanged[0]) {
+                    orderChanged[0] = false;
+                    profile.setTabOrder(tabOrder, TAB_COUNT);
+                    saveProfileSafe();
+                    Toast.makeText(RpgHomeActivity.this,
+                            "✔ 已保存标签页顺序（长按标签可随时拖动调整）", Toast.LENGTH_SHORT).show();
+                }
+            }
+        };
+        new ItemTouchHelper(dragCallback).attachToRecyclerView(rvNavTabs);
+    }
+
+    private void selectTabById(int tabId) {
+        if (tabId < 0 || tabId >= TAB_COUNT) return;
+        activeTab = tabId;
+        if (navTabAdapter != null) {
+            navTabAdapter.notifyDataSetChanged();
+        }
+        int visualPos = tabOrder.indexOf(tabId);
+        if (rvNavTabs != null && visualPos >= 0) {
+            final int targetPos = visualPos;
+            rvNavTabs.post(() -> rvNavTabs.smoothScrollToPosition(targetPos));
+        }
+        if (layoutTabActions != null && layoutContent != null) {
+            renderCurrentTab();
+        }
+    }
+
+    private class RpgNavTabAdapter extends RecyclerView.Adapter<RpgNavTabAdapter.TabVH> {
+        @NonNull
+        @Override
+        public TabVH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LinearLayout root = new LinearLayout(parent.getContext());
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.setGravity(Gravity.CENTER_HORIZONTAL);
+            root.setLayoutParams(new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)));
+            root.setMinimumWidth(dp(72));
+
+            TextView tvLabel = new TextView(parent.getContext());
+            LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 0, 1f);
+            tvLabel.setLayoutParams(textLp);
+            tvLabel.setGravity(Gravity.CENTER);
+            tvLabel.setPadding(dp(12), 0, dp(12), 0);
+            tvLabel.setSingleLine(true);
+            tvLabel.setTextSize(13f);
+            root.addView(tvLabel);
+
+            View indicator = new View(parent.getContext());
+            LinearLayout.LayoutParams indLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(3));
+            indicator.setLayoutParams(indLp);
+            root.addView(indicator);
+
+            return new TabVH(root, tvLabel, indicator);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull TabVH holder, int position) {
+            final int tabId = tabOrder.get(position);
+            boolean selected = (tabId == activeTab);
+            holder.tvLabel.setText(tabId >= 0 && tabId < TAB_TITLES.length ? TAB_TITLES[tabId] : "");
+            holder.tvLabel.setTextColor(Color.parseColor(selected ? "#F8FAFC" : "#94A3B8"));
+            holder.tvLabel.setTypeface(null, selected
+                    ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            holder.indicator.setBackgroundColor(selected
+                    ? Color.parseColor("#F59E0B") : Color.TRANSPARENT);
+            holder.setDragging(false);
+            holder.itemView.setOnClickListener(v -> selectTabById(tabId));
+        }
+
+        @Override
+        public int getItemCount() {
+            return tabOrder.size();
+        }
+
+        class TabVH extends RecyclerView.ViewHolder {
+            final TextView tvLabel;
+            final View indicator;
+
+            TabVH(@NonNull View itemView, TextView tvLabel, View indicator) {
+                super(itemView);
+                this.tvLabel = tvLabel;
+                this.indicator = indicator;
+            }
+
+            void setDragging(boolean dragging) {
+                if (dragging) {
+                    GradientDrawable dragBg = new GradientDrawable();
+                    dragBg.setColor(Color.parseColor("#334155"));
+                    dragBg.setCornerRadius(dp(6));
+                    dragBg.setStroke(dp(1), Color.parseColor("#F59E0B"));
+                    itemView.setBackground(dragBg);
+                    itemView.setAlpha(0.95f);
+                    itemView.setScaleX(1.06f);
+                    itemView.setScaleY(1.06f);
+                    itemView.setElevation(dp(6));
+                } else {
+                    itemView.setBackgroundColor(Color.TRANSPARENT);
+                    itemView.setAlpha(1.0f);
+                    itemView.setScaleX(1.0f);
+                    itemView.setScaleY(1.0f);
+                    itemView.setElevation(0f);
+                }
+            }
+        }
     }
 
     @Override
@@ -207,14 +388,10 @@ public class RpgHomeActivity extends AppCompatActivity {
     }
 
     private void applyInitialTabFromIntent(Intent intent) {
-        if (intent == null || tabLayout == null) return;
+        if (intent == null) return;
         int requested = intent.getIntExtra(EXTRA_INITIAL_TAB, -1);
-        if (requested >= 0 && requested < tabLayout.getTabCount()) {
-            activeTab = requested;
-            TabLayout.Tab tab = tabLayout.getTabAt(requested);
-            if (tab != null) {
-                tab.select();
-            }
+        if (requested >= 0 && requested < TAB_COUNT) {
+            selectTabById(requested);
             intent.removeExtra(EXTRA_INITIAL_TAB);
         }
     }
@@ -224,6 +401,10 @@ public class RpgHomeActivity extends AppCompatActivity {
         super.onResume();
         if (repository != null) {
             profile = repository.loadProfile();
+            tabOrder = profile.getNormalizedTabOrder(TAB_COUNT);
+            if (navTabAdapter != null) {
+                navTabAdapter.notifyDataSetChanged();
+            }
         }
 
         // Sync back deck edits made in YGOMobile's native DeckEditor
@@ -232,8 +413,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             profile.activeDeckMain = new ArrayList<>(editedDeck.main);
             profile.activeDeckExtra = new ArrayList<>(editedDeck.extra);
             saveProfileSafe();
-            TabLayout.Tab deckTab = tabLayout.getTabAt(TAB_DECK);
-            if (deckTab != null) deckTab.select();
+            selectTabById(TAB_DECK);
 
             DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
             if (val.valid) {
@@ -280,8 +460,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             if (prize > 0) {
                 saveProfileSafe();
             }
-            TabLayout.Tab tTab = tabLayout.getTabAt(TAB_TOURNAMENT);
-            if (tTab != null) tTab.select();
+            selectTabById(TAB_TOURNAMENT);
         }
         if (settlement != null) {
             String extraMsg = (tournamentOutcome != null && activeBracket != null && activeBracket.finished)
@@ -1239,6 +1418,8 @@ public class RpgHomeActivity extends AppCompatActivity {
 
         TextView note = makeSubtleText("抽包/购入超 3 张将自动分解为尘埃（不支持手动分解）· 已自动隐藏 "
                 + hiddenFullCount + " 种满 3 张的卡片 · 待补齐 " + shownCount + " 种");
+        note.setLayoutParams(new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         layoutTabActions.addView(note);
 
         if (shownCount == 0) {
@@ -1535,8 +1716,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     .setTitle("RPG 卡组未通过校验")
                     .setMessage(android.text.TextUtils.join("\n", val.errors))
                     .setPositiveButton("去组卡", (d, w) -> {
-                        TabLayout.Tab t = tabLayout.getTabAt(TAB_DECK);
-                        if (t != null) t.select();
+                        selectTabById(TAB_DECK);
                     })
                     .setNegativeButton("取消", null)
                     .show();
@@ -1723,8 +1903,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     .setTitle("RPG 卡组未通过校验")
                     .setMessage(android.text.TextUtils.join("\n", val.errors))
                     .setPositiveButton("去组卡", (d, w) -> {
-                        TabLayout.Tab t = tabLayout.getTabAt(3);
-                        if (t != null) t.select();
+                        selectTabById(TAB_DECK);
                     })
                     .setNegativeButton("取消", null)
                     .show();
@@ -2015,8 +2194,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     .setTitle("RPG 卡组未通过校验")
                     .setMessage(android.text.TextUtils.join("\n", val.errors))
                     .setPositiveButton("去组卡", (d, w) -> {
-                        TabLayout.Tab t = tabLayout.getTabAt(3);
-                        if (t != null) t.select();
+                        selectTabById(TAB_DECK);
                     })
                     .setNegativeButton("取消", null)
                     .show();
@@ -2111,7 +2289,14 @@ public class RpgHomeActivity extends AppCompatActivity {
         List<OcgCanonDuel> allCanon = catalog.getCanonDuels();
         List<OcgCanonDuel> unlocked = TimelineEngine.getAvailableCanonDuels(catalog, profile.currentTimelineDate);
 
-        // Top filter bar
+        // Stack filter bar and summary note vertically inside a single container
+        // (layoutTabActions is HORIZONTAL; adding a MATCH_PARENT view + TextView directly would
+        // leave 0px width for the TextView, causing single-character wrapping and pushing content off-screen.)
+        LinearLayout actionCol = new LinearLayout(this);
+        actionCol.setOrientation(LinearLayout.VERTICAL);
+        actionCol.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
         android.widget.HorizontalScrollView filterScroll = new android.widget.HorizontalScrollView(this);
         filterScroll.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -2136,13 +2321,14 @@ public class RpgHomeActivity extends AppCompatActivity {
             filterRow.addView(btn);
         }
         filterScroll.addView(filterRow);
-        layoutTabActions.addView(filterScroll);
+        actionCol.addView(filterScroll);
 
         TextView note = makeSubtleText("🎬 已解锁 " + unlocked.size() + " / " + allCanon.size()
                 + " 场原著对决（当前时间点 " + profile.currentTimelineDate
                 + "）· 原著用卡 100% 保留，不足 40 张部分以当期 OCG 卡池补足");
-        note.setPadding(0, dp(4), 0, 0);
-        layoutTabActions.addView(note);
+        note.setPadding(0, dp(6), 0, 0);
+        actionCol.addView(note);
+        layoutTabActions.addView(actionCol);
 
         // Sort newest first (timelineDate desc, then originalDate desc)
         List<OcgCanonDuel> filtered = new ArrayList<>();
@@ -2302,12 +2488,12 @@ public class RpgHomeActivity extends AppCompatActivity {
             ownVsBBtn.setOnClickListener(v -> launchCanonDuelWithOwnDeck(duel, deckB));
             card.addView(makeEqualWeightButtonRow(6, ownVsABtn, ownVsBBtn));
 
-            // Row 3: Inspect both reconstructed decks visually
-            Button viewABtn = makeActionButton("👁 " + duel.sideA.characterName + " 卡组", "#0284C7");
+            // Row 3: Inspect both reconstructed decks visually (same split-screen viewer as AI Duel)
+            Button viewABtn = makeActionButton("🃏 查看 " + duel.sideA.characterName + " 卡组", "#0284C7");
             viewABtn.setOnClickListener(v -> RpgPackVisualDialogs.showCanonDeckVisualDialog(
                     this, catalog, profile, deckA, duel.episodeLabel));
 
-            Button viewBBtn = makeActionButton("👁 " + duel.sideB.characterName + " 卡组", "#475569");
+            Button viewBBtn = makeActionButton("🃏 查看 " + duel.sideB.characterName + " 卡组", "#475569");
             viewBBtn.setOnClickListener(v -> RpgPackVisualDialogs.showCanonDeckVisualDialog(
                     this, catalog, profile, deckB, duel.episodeLabel));
             card.addView(makeEqualWeightButtonRow(6, viewABtn, viewBBtn));
@@ -2410,8 +2596,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     .setTitle("RPG 自组卡组未通过校验")
                     .setMessage(TextUtils.join("\n", val.errors))
                     .setPositiveButton("去组卡", (d, w) -> {
-                        TabLayout.Tab t = tabLayout.getTabAt(TAB_DECK);
-                        if (t != null) t.select();
+                        selectTabById(TAB_DECK);
                     })
                     .setNegativeButton("取消", null)
                     .show();
@@ -2457,8 +2642,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     .setTitle("RPG 卡组未通过校验")
                     .setMessage(android.text.TextUtils.join("\n", val.errors))
                     .setPositiveButton("去组卡", (d, w) -> {
-                        TabLayout.Tab t = tabLayout.getTabAt(3);
-                        if (t != null) t.select();
+                        selectTabById(TAB_DECK);
                     })
                     .setNegativeButton("取消", null)
                     .show();

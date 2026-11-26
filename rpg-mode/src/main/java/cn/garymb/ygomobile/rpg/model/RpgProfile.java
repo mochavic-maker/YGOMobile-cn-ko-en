@@ -51,6 +51,37 @@ public class RpgProfile {
     /** Optional ID of the saved deck currently loaded in the editor. */
     public String activeDeckId = null;
 
+    /** User-customized navigation tab order (stores logical TAB_* IDs). */
+    public List<Integer> tabOrder = new ArrayList<>();
+
+    /**
+     * Returns a sanitized permutation of [0, tabCount) preserving the user's saved tab order,
+     * dropping invalid/duplicate entries and appending any newly introduced tabs at the end.
+     */
+    public List<Integer> getNormalizedTabOrder(int tabCount) {
+        List<Integer> normalized = new ArrayList<>(Math.max(0, tabCount));
+        Set<Integer> seen = new LinkedHashSet<>();
+        if (tabOrder != null) {
+            for (Integer id : tabOrder) {
+                if (id != null && id >= 0 && id < tabCount && seen.add(id)) {
+                    normalized.add(id);
+                }
+            }
+        }
+        for (int i = 0; i < tabCount; i++) {
+            if (seen.add(i)) {
+                normalized.add(i);
+            }
+        }
+        return normalized;
+    }
+
+    /** Persists a new sanitized tab order. */
+    public void setTabOrder(List<Integer> order, int tabCount) {
+        this.tabOrder = order != null ? new ArrayList<>(order) : new ArrayList<>();
+        this.tabOrder = getNormalizedTabOrder(tabCount);
+    }
+
     public static class SavedDeck {
         public String id;
         public String name;

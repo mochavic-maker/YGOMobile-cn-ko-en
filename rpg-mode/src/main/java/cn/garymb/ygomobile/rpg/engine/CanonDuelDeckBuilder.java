@@ -36,6 +36,7 @@ public final class CanonDuelDeckBuilder {
         public final String fillStyle;
         public final List<Integer> main;
         public final List<Integer> extra;
+        public final Set<Integer> canonCardIds;
         public final int canonMainCount;
         public final int paddedMainCount;
         public final String poolDate;
@@ -48,6 +49,7 @@ public final class CanonDuelDeckBuilder {
                               String fillStyle,
                               List<Integer> main,
                               List<Integer> extra,
+                              Set<Integer> canonCardIds,
                               int canonMainCount,
                               int paddedMainCount,
                               String poolDate) {
@@ -59,6 +61,9 @@ public final class CanonDuelDeckBuilder {
             this.fillStyle = fillStyle;
             this.main = Collections.unmodifiableList(main);
             this.extra = Collections.unmodifiableList(extra);
+            this.canonCardIds = canonCardIds != null
+                    ? Collections.unmodifiableSet(new HashSet<>(canonCardIds))
+                    : Collections.emptySet();
             this.canonMainCount = canonMainCount;
             this.paddedMainCount = paddedMainCount;
             this.poolDate = poolDate;
@@ -79,12 +84,14 @@ public final class CanonDuelDeckBuilder {
 
         List<Integer> main = new ArrayList<>();
         List<Integer> extra = new ArrayList<>();
+        Set<Integer> canonCardIds = new HashSet<>();
         Map<Integer, Integer> copies = new HashMap<>();
 
         // 1. Preserve 100% of canon cards used in the original work
         if (side != null && side.canonCardIds != null) {
             for (Integer cid : side.canonCardIds) {
                 if (cid == null || cid <= 0) continue;
+                canonCardIds.add(cid);
                 RpgCard meta = catalog != null ? catalog.findCardOrCanon(cid) : null;
                 if (meta != null && meta.isExtraDeckCard()) {
                     if (extra.size() < 15) {
@@ -99,6 +106,7 @@ public final class CanonDuelDeckBuilder {
         if (side != null && side.canonExtraIds != null) {
             for (Integer eid : side.canonExtraIds) {
                 if (eid == null || eid <= 0) continue;
+                canonCardIds.add(eid);
                 if (extra.size() < 15) {
                     extra.add(eid);
                 }
@@ -114,7 +122,7 @@ public final class CanonDuelDeckBuilder {
                     side != null ? side.avatarId : "",
                     side != null ? side.deckName : "",
                     side != null && side.fillStyle != null ? side.fillStyle : "GOOD_STUFF",
-                    main, extra, canonMainCount, Math.max(0, main.size() - canonMainCount), poolDate);
+                    main, extra, canonCardIds, canonMainCount, Math.max(0, main.size() - canonMainCount), poolDate);
         }
 
         // 2. Pad remaining slots up to 40 from OCG cards released on or before poolDate
@@ -258,6 +266,7 @@ public final class CanonDuelDeckBuilder {
                 style,
                 main,
                 extra,
+                canonCardIds,
                 canonMainCount,
                 Math.max(0, main.size() - canonMainCount),
                 poolDate);

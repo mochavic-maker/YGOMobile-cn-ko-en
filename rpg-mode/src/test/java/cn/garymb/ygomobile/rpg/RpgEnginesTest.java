@@ -884,6 +884,13 @@ public class RpgEnginesTest {
                     assertNotNull("Missing extra card metadata " + eid, catalog.findCardOrCanon(eid));
                     assertTrue("Canon extra card must be preserved: " + eid, built.extra.contains(eid));
                 }
+                assertFalse("canonCardIds should be populated for visual deck tagging", built.canonCardIds.isEmpty());
+                for (Integer cid : side.canonCardIds) {
+                    assertTrue("canonCardIds must include canon main card " + cid, built.canonCardIds.contains(cid));
+                }
+                for (Integer eid : side.canonExtraIds) {
+                    assertTrue("canonCardIds must include canon extra card " + eid, built.canonCardIds.contains(eid));
+                }
                 // Main deck must never contain Extra Deck cards
                 for (Integer mid : built.main) {
                     RpgCard mc = catalog.findCardOrCanon(mid);
@@ -896,5 +903,33 @@ public class RpgEnginesTest {
         // Verify post-1999 canon-only cards (e.g. Toon World 15259703) NEVER leak into 1999 shop/crafting pool
         assertNull("Toon World must NOT leak into 1999 OCG shop catalog", catalog.findCard(15259703));
         assertNotNull("Toon World must resolve via findCardOrCanon", catalog.findCardOrCanon(15259703));
+    }
+
+    @Test
+    public void profileTabOrderNormalizationAndPersistenceWorks() {
+        RpgProfile p = new RpgProfile();
+        // Empty saved tabOrder defaults to [0, 1, ..., 8]
+        List<Integer> def = p.getNormalizedTabOrder(9);
+        assertEquals(9, def.size());
+        for (int i = 0; i < 9; i++) {
+            assertEquals(Integer.valueOf(i), def.get(i));
+        }
+
+        // Reorder tabs (e.g., move Canon Duels 8 and AI Duel 4 to the front)
+        p.setTabOrder(java.util.Arrays.asList(8, 4, 0, 1, 2, 3, 5, 6, 7), 9);
+        List<Integer> custom = p.getNormalizedTabOrder(9);
+        assertEquals(Integer.valueOf(8), custom.get(0));
+        assertEquals(Integer.valueOf(4), custom.get(1));
+        assertEquals(Integer.valueOf(0), custom.get(2));
+        assertEquals(9, custom.size());
+
+        // Sanitize duplicates, nulls, out-of-range IDs, and append any newly added tabs
+        p.tabOrder = new java.util.ArrayList<>(java.util.Arrays.asList(8, 8, -1, 99, null, 3));
+        List<Integer> sanitized = p.getNormalizedTabOrder(9);
+        assertEquals(9, sanitized.size());
+        assertEquals(Integer.valueOf(8), sanitized.get(0));
+        assertEquals(Integer.valueOf(3), sanitized.get(1));
+        assertEquals(Integer.valueOf(0), sanitized.get(2));
+        assertEquals(Integer.valueOf(7), sanitized.get(8));
     }
 }

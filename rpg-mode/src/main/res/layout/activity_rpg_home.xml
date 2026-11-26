@@ -58,6 +58,7 @@
 
     <!-- Full-page scrollable body so header controls never crush content in landscape -->
     <ScrollView
+        android:id="@+id/scroll_rpg_body"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -233,15 +234,20 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- Tabs -->
-            <com.google.android.material.tabs.TabLayout
-                android:id="@+id/tab_rpg_nav"
+            <!-- Draggable Reorderable Tabs (long-press and drag to reorder) -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_rpg_nav_tabs"
                 android:layout_width="match_parent"
                 android:layout_height="44dp"
                 android:background="#1E293B"
-                app:tabIndicatorColor="#F59E0B"
-                app:tabSelectedTextColor="#F8FAFC"
-                app:tabTextColor="#94A3B8" />
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:paddingHorizontal="4dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#334155" />
 
             <!-- Action Bar for current tab -->
             <LinearLayout

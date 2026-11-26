@@ -516,7 +516,8 @@ public final class RpgPackVisualDialogs {
                 false,
                 null,
                 deckCopies,
-                orderedCards);
+                orderedCards,
+                builtDeck.canonCardIds);
     }
 
     private static void collectDeckCards(RpgCatalog catalog, List<Integer> ids,
@@ -579,6 +580,7 @@ public final class RpgPackVisualDialogs {
                 null,
                 deckCopies,
                 orderedCards,
+                null,
                 true,
                 null,
                 () -> showPlayerDeckVisualDialog(activity, catalog, profile));
@@ -629,6 +631,35 @@ public final class RpgPackVisualDialogs {
                                                 final OcgBanlist explicitBanlist,
                                                 final Map<Integer, Integer> deckCopyCounts,
                                                 final List<RpgCard> rawCards) {
+        showCardPoolSplitDialog(
+                activity,
+                catalog,
+                profile,
+                titlePrefix,
+                poolName,
+                packCoverIdOrNull,
+                extraSubtitleNote,
+                showBoxQuantity,
+                banlistMode,
+                explicitBanlist,
+                deckCopyCounts,
+                rawCards,
+                null);
+    }
+
+    private static void showCardPoolSplitDialog(final Activity activity,
+                                                final RpgCatalog catalog,
+                                                final RpgProfile profile,
+                                                final String titlePrefix,
+                                                final String poolName,
+                                                final String packCoverIdOrNull,
+                                                final String extraSubtitleNote,
+                                                final boolean showBoxQuantity,
+                                                final boolean banlistMode,
+                                                final OcgBanlist explicitBanlist,
+                                                final Map<Integer, Integer> deckCopyCounts,
+                                                final List<RpgCard> rawCards,
+                                                final Set<Integer> canonCoreIds) {
         final Dialog dialog = createFullWidthDialog(activity);
         View root = buildCardPoolSplitView(
                 activity,
@@ -643,6 +674,7 @@ public final class RpgPackVisualDialogs {
                 explicitBanlist,
                 deckCopyCounts,
                 rawCards,
+                canonCoreIds,
                 false,
                 dialog::dismiss,
                 null);
@@ -663,6 +695,7 @@ public final class RpgPackVisualDialogs {
                                                final OcgBanlist explicitBanlist,
                                                final Map<Integer, Integer> deckCopyCounts,
                                                final List<RpgCard> rawCards,
+                                               final Set<Integer> canonCoreIds,
                                                final boolean embeddedInPage,
                                                final Runnable onCloseAction,
                                                final Runnable onExpandFullscreenAction) {
@@ -700,6 +733,8 @@ public final class RpgPackVisualDialogs {
         int deckSpellCopies = 0;
         int deckTrapCopies = 0;
         int deckExtraCopies = 0;
+        int deckCanonCopies = 0;
+        final boolean hasCanonHighlight = deckMode && canonCoreIds != null && !canonCoreIds.isEmpty();
         if (rawCards != null) {
             for (RpgCard c : rawCards) {
                 if (c != null && seenIds.add(c.id)) {
@@ -719,6 +754,9 @@ public final class RpgPackVisualDialogs {
                     if (deckMode) {
                         int copies = deckCopyCounts.getOrDefault(c.id, 1);
                         deckTotalCopies += copies;
+                        if (hasCanonHighlight && canonCoreIds.contains(c.id)) {
+                            deckCanonCopies += copies;
+                        }
                         if (c.isExtraDeckCard()) {
                             deckExtraCopies += copies;
                         } else if (c.isMonster()) {
@@ -954,6 +992,7 @@ public final class RpgPackVisualDialogs {
         final int finalDeckSpells = deckSpellCopies;
         final int finalDeckTraps = deckTrapCopies;
         final int finalDeckExtra = deckExtraCopies;
+        final int finalDeckCanon = deckCanonCopies;
 
         final Runnable clearDetailEmpty = () -> {
             selectedCardRef[0] = null;
@@ -1044,6 +1083,9 @@ public final class RpgPackVisualDialogs {
             StringBuilder metaSb = new StringBuilder();
             if (deckMode) {
                 int copies = deckCopyCounts.getOrDefault(card.id, 1);
+                if (hasCanonHighlight) {
+                    metaSb.append(canonCoreIds.contains(card.id) ? "【原著用卡】" : "【当期补足】").append(" · ");
+                }
                 metaSb.append(card.isExtraDeckCard() ? "额外投入 ×" : "卡组投入 ×").append(copies).append(" · ");
             } else if (banlistMode && activeBanlist != null) {
                 int maxC = activeBanlist.getMaxCopies(card.id);
@@ -1061,7 +1103,9 @@ public final class RpgPackVisualDialogs {
                 metaSb.append(" · ⟪").append(errataBadge).append("⟫");
             }
             tvDetailMeta.setText(metaSb.toString());
-            tvDetailMeta.setTextColor(deckMode ? Color.parseColor("#38BDF8")
+            tvDetailMeta.setTextColor(deckMode
+                    ? (hasCanonHighlight && canonCoreIds.contains(card.id)
+                            ? Color.parseColor("#F472B6") : Color.parseColor("#38BDF8"))
                     : (banlistMode ? Color.parseColor("#FCA5A5")
                     : (owned >= 3 ? Color.parseColor("#34D399")
                     : (owned > 0 ? Color.parseColor("#38BDF8") : Color.parseColor("#94A3B8")))));
@@ -1074,18 +1118,29 @@ public final class RpgPackVisualDialogs {
         };
 
         final String[] filterKeys = deckMode
-                ? new String[]{"全部", "怪兽", "魔法", "陷阱", "额外"}
+                ? (hasCanonHighlight
+                ? new String[]{"全部", "原著", "怪兽", "魔法", "陷阱", "额外"}
+                : new String[]{"全部", "怪兽", "魔法", "陷阱", "额外"})
                 : (banlistMode
                 ? new String[]{"全部", "禁止", "限制", "准限", "已拥有"}
                 : new String[]{"全部", "未拥有", "高罕", "R", "N"});
         final String[] filterLabels = deckMode
+                ? (hasCanonHighlight
                 ? new String[]{
                         "全部(" + finalDeckTotal + ")",
+                        "原著(" + finalDeckCanon + ")",
                         "怪兽(" + finalDeckMonsters + ")",
                         "魔法(" + finalDeckSpells + ")",
                         "陷阱(" + finalDeckTraps + ")",
                         "额外(" + finalDeckExtra + ")"
                 }
+                : new String[]{
+                        "全部(" + finalDeckTotal + ")",
+                        "怪兽(" + finalDeckMonsters + ")",
+                        "魔法(" + finalDeckSpells + ")",
+                        "陷阱(" + finalDeckTraps + ")",
+                        "额外(" + finalDeckExtra + ")"
+                })
                 : (banlistMode
                 ? new String[]{
                         "全部(" + uniqueCards.size() + ")",
@@ -1126,6 +1181,7 @@ public final class RpgPackVisualDialogs {
                     boolean isMonster = !isExtra && card.isMonster();
                     boolean isTrap = !isExtra && !isMonster && card.frameType != null && "trap".equalsIgnoreCase(card.frameType);
                     boolean isSpell = !isExtra && !isMonster && !isTrap;
+                    if ("原著".equals(activeFilter[0]) && !(hasCanonHighlight && canonCoreIds.contains(card.id))) continue;
                     if ("怪兽".equals(activeFilter[0]) && !isMonster) continue;
                     if ("魔法".equals(activeFilter[0]) && !isSpell) continue;
                     if ("陷阱".equals(activeFilter[0]) && !isTrap) continue;
@@ -1152,9 +1208,11 @@ public final class RpgPackVisualDialogs {
                 int limitBorderColor = maxCopies == 0 ? Color.parseColor("#EF4444")
                         : (maxCopies == 1 ? Color.parseColor("#F97316") : Color.parseColor("#EAB308"));
                 boolean fullBright = deckMode || banlistMode || own > 0;
+                boolean isCanonCard = hasCanonHighlight && canonCoreIds.contains(card.id);
                 int normalStrokeW = dp(activity, fullBright ? 2 : 1);
                 int normalStrokeC = banlistMode ? limitBorderColor
-                        : (fullBright ? rarityColor : Color.parseColor("#334155"));
+                        : (isCanonCard ? Color.parseColor("#EC4899")
+                        : (fullBright ? rarityColor : Color.parseColor("#334155")));
 
                 LinearLayout tile = new LinearLayout(activity);
                 tile.setOrientation(LinearLayout.VERTICAL);
@@ -1200,6 +1258,16 @@ public final class RpgPackVisualDialogs {
                 rlp.setMargins(dp(activity, 2), dp(activity, 2), 0, 0);
                 tvTopLeft.setLayoutParams(rlp);
                 frame.addView(tvTopLeft);
+
+                if (isCanonCard) {
+                    TextView tvCanon = makeBadge(activity, "原著", Color.parseColor("#DDDB2777"), Color.WHITE);
+                    FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                            Gravity.TOP | Gravity.END);
+                    clp.setMargins(0, dp(activity, 2), dp(activity, 2), 0);
+                    tvCanon.setLayoutParams(clp);
+                    frame.addView(tvCanon);
+                }
 
                 final TextView tvBottomRight;
                 if (deckMode) {
@@ -1312,8 +1380,12 @@ public final class RpgPackVisualDialogs {
 
         String stats = card.isMonster()
                 ? String.format(Locale.US, "Lv.%d %s/%s  ATK %d / DEF %d  ·  已有 ×%d",
-                card.level, card.attribute, card.race, card.atk, card.def, owned)
-                : card.cardType + "  ·  已有 ×" + owned;
+                card.level,
+                card.attribute != null ? card.attribute : "",
+                card.race != null ? card.race : "",
+                card.atk, card.def, owned)
+                : ((card.typesCn != null && !card.typesCn.isEmpty() ? card.typesCn
+                : (card.cardType != null ? card.cardType : "魔法/陷阱")) + "  ·  已有 ×" + owned);
         TextView tvStats = new TextView(activity);
         tvStats.setText(stats + (errataBadge.isEmpty() ? "" : "\n⟪" + errataBadge + "⟫"));
         tvStats.setTextColor(Color.parseColor("#94A3B8"));
