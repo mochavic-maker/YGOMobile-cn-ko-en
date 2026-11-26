@@ -165,6 +165,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
         });
 
+        RpgSessionManager.setCachedCatalog(catalog);
         currentTimelineDigest = TimelineEngine.buildDigestAtDate(
                 catalog, AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
         applyInitialTabFromIntent(getIntent());
@@ -1038,7 +1039,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setPadding(0, dp(8), 0, 0);
 
-            Button fightBtn = makeActionButton("🪙 亲自对战 (WindBot)", "#DC2626");
+            Button fightBtn = makeActionButton("🪙 亲自对战 (OCG专属AI)", "#DC2626");
             fightBtn.setOnClickListener(v -> launchAiDuel(opp));
             row.addView(fightBtn);
 

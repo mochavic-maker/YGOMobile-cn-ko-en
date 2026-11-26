@@ -96,6 +96,7 @@ public final class RpgIntegration {
             return;
         }
         sActiveRpgDuelRuleSet = null;
+        cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.stopActive();
         boolean isDraw = (winner == 2);
         DuelRewardEngine.RewardSettlement settlement =
                 RpgSessionManager.onDuelFinished(activity.getApplicationContext(), selfWon, isDraw);
@@ -455,12 +456,26 @@ public final class RpgIntegration {
 
                     PlayerWaitingDialog.showPlayerWaitingForBotHost(activity);
 
-                    // WindBot Deck=Lucky supports arbitrary DeckFile=.ydk strictly constrained
-                    // to the player's current OCG timeline & latest OCG banlist.
-                    String botCommand = "Name='" + opponent.name + "' Deck=Lucky Dialog=gugugu.zh-CN";
-                    engine.launchWindBot("127.0.0.1", 7911,
-                            Collections.singletonList(botCommand),
-                            Collections.singletonList(aiDeckYdkPath));
+                    // Launch dedicated pure-Java 1999 OCG archetype-aware AI client directly
+                    // against the local LanGameServer (replaces generic WindBot Deck=Lucky).
+                    cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
+                    if (catalog == null) {
+                        try {
+                            catalog = cn.garymb.ygomobile.rpg.data.RpgCatalogLoader
+                                    .loadFromAssets(activity.getApplicationContext());
+                            RpgSessionManager.setCachedCatalog(catalog);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.launchAsync(
+                            "127.0.0.1",
+                            7911,
+                            Constants.PRO_VERSION,
+                            opponent,
+                            aiDeckYdkPath,
+                            catalog,
+                            activeRuleSet,
+                            currentTimelineDate);
                 });
             }
 

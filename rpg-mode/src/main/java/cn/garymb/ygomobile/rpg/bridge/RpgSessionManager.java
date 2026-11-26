@@ -14,6 +14,7 @@ import cn.garymb.ygomobile.rpg.model.RpgProfile;
  */
 public final class RpgSessionManager {
     private static volatile RpgDuelHostBridge sHostBridge;
+    private static volatile cn.garymb.ygomobile.rpg.model.RpgCatalog sCachedCatalog;
     private static volatile AiOpponent sActiveOpponent;
     private static volatile boolean sActiveDuelIsTournament;
     private static volatile boolean sLastDuelWasTournament;
@@ -29,6 +30,14 @@ public final class RpgSessionManager {
 
     public static RpgDuelHostBridge getHostBridge() {
         return sHostBridge;
+    }
+
+    public static void setCachedCatalog(cn.garymb.ygomobile.rpg.model.RpgCatalog catalog) {
+        sCachedCatalog = catalog;
+    }
+
+    public static cn.garymb.ygomobile.rpg.model.RpgCatalog getCachedCatalog() {
+        return sCachedCatalog;
     }
 
     public static synchronized void setActiveTournament(TournamentEngine.TournamentBracket bracket) {
