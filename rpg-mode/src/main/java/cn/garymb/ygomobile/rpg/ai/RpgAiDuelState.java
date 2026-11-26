@@ -436,7 +436,7 @@ public class RpgAiDuelState {
 
     public void enrichFromCatalog(CardSlot slot) {
         if (slot == null || slot.code <= 0 || catalog == null) return;
-        RpgCard card = catalog.findCard(slot.code);
+        RpgCard card = catalog.findCardOrCanon(slot.code);
         if (card == null) return;
         if (slot.type == 0) {
             slot.type = inferTypeMask(card);
@@ -465,7 +465,7 @@ public class RpgAiDuelState {
     }
 
     public RpgCard lookupCard(int code) {
-        return catalog != null && code > 0 ? catalog.findCard(code) : null;
+        return catalog != null && code > 0 ? catalog.findCardOrCanon(code) : null;
     }
 
     public int getCardBaseAtk(int code) {

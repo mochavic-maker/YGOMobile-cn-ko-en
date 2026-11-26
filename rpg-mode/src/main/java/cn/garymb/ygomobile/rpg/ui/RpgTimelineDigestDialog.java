@@ -278,6 +278,55 @@ public final class RpgTimelineDigestDialog {
             }
         }
 
+        // 7. Canon Manga/Anime/Movie Duels
+        if (!digest.newCanonDuels.isEmpty()) {
+            content.addView(makeSectionTitle(activity, "🎬 原著经典对决解锁（" + digest.newCanonDuels.size() + "）", "#F472B6"));
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel cd : digest.newCanonDuels) {
+                LinearLayout card = makeSectionCard(activity, "#DB2777");
+                card.setOrientation(LinearLayout.HORIZONTAL);
+                card.setGravity(Gravity.CENTER_VERTICAL);
+
+                if (cd.sideA != null) {
+                    ImageView avA = new ImageView(activity);
+                    LinearLayout.LayoutParams lpA = new LinearLayout.LayoutParams(dp(activity, 40), dp(activity, 40));
+                    lpA.setMarginEnd(dp(activity, 6));
+                    avA.setLayoutParams(lpA);
+                    avA.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    avA.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
+                    avA.setBackground(RpgCardArtLoader.createAvatarPlaceholderDrawable());
+                    RpgCardArtLoader.loadOpponentAvatarInto(activity, avA, cd.sideA.avatarId);
+                    card.addView(avA);
+                }
+
+                LinearLayout info = new LinearLayout(activity);
+                info.setOrientation(LinearLayout.VERTICAL);
+                info.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                String vsNames = (cd.sideA != null ? cd.sideA.characterName : "?")
+                        + " VS " + (cd.sideB != null ? cd.sideB.characterName : "?");
+                info.addView(makeItemTitle(activity,
+                        "[" + cd.getMediaLabelCn() + "] " + cd.title, "#FBCFE8"));
+                info.addView(makeBodyText(activity,
+                        vsNames + " · " + cd.episodeLabel + "（原作 " + cd.originalDate + "）", "#38BDF8"));
+                if (cd.summary != null && !cd.summary.isEmpty()) {
+                    info.addView(makeBodyText(activity, cd.summary, "#E2E8F0"));
+                }
+                card.addView(info);
+
+                if (cd.sideB != null) {
+                    ImageView avB = new ImageView(activity);
+                    LinearLayout.LayoutParams lpB = new LinearLayout.LayoutParams(dp(activity, 40), dp(activity, 40));
+                    lpB.setMarginStart(dp(activity, 6));
+                    avB.setLayoutParams(lpB);
+                    avB.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    avB.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
+                    avB.setBackground(RpgCardArtLoader.createAvatarPlaceholderDrawable());
+                    RpgCardArtLoader.loadOpponentAvatarInto(activity, avB, cd.sideB.avatarId);
+                    card.addView(avB);
+                }
+                content.addView(card);
+            }
+        }
+
         // Close button bar
         LinearLayout bottom = new LinearLayout(activity);
         bottom.setOrientation(LinearLayout.HORIZONTAL);

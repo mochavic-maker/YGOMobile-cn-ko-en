@@ -64,9 +64,11 @@ public class RpgEnginesTest {
     public void setUp() throws Exception {
         File assetFile = new File("src/main/assets/rpg/ocg_demo_catalog.json");
         File errataFile = new File("src/main/assets/rpg/ocg_errata_history.json");
+        File canonFile = new File("src/main/assets/rpg/ocg_canon_duels.json");
         try (FileInputStream fis = new FileInputStream(assetFile);
-             FileInputStream efis = new FileInputStream(errataFile)) {
-            catalog = RpgCatalogLoader.loadFromStreams(fis, efis);
+             FileInputStream efis = new FileInputStream(errataFile);
+             FileInputStream cfis = new FileInputStream(canonFile)) {
+            catalog = RpgCatalogLoader.loadFromStreams(fis, efis, cfis);
         }
     }
 
@@ -820,5 +822,79 @@ public class RpgEnginesTest {
         assertTrue(months.contains("12"));
         assertFalse("January 1999 had no OCG events", months.contains("01"));
         assertFalse("April 1999 had no OCG events", months.contains("04"));
+    }
+
+    @Test
+    public void canonDuels1999LoadReconstruct40CardsHaveAvatarsAndRegisterTimelineDates() {
+        List<cn.garymb.ygomobile.rpg.model.OcgCanonDuel> duels = catalog.getCanonDuels();
+        assertEquals("Should contain all 21 curated 1996-1999 canon duels", 21, duels.size());
+
+        File avatarsDir = new File("src/main/assets/rpg/avatars");
+        List<String> eventDates = TimelineEngine.getTimelineEventDates(catalog, AiDeckGenerator.getDemoOpponents());
+
+        // Exact 1999 canon dates must appear as selectable calendar event dates
+        String[] expected1999Dates = {"1999-03-02", "1999-03-06", "1999-03-30", "1999-06-08", "1999-11-09"};
+        for (String d : expected1999Dates) {
+            assertTrue("Canon duel date " + d + " must be registered as a timeline event date",
+                    eventDates.contains(d));
+            TimelineEngine.TimelineDigest digest = TimelineEngine.buildDigestAtDate(
+                    catalog, AiDeckGenerator.getDemoOpponents(), d);
+            assertFalse("TimelineDigest at " + d + " must include canon duel",
+                    digest.newCanonDuels.isEmpty());
+        }
+
+        // Verify progressive unlocking across 1999
+        int atStart = TimelineEngine.getAvailableCanonDuels(catalog, "1999-02-04").size();
+        int atYearEnd = TimelineEngine.getAvailableCanonDuels(catalog, "1999-12-31").size();
+        assertEquals("16 pre-OCG duels should unlock on 1999-02-04", 16, atStart);
+        assertEquals("All 21 duels should unlock by 1999-12-31", 21, atYearEnd);
+
+        // Verify every canon duel reconstructs 40-card decks retaining 100% of canon cards,
+        // has bundled character avatars, valid AI fillStyle, and zero shop leakage
+        for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel duel : duels) {
+            assertNotNull(duel.id);
+            assertTrue("Original date must be <= 1999-12-31: " + duel.id,
+                    duel.originalDate.compareTo("1999-12-31") <= 0);
+            assertNotNull(duel.sideA);
+            assertNotNull(duel.sideB);
+
+            cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide[] sides = {duel.sideA, duel.sideB};
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide side : sides) {
+                assertTrue("AI fillStyle must be registered in SUPPORTED_STYLES: " + side.fillStyle,
+                        cn.garymb.ygomobile.rpg.ai.RpgAiStrategy.SUPPORTED_STYLES.contains(side.fillStyle));
+                File avatarFile = new File(avatarsDir, side.avatarId + ".webp");
+                assertTrue("Missing bundled character avatar: " + avatarFile.getPath(),
+                        avatarFile.exists() && avatarFile.length() > 1000);
+
+                cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.BuiltCanonDeck built =
+                        cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.buildDeck(catalog, duel, side, duel.timelineDate);
+                assertEquals("Reconstructed canon deck must be exactly 40 cards: " + duel.id + "/" + side.characterName,
+                        40, built.main.size());
+                // Every canon main card must be preserved
+                for (Integer cid : side.canonCardIds) {
+                    RpgCard meta = catalog.findCardOrCanon(cid);
+                    assertNotNull("Missing card metadata for canon card " + cid, meta);
+                    if (meta.isExtraDeckCard()) {
+                        assertTrue("Extra deck card should reside in extra: " + cid, built.extra.contains(cid));
+                    } else {
+                        assertTrue("Canon card must be preserved in main deck: " + cid, built.main.contains(cid));
+                    }
+                }
+                for (Integer eid : side.canonExtraIds) {
+                    assertNotNull("Missing extra card metadata " + eid, catalog.findCardOrCanon(eid));
+                    assertTrue("Canon extra card must be preserved: " + eid, built.extra.contains(eid));
+                }
+                // Main deck must never contain Extra Deck cards
+                for (Integer mid : built.main) {
+                    RpgCard mc = catalog.findCardOrCanon(mid);
+                    assertNotNull("Every built main card must have metadata: " + mid, mc);
+                    assertFalse("Main deck must not contain Extra Deck card: " + mid, mc.isExtraDeckCard());
+                }
+            }
+        }
+
+        // Verify post-1999 canon-only cards (e.g. Toon World 15259703) NEVER leak into 1999 shop/crafting pool
+        assertNull("Toon World must NOT leak into 1999 OCG shop catalog", catalog.findCard(15259703));
+        assertNotNull("Toon World must resolve via findCardOrCanon", catalog.findCardOrCanon(15259703));
     }
 }

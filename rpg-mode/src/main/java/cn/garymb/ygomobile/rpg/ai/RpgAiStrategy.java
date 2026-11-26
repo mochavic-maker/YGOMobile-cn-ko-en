@@ -506,15 +506,46 @@ public class RpgAiStrategy {
         boolean clearForLethal = !state.isMain2() && p.canBattle
                 && (state.getTotalFaceUpAtk(0) + myBestInHand >= state.lp[1]);
 
-        // 1) Change of Heart: huge tempo play in Main 1 (steal to tribute or beat down!)
+        // 1) Change of Heart / Brain Control: huge tempo play in Main 1 (steal to tribute or beat down!)
         CmdEntry coh = findActivatable(p, RpgAiCardKnowledge.CHANGE_OF_HEART);
+        if (coh == null && state.lp[0] > 1200) {
+            coh = findActivatable(p, RpgAiCardKnowledge.BRAIN_CONTROL);
+        }
         if (coh != null && state.getFreeMainMzoneCount(0) > 0) {
             boolean wantForTribute = hasTributeSummonCandidate(p);
             boolean wantForBattle = !state.isMain2() && p.canBattle;
-            boolean wantForCannon = hasMonsterOnField(0, RpgAiCardKnowledge.CANNON_SOLDIER);
+            boolean wantForCannon = hasMonsterOnField(0, RpgAiCardKnowledge.CANNON_SOLDIER)
+                    || hasMonsterOnField(0, RpgAiCardKnowledge.CATAPULT_TURTLE);
             if (wantForTribute || wantForBattle || wantForCannon) {
                 return activateIdle(coh);
             }
+        }
+
+        // 1b) Canon boss monster ignition effects (Relinquished, Thousand-Eyes Restrict, Barrel Dragon)
+        CmdEntry relinq = findActivatable(p, RpgAiCardKnowledge.RELINQUISHED);
+        if (relinq == null) relinq = findActivatable(p, RpgAiCardKnowledge.THOUSAND_EYES_RESTRICT);
+        if (relinq != null && !oppMons.isEmpty()) {
+            return activateIdle(relinq);
+        }
+        CmdEntry barrel = findActivatable(p, RpgAiCardKnowledge.BARREL_DRAGON);
+        if (barrel != null && !oppMons.isEmpty()) {
+            return activateIdle(barrel);
+        }
+
+        // 1c) Canon theme enablers: Ritual Spells, Elegant Egotist, Toon World
+        for (int ritualId : RpgAiCardKnowledge.RITUAL_SPELLS) {
+            CmdEntry ritual = findActivatable(p, ritualId);
+            if (ritual != null && state.getFreeMainMzoneCount(0) > 0) {
+                return activateIdle(ritual);
+            }
+        }
+        CmdEntry egotist = findActivatable(p, RpgAiCardKnowledge.ELEGANT_EGOTIST);
+        if (egotist != null && state.getFreeMainMzoneCount(0) > 0) {
+            return activateIdle(egotist);
+        }
+        CmdEntry toonWorld = findActivatable(p, RpgAiCardKnowledge.TOON_WORLD);
+        if (toonWorld != null && state.lp[0] > 1500) {
+            return activateIdle(toonWorld);
         }
 
         // 2) Raigeki: one-sided wipe — preserve unless it earns real value (multi-kill, answers threat we
@@ -1603,13 +1634,64 @@ public class RpgAiStrategy {
                 return 1000;
 
             case RpgAiCardKnowledge.MIRROR_FORCE:
-                // Never stack Mirror Force with another Mirror Force or Waboku on the same attack
+                // Never stack Mirror Force with another Mirror Force, Mirror Wall, Negate Attack, or Waboku
                 if (hasActiveUnnegatedMyChain(
                         RpgAiCardKnowledge.MIRROR_FORCE,
+                        RpgAiCardKnowledge.MIRROR_WALL,
+                        RpgAiCardKnowledge.NEGATE_ATTACK,
                         RpgAiCardKnowledge.WABOKU)) {
                     return 0;
                 }
                 return 950;
+
+            case RpgAiCardKnowledge.MIRROR_WALL:
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.MIRROR_FORCE,
+                        RpgAiCardKnowledge.MIRROR_WALL,
+                        RpgAiCardKnowledge.NEGATE_ATTACK,
+                        RpgAiCardKnowledge.WABOKU)) {
+                    return 0;
+                }
+                if (!state.isMyTurn() && state.isBattlePhase() && state.lastAttackerLocalCtrl == 1) {
+                    return 910;
+                }
+                return 0;
+
+            case RpgAiCardKnowledge.NEGATE_ATTACK:
+            case RpgAiCardKnowledge.MAGICAL_HATS:
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.MIRROR_FORCE,
+                        RpgAiCardKnowledge.MIRROR_WALL,
+                        RpgAiCardKnowledge.NEGATE_ATTACK,
+                        RpgAiCardKnowledge.MAGICAL_HATS,
+                        RpgAiCardKnowledge.WABOKU)) {
+                    return 0;
+                }
+                if (!state.isMyTurn() && state.isBattlePhase() && state.lastAttackerLocalCtrl == 1) {
+                    return 840;
+                }
+                return 0;
+
+            case RpgAiCardKnowledge.SHADOW_SPELL:
+            case RpgAiCardKnowledge.SPELLBINDING_CIRCLE:
+                if (hasActiveUnnegatedMyChain(
+                        RpgAiCardKnowledge.SHADOW_SPELL,
+                        RpgAiCardKnowledge.SPELLBINDING_CIRCLE,
+                        RpgAiCardKnowledge.MIRROR_FORCE)) {
+                    return 0;
+                }
+                if (!state.isMyTurn() && state.getStrongestAtk(1) >= state.eraTypicalLowerAtk) {
+                    return 810;
+                }
+                return 0;
+
+            case RpgAiCardKnowledge.CALL_OF_THE_HAUNTED:
+                if (hasActiveUnnegatedMyChain(RpgAiCardKnowledge.CALL_OF_THE_HAUNTED)) return 0;
+                if (state.getFreeMainMzoneCount(0) > 0 && !state.grave[0].isEmpty()) {
+                    if (!state.isMyTurn() && state.isBattlePhase()) return 860;
+                    if (state.isMyTurn()) return 780;
+                }
+                return 0;
 
             case RpgAiCardKnowledge.TRAP_HOLE:
                 // Never waste a second Trap Hole on the same summon when ours is already resolving!

@@ -17,7 +17,9 @@ public final class RpgSessionManager {
     private static volatile cn.garymb.ygomobile.rpg.model.RpgCatalog sCachedCatalog;
     private static volatile AiOpponent sActiveOpponent;
     private static volatile boolean sActiveDuelIsTournament;
+    private static volatile int sActiveDuelReturnTab = 4;
     private static volatile boolean sLastDuelWasTournament;
+    private static volatile int sLastDuelReturnTab = 4;
     private static volatile boolean sLastDuelPlayerWon;
     private static volatile DuelRewardEngine.RewardSettlement sLastSettlement;
     private static volatile TournamentEngine.TournamentBracket sActiveTournament;
@@ -49,12 +51,17 @@ public final class RpgSessionManager {
     }
 
     public static synchronized void beginRpgDuel(AiOpponent opponent) {
-        beginRpgDuel(opponent, false);
+        beginRpgDuel(opponent, false, 4);
     }
 
     public static synchronized void beginRpgDuel(AiOpponent opponent, boolean isTournamentMatch) {
+        beginRpgDuel(opponent, isTournamentMatch, isTournamentMatch ? 5 : 4);
+    }
+
+    public static synchronized void beginRpgDuel(AiOpponent opponent, boolean isTournamentMatch, int returnTab) {
         sActiveOpponent = opponent;
         sActiveDuelIsTournament = isTournamentMatch;
+        sActiveDuelReturnTab = returnTab;
         sLastSettlement = null;
         sLastDuelWasTournament = false;
     }
@@ -66,6 +73,7 @@ public final class RpgSessionManager {
     public static synchronized void cancelActiveRpgDuel() {
         sActiveOpponent = null;
         sActiveDuelIsTournament = false;
+        sActiveDuelReturnTab = 4;
     }
 
     /**
@@ -79,8 +87,10 @@ public final class RpgSessionManager {
         }
         AiOpponent opp = sActiveOpponent;
         boolean wasTournament = sActiveDuelIsTournament;
+        int returnTab = sActiveDuelReturnTab;
         sActiveOpponent = null;
         sActiveDuelIsTournament = false;
+        sActiveDuelReturnTab = 4;
 
         RpgRepository repo = new RpgRepository(context.getApplicationContext());
         RpgProfile profile = repo.loadProfile();
@@ -92,6 +102,7 @@ public final class RpgSessionManager {
         }
         sLastSettlement = settlement;
         sLastDuelWasTournament = wasTournament;
+        sLastDuelReturnTab = returnTab;
         sLastDuelPlayerWon = playerWon;
         return settlement;
     }
@@ -110,6 +121,10 @@ public final class RpgSessionManager {
 
     public static synchronized boolean isLastDuelTournament() {
         return sLastDuelWasTournament;
+    }
+
+    public static synchronized int getLastDuelReturnTab() {
+        return sLastDuelReturnTab;
     }
 
     public static synchronized void setPendingEditedDeck(

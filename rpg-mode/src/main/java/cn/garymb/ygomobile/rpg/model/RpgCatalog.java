@@ -21,8 +21,11 @@ public class RpgCatalog {
     public List<OcgPack> packs = new ArrayList<>();
     public List<OcgEvent> events = new ArrayList<>();
     public List<OcgCardErrata> errataRecords = new ArrayList<>();
+    public List<OcgCanonDuel> canonDuels = new ArrayList<>();
+    public List<RpgCard> canonCardCatalog = new ArrayList<>();
 
     private transient Map<Integer, RpgCard> cardById;
+    private transient Map<Integer, RpgCard> canonCardById;
     private transient Map<Integer, String> earliestReleaseByCardId;
     private transient Map<Integer, Rarity> highestRarityByCardId;
     private transient Map<Integer, OcgCardErrata> errataByCardId;
@@ -44,6 +47,7 @@ public class RpgCatalog {
 
     public void buildIndexes() {
         cardById = new LinkedHashMap<>();
+        canonCardById = new LinkedHashMap<>();
         earliestReleaseByCardId = new HashMap<>();
         highestRarityByCardId = new HashMap<>();
         errataByCardId = new LinkedHashMap<>();
@@ -55,6 +59,13 @@ public class RpgCatalog {
         if (events != null) {
             for (OcgEvent ev : events) {
                 indexCardList(ev.rewardCards, ev.releaseDate);
+            }
+        }
+        if (canonCardCatalog != null) {
+            for (RpgCard c : canonCardCatalog) {
+                if (c != null && c.id > 0 && !canonCardById.containsKey(c.id)) {
+                    canonCardById.put(c.id, c);
+                }
             }
         }
         if (errataRecords != null) {
@@ -95,6 +106,14 @@ public class RpgCatalog {
         return cardById.get(cardId);
     }
 
+    /** Looks up a card in the OCG catalog first, then falls back to canon-duel exclusive card metadata. */
+    public RpgCard findCardOrCanon(int cardId) {
+        ensureIndexed();
+        RpgCard c = cardById.get(cardId);
+        if (c != null) return c;
+        return canonCardById != null ? canonCardById.get(cardId) : null;
+    }
+
     public Map<Integer, RpgCard> getAllCardsMap() {
         ensureIndexed();
         return Collections.unmodifiableMap(cardById);
@@ -118,6 +137,18 @@ public class RpgCatalog {
 
     public List<OcgCardErrata> getErrataRecords() {
         return errataRecords != null ? Collections.unmodifiableList(errataRecords) : Collections.emptyList();
+    }
+
+    public List<OcgCanonDuel> getCanonDuels() {
+        return canonDuels != null ? Collections.unmodifiableList(canonDuels) : Collections.emptyList();
+    }
+
+    public OcgCanonDuel findCanonDuel(String duelId) {
+        if (canonDuels == null || duelId == null) return null;
+        for (OcgCanonDuel d : canonDuels) {
+            if (d != null && duelId.equals(d.id)) return d;
+        }
+        return null;
     }
 
     public OcgPack findPack(String packId) {

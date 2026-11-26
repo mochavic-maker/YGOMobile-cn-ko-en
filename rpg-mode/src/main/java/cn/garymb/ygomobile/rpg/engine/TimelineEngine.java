@@ -9,6 +9,7 @@ import java.util.TreeSet;
 
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgCanonDuel;
 import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
@@ -17,7 +18,7 @@ import cn.garymb.ygomobile.rpg.model.RpgCatalog;
 
 /**
  * Enforces the OCG timeline dimension across packs, promo events, cards, banlists,
- * rule versions, and AI opponents (1999-02-04 ~ 1999-12-31).
+ * rule versions, AI opponents, and canon duels (1999-02-04 ~ 1999-12-31).
  * All date comparisons use ISO-8601 strings (YYYY-MM-DD), which sort lexicographically.
  */
 public final class TimelineEngine {
@@ -58,6 +59,18 @@ public final class TimelineEngine {
         for (OcgEvent ev : catalog.events) {
             if (isReleasedOnOrBefore(ev.releaseDate, currentDate)) {
                 available.add(ev);
+            }
+        }
+        return available;
+    }
+
+    /** Returns all canon duels unlocked on or before currentDate. */
+    public static List<OcgCanonDuel> getAvailableCanonDuels(RpgCatalog catalog, String currentDate) {
+        List<OcgCanonDuel> available = new ArrayList<>();
+        if (catalog == null || catalog.canonDuels == null) return available;
+        for (OcgCanonDuel d : catalog.canonDuels) {
+            if (d != null && isReleasedOnOrBefore(d.timelineDate, currentDate)) {
+                available.add(d);
             }
         }
         return available;
@@ -180,6 +193,13 @@ public final class TimelineEngine {
                 }
             }
             dates.addAll(CardErrataEngine.getErrataMilestonesInRange(catalog));
+            if (catalog.canonDuels != null) {
+                for (OcgCanonDuel cd : catalog.canonDuels) {
+                    if (cd != null && cd.timelineDate != null && !cd.timelineDate.isEmpty()) {
+                        dates.add(cd.timelineDate);
+                    }
+                }
+            }
             if (catalog.maxTimelineDate != null && !catalog.maxTimelineDate.isEmpty()) {
                 dates.add(catalog.maxTimelineDate);
             }
@@ -190,7 +210,7 @@ public final class TimelineEngine {
     /**
      * Returns sorted distinct dates within [minTimelineDate, maxTimelineDate] that actually have
      * at least one OCG event (pack release, promo event, banlist change, rule shift, card errata,
-     * or AI opponent unlock/deck evolution). Excludes empty filler dates like year-end if nothing happened.
+     * AI opponent unlock/deck evolution, or canon duel). Excludes empty filler dates like year-end if nothing happened.
      */
     public static List<String> getTimelineEventDates(RpgCatalog catalog, List<AiOpponent> opponents) {
         TreeSet<String> dates = new TreeSet<>();
@@ -219,6 +239,11 @@ public final class TimelineEngine {
         }
         for (String ed : CardErrataEngine.getErrataMilestonesInRange(catalog)) {
             addIfInRange(dates, ed, minD, maxD);
+        }
+        if (catalog.canonDuels != null) {
+            for (OcgCanonDuel cd : catalog.canonDuels) {
+                if (cd != null) addIfInRange(dates, cd.timelineDate, minD, maxD);
+            }
         }
         if (opponents != null) {
             for (AiOpponent opp : opponents) {
@@ -346,6 +371,7 @@ public final class TimelineEngine {
         public final List<OcgBanlist> banlistChanges = new ArrayList<>();
         public final List<ErrataChange> errataChanges = new ArrayList<>();
         public final List<AiChange> aiChanges = new ArrayList<>();
+        public final List<OcgCanonDuel> newCanonDuels = new ArrayList<>();
 
         public TimelineDigest(String fromDate, String toDate, boolean isRange) {
             this.fromDate = fromDate;
@@ -355,7 +381,8 @@ public final class TimelineEngine {
 
         public int getTotalChangeCount() {
             return newPacks.size() + newEvents.size() + ruleChanges.size()
-                    + banlistChanges.size() + errataChanges.size() + aiChanges.size();
+                    + banlistChanges.size() + errataChanges.size() + aiChanges.size()
+                    + newCanonDuels.size();
         }
 
         public String getPeriodTitle() {
@@ -388,6 +415,9 @@ public final class TimelineEngine {
             }
             if (!aiChanges.isEmpty()) {
                 parts.add("AI调整×" + aiChanges.size());
+            }
+            if (!newCanonDuels.isEmpty()) {
+                parts.add("原著对决×" + newCanonDuels.size());
             }
             StringBuilder sb = new StringBuilder();
             sb.append("📰 ");
@@ -474,6 +504,13 @@ public final class TimelineEngine {
                 cn.garymb.ygomobile.rpg.model.OcgCardErrata.Revision rev = err.revisions.get(i);
                 if (dateMatches(rev.effectiveDate, fromDate, toDate, isRange)) {
                     digest.errataChanges.add(new ErrataChange(err, rev, err.revisions.get(i - 1)));
+                }
+            }
+        }
+        if (catalog.canonDuels != null) {
+            for (OcgCanonDuel cd : catalog.canonDuels) {
+                if (cd != null && dateMatches(cd.timelineDate, fromDate, toDate, isRange)) {
+                    digest.newCanonDuels.add(cd);
                 }
             }
         }

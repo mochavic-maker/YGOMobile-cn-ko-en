@@ -98,6 +98,7 @@
 7. **【强制】参考环境史优化 AI 博弈细节，并为新卡池诞生的新流派提供专属 AI 系统**：每当延长时间线引入新卡包/新规则/新限表时，**必须参考对应时期的游戏王环境史**（如 `yugioh-history.com` 环境编年史与卡组年表）：
    - 对照该时期环境史中的经典打法、关键单卡交互与心理博弈（例如第 1 期的落穴留牌/踩坑试探、地割/黑洞/雷击克制留牌、装备防 1 换 2、虚张声势盖魔、锁链飞镖/圣防/死毒/反转怪兽交互等；第 2 期后的削手顺序、旋风盖伏时机、墓地资源管理、大岚/激流葬防踩坑等），同步迭代 AI 的全局战术与单卡逻辑；
    - 若新卡池诞生了新的主流/特色卡组流派，**必须为其补齐一整套对应的纯 Java 专属 AI 系统**——包括单卡知识登记、专属流派战术大脑、新规则/新盘面状态评估、玩家自选卡组自动流派识别（`inferStyleFromDeck`）以及战术单元测试，严禁复用通用强攻或盲出 AI（详见第 8 节）。
+8. **【强制】补齐对应时间段的原著漫画/动画/电影「🎬 对决还原」**：检索新扩展时间段内的全部游戏王原著漫画（周刊少年 Jump 连载发售日）、TV 动画（如 2000-04-18 起播出的《遊☆戯☆王 デュエルモンスターズ》DM 动画日本首播日）与剧场版电影中的经典对决，整理双方用卡、构建 40 张还原卡组、为新角色绘制游戏王画风头像并登记为日期事项（详见第 9 节）。
 
 ---
 
@@ -128,4 +129,28 @@
    - 为该时期环境史的关键博弈场景、新流派核心展开 Combo、防低级失误场景及 `inferStyleFromDeck` 自动分类补充单元测试。
 7. **执行自动化守卫校验**
    - 运行 `./gradlew :rpg-mode:testDebugUnitTest`，确认全部卡组构筑校验、战术单测、`allAiOpponentDeckStylesHaveDedicatedStrategySupport` 以及 `everyAiOpponentHasBundledAvatarAsset` 守卫测试全部通过。
+
+---
+
+## 9. 原著漫画 / 动画 / 电影「🎬 对决还原」扩展强制规范
+
+每次将时间线扩展至新时期（例如 2000 年起的决斗都市漫画连载、2000-04-18 起播出的《遊☆戯☆王 DM》TV 动画、后续剧场版/GX/5D's 等）时，**必须同步扩展 `rpg-mode/src/main/assets/rpg/ocg_canon_duels.json`**：
+
+1. **精准日期考据（跨集仅取最终集日期）**：
+   - **原作漫画**：按《周刊少年 Jump》日本实际发售日（2003 年 5 月前为每周二，2003 年 5 月起为每周一）登记，可参考 `jajanken.net` 刊号索引与日文维基；
+   - **TV 动画 / 剧场版**：按日本东京电视台首播日 / 日本院线上映日登记；
+   - **跨越多集/多话的单局对决**：严格**仅取该对决最后一集/最后一话的日期**作为 `originalDate` 与 `timelineDate`（OCG 发售日 `1999-02-04` 之前的早期原著对决保留真实 `originalDate`，`timelineDate` 钳位至 `1999-02-04` 供创世日即可体验）。
+2. **双方卡组还原规则（原著用卡 100% 保留 + 当期 OCG 卡池补足至 40 张）**：
+   - 从 Fandom Wiki / Yugipedia 对应集数/话数页面检索双方使用过的全部卡片，核对 `mobile/assets/data/cards.cdb` 中的真实 YGOPro 密码（注意：凡在 OCG 中属于融合/同调/超量/连接怪兽的卡必须放入 `canonExtraIds`，不可放入主卡组 `canonCardIds`）；
+   - 若某张原著用卡当时尚未在 OCG 实卡化，将其中文/日文/英文元信息收录进 `ocg_canon_duels.json` 的 `canonCardCatalog`（通过 `RpgCatalog.findCardOrCanon` 仅用于还原卡组展示与 AI 识别，**严禁泄漏进商店/合成/玩家组卡池**）；
+   - 不足 40 张的部分由 `CanonDuelDeckBuilder` 自动从该对决日期的 OCG 实卡池中按角色种族/属性/流派挑选搭配卡牌补足至 40 张。
+3. **日期事项与四模式对战接入**：
+   - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates` 与 `TimelineDigest.newCanonDuels`（日历浅绿圆点高亮 + 当期动态展示），到达该日期即在「🎬 对决还原」标签页解锁；
+   - 玩家既可扮演 A/B 任意一方使用还原卡组（并在 3D 决斗中同步显示双方角色头像与姓名），也可用自己 RPG 组卡的合规卡组挑战任意一方。
+4. **角色头像复用与新角色补绘**：
+   - 同一角色在不同集数的对决中复用同一头像 ID（如 `ai_vol1_yugi`、`ai_starter_kaiba`、`ai_weekend_challenger`、`char_pegasus` 等）；
+   - 凡新登场的原著角色，必须为其绘制 1:1 游戏王动画风格头像并压缩为 `256×256` WebP 放入 `rpg-mode/src/main/assets/rpg/avatars/char_<id>.webp`（由 `RpgEnginesTest#canonDuels1999LoadReconstruct40CardsHaveAvatarsAndRegisterTimelineDates` 自动守卫校验）。
+5. **专属战术 AI 补充**：
+   - 为原著卡组中引入的新标志性单卡（如仪式、卡通、纳祭之魔、银幕镜壁、左轮手枪龙、神之卡等）在 `RpgAiCardKnowledge.java` 和 `RpgAiStrategy.java` 中补充单卡知识与战术逻辑，确保 AI 能流畅发挥还原卡组的特色打法。
+
 

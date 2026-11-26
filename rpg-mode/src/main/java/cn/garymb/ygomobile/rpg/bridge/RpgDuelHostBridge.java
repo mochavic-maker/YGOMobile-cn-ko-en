@@ -23,6 +23,25 @@ public interface RpgDuelHostBridge {
                         String currentTimelineDate);
 
     /**
+     * Launches a Canon Duel Recreation match where the player can either role-play one side's
+     * reconstructed deck (with that character's name & portrait) or bring their own RPG deck
+     * against either side's reconstructed deck.
+     */
+    default void startRpgCanonDuel(Context context,
+                                   String playerDisplayName,
+                                   String playerAvatarId,
+                                   String playerDeckYdkPath,
+                                   AiOpponent opponent,
+                                   String opponentAvatarId,
+                                   String aiDeckYdkPath,
+                                   OcgBanlist activeBanlist,
+                                   OcgRuleSet activeRuleSet,
+                                   String currentTimelineDate) {
+        startRpgAiDuel(context, opponent, playerDeckYdkPath, aiDeckYdkPath,
+                activeBanlist, activeRuleSet, currentTimelineDate);
+    }
+
+    /**
      * Opens YGOMobile's built-in visual Deck Editor loaded with the player's current RPG .ydk deck,
      * restricted to {@code allowedCardCaps} (cardId -> max legal copies = min(owned, banlistMax)).
      * When the user exits the native deck editor, the edited .ydk is parsed back into RpgSessionManager

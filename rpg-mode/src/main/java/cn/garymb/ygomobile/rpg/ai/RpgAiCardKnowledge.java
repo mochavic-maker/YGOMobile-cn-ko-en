@@ -75,6 +75,19 @@ public final class RpgAiCardKnowledge {
     public static final int SALAMANDRA = 32268901;             // 飞龙炎 (FIRE +700)
     public static final int INSECT_ARMOR_WITH_LASER_CANNON = 3492538; // 附火器的机甲铠 (Insect +700)
     public static final int BLACK_PENDANT = 65169794;          // 黑项坠 (+500)
+    public static final int CYBER_SHIELD = 63224564;           // 电子护盾 (Harpie Lady +500)
+    public static final int SEVEN_COMPLETED = 86198326;        // 7卡片 (Machine +700)
+    public static final int HORN_OF_THE_UNICORN = 64047146;    // 独角兽之角 (+700)
+
+    // ===== Canon Duel Signature Spells =====
+    public static final int BRAIN_CONTROL = 87910978;          // 洗脑
+    public static final int TOON_WORLD = 15259703;             // 卡通世界
+    public static final int ELEGANT_EGOTIST = 90219263;        // 万华镜-华丽的分身-
+    public static final int MULTIPLY = 40703222;               // 增殖
+    public static final int SHIELD_AND_SWORD = 52097679;       // 右持盾左持剑
+    public static final int BLACK_LUSTER_RITUAL = 55761792;    // 混沌的仪式
+    public static final int BLACK_MAGIC_RITUAL = 76792184;     // 混沌-黑魔术的仪式
+    public static final int BLACK_ILLUSION_RITUAL = 41426869;  // 幻想的仪式
 
     // ===== Traps =====
     public static final int TRAP_HOLE = 4206964;               // 落穴
@@ -93,6 +106,13 @@ public final class RpgAiCardKnowledge {
     public static final int MIRROR_FORCE = 44095762;           // 神圣防护罩 -反射镜力-
     public static final int MAGIC_JAMMER = 77414722;           // 魔法干扰阵
     public static final int REINFORCEMENTS = 17814387;         // 援军
+    public static final int MIRROR_WALL = 22359980;            // 银幕的镜壁
+    public static final int CALL_OF_THE_HAUNTED = 97077563;    // 活死人的呼声
+    public static final int NEGATE_ATTACK = 14315573;          // 攻击无力化
+    public static final int SHADOW_SPELL = 29267084;           // 暗之咒缚
+    public static final int SPELLBINDING_CIRCLE = 18807108;    // 六芒星的咒缚
+    public static final int GRAVEROBBER = 61705417;            // 盗墓者
+    public static final int MAGICAL_HATS = 81210420;           // 魔术礼帽
 
     // ===== Key Monsters =====
     public static final int EXODIA_HEAD = 33396948;            // 被封印的艾克佐迪亚
@@ -117,12 +137,17 @@ public final class RpgAiCardKnowledge {
     public static final int WALL_OF_ILLUSION = 13945283;       // 幻影壁
     public static final int LORD_OF_D = 17985575;              // 龙之支配者 (EX)
     public static final int CANNON_SOLDIER = 11384280;         // 加农炮兵
+    public static final int CATAPULT_TURTLE = 95727991;        // 弹射龟
     public static final int CYBER_STEIN = 69015963;            // 恶魔科学怪人
     public static final int TIME_WIZARD = 71625222;            // 时间魔术师
+    public static final int BARREL_DRAGON = 81480460;          // 左轮手枪龙
+    public static final int RELINQUISHED = 64631466;           // 纳祭之魔
+    public static final int THOUSAND_EYES_RESTRICT = 63519819; // 千眼纳祭神
     public static final int MONSTER_EYE = 84133008;            // 眼球怪
     public static final int WICKED_WORM_BEAST = 6285791;       // 邪恶蠕虫兽
 
     public static final int BLUE_EYES_ULTIMATE = 23995346;     // 青眼究极龙
+    public static final int METEOR_BLACK_DRAGON = 90660762;    // 陨石黑龙
     public static final int BLACK_SKULL_DRAGON = 11901678;     // 暗黑魔龙
     public static final int BLUE_EYES = 89631139;              // 青眼白龙
     public static final int SUMMONED_SKULL = 70781052;         // 恶魔召唤
@@ -133,6 +158,10 @@ public final class RpgAiCardKnowledge {
 
     public static final Set<Integer> EXODIA_PIECES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             EXODIA_HEAD, EXODIA_RIGHT_ARM, EXODIA_LEFT_ARM, EXODIA_RIGHT_LEG, EXODIA_LEFT_LEG
+    )));
+
+    public static final Set<Integer> RITUAL_SPELLS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            BLACK_LUSTER_RITUAL, BLACK_MAGIC_RITUAL, BLACK_ILLUSION_RITUAL
     )));
 
     public static final Set<Integer> FLIP_MONSTERS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
@@ -153,14 +182,15 @@ public final class RpgAiCardKnowledge {
             LEGENDARY_SWORD, BEAST_FANGS, BOOK_OF_SECRET_ARTS, DARK_ENERGY, VIOLET_CRYSTAL,
             LASER_CANNON_ARMOR, VILE_GERMS, POWER_OF_KAISHIN, MACHINE_CONVERSION_FACTORY,
             RAISE_BODY_HEAT, DRAGON_TREASURE, SILVER_BOW_AND_ARROW, ELECTRO_WHIP, MYSTICAL_MOON,
-            FOLLOW_WIND, SALAMANDRA, INSECT_ARMOR_WITH_LASER_CANNON, BLACK_PENDANT
+            FOLLOW_WIND, SALAMANDRA, INSECT_ARMOR_WITH_LASER_CANNON, BLACK_PENDANT,
+            CYBER_SHIELD, SEVEN_COMPLETED, HORN_OF_THE_UNICORN
     )));
 
     public static final Set<Integer> HIGH_THREAT_SPELLS_TO_NEGATE = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             RAIGEKI, DARK_HOLE, HARPIES_FEATHER_DUSTER, HEAVY_STORM, MONSTER_REBORN,
-            CHANGE_OF_HEART, POT_OF_GREED, GRACEFUL_CHARITY, LAST_WILL, POLYMERIZATION,
+            CHANGE_OF_HEART, BRAIN_CONTROL, POT_OF_GREED, GRACEFUL_CHARITY, LAST_WILL, POLYMERIZATION,
             TRIBUTE_TO_THE_DOOMED, SWORDS_OF_REVEALING_LIGHT, CRUSH_CARD_VIRUS, MIRROR_FORCE,
-            SOLEMN_JUDGMENT, TRAP_HOLE, ROYAL_DECREE
+            MIRROR_WALL, CALL_OF_THE_HAUNTED, TOON_WORLD, SOLEMN_JUDGMENT, TRAP_HOLE, ROYAL_DECREE
     )));
 
     private static final Map<Integer, Integer> BURN_DAMAGE = new HashMap<>();
@@ -180,10 +210,12 @@ public final class RpgAiCardKnowledge {
         SPELL_RECOVERY_PRIORITY.put(GRACEFUL_CHARITY, 92);
         SPELL_RECOVERY_PRIORITY.put(MONSTER_REBORN, 90);
         SPELL_RECOVERY_PRIORITY.put(CHANGE_OF_HEART, 88);
+        SPELL_RECOVERY_PRIORITY.put(BRAIN_CONTROL, 86);
         SPELL_RECOVERY_PRIORITY.put(HARPIES_FEATHER_DUSTER, 84);
         SPELL_RECOVERY_PRIORITY.put(DARK_HOLE, 82);
         SPELL_RECOVERY_PRIORITY.put(LAST_WILL, 80);
         SPELL_RECOVERY_PRIORITY.put(SWORDS_OF_REVEALING_LIGHT, 75);
+        SPELL_RECOVERY_PRIORITY.put(TOON_WORLD, 72);
         SPELL_RECOVERY_PRIORITY.put(TRIBUTE_TO_THE_DOOMED, 70);
         SPELL_RECOVERY_PRIORITY.put(FISSURE, 68);
         SPELL_RECOVERY_PRIORITY.put(OOKAZI, 65);
@@ -194,11 +226,16 @@ public final class RpgAiCardKnowledge {
         // Mask of Darkness priority
         TRAP_RECOVERY_PRIORITY.put(CRUSH_CARD_VIRUS, 100);
         TRAP_RECOVERY_PRIORITY.put(MIRROR_FORCE, 95);
+        TRAP_RECOVERY_PRIORITY.put(MIRROR_WALL, 92);
         TRAP_RECOVERY_PRIORITY.put(SOLEMN_JUDGMENT, 90);
+        TRAP_RECOVERY_PRIORITY.put(CALL_OF_THE_HAUNTED, 88);
         TRAP_RECOVERY_PRIORITY.put(TRAP_HOLE, 85);
         TRAP_RECOVERY_PRIORITY.put(KUNAI_WITH_CHAIN, 83);
+        TRAP_RECOVERY_PRIORITY.put(NEGATE_ATTACK, 82);
         TRAP_RECOVERY_PRIORITY.put(WABOKU, 80);
+        TRAP_RECOVERY_PRIORITY.put(SHADOW_SPELL, 79);
         TRAP_RECOVERY_PRIORITY.put(METALMORPH, 78);
+        TRAP_RECOVERY_PRIORITY.put(SPELLBINDING_CIRCLE, 77);
         TRAP_RECOVERY_PRIORITY.put(HORN_OF_HEAVEN, 76);
         TRAP_RECOVERY_PRIORITY.put(ROYAL_DECREE, 72);
         TRAP_RECOVERY_PRIORITY.put(SEVEN_TOOLS, 70);

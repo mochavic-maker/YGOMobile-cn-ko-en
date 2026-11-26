@@ -38,6 +38,7 @@ import cn.garymb.ygomobile.rpg.ai.RpgAiStrategy;
 import cn.garymb.ygomobile.rpg.data.RpgCatalogLoader;
 import cn.garymb.ygomobile.rpg.data.RpgRepository;
 import cn.garymb.ygomobile.rpg.engine.AiDeckGenerator;
+import cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder;
 import cn.garymb.ygomobile.rpg.engine.CardErrataEngine;
 import cn.garymb.ygomobile.rpg.engine.CraftingEngine;
 import cn.garymb.ygomobile.rpg.engine.DeckValidator;
@@ -48,6 +49,7 @@ import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.engine.TournamentEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgCanonDuel;
 import cn.garymb.ygomobile.rpg.model.OcgCardErrata;
 import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
@@ -79,6 +81,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     public static final int TAB_TOURNAMENT = 5;
     public static final int TAB_ERRATA = 6;
     public static final int TAB_AI_SHOWDOWN = 7;
+    public static final int TAB_CANON_DUELS = 8;
 
     private RpgCatalog catalog;
     private RpgRepository repository;
@@ -103,6 +106,7 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     private int activeTab = 0;
     private boolean collectionOnlyOwned = false;
+    private String canonFilterMode = "ALL";
     private String showdownKeyA = "current";
     private String showdownKeyB = null;
     private RpgAiAutoDuelModels.BatchResult lastShowdownReport = null;
@@ -171,6 +175,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         tabLayout.addTab(tabLayout.newTab().setText("🏆 锦标赛"));
         tabLayout.addTab(tabLayout.newTab().setText("效果勘误"));
         tabLayout.addTab(tabLayout.newTab().setText("⚔️ AI 对决"));
+        tabLayout.addTab(tabLayout.newTab().setText("🎬 对决还原"));
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -915,6 +920,9 @@ public class RpgHomeActivity extends AppCompatActivity {
                 break;
             case 7:
                 renderAiShowdownTab();
+                break;
+            case 8:
+                renderCanonDuelsTab();
                 break;
         }
     }
@@ -2096,6 +2104,350 @@ public class RpgHomeActivity extends AppCompatActivity {
         String p1Name = report.sideAFirst ? report.sideBName : report.sideAName;
         bridge.startRpgReplay(this, report.replayFilePath, p0Name, p1Name, returnTab);
         finish();
+    }
+
+    // ==================== TAB 8: CANON DUEL RECREATION ====================
+    private void renderCanonDuelsTab() {
+        List<OcgCanonDuel> allCanon = catalog.getCanonDuels();
+        List<OcgCanonDuel> unlocked = TimelineEngine.getAvailableCanonDuels(catalog, profile.currentTimelineDate);
+
+        // Top filter bar
+        android.widget.HorizontalScrollView filterScroll = new android.widget.HorizontalScrollView(this);
+        filterScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        filterScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout filterRow = new LinearLayout(this);
+        filterRow.setOrientation(LinearLayout.HORIZONTAL);
+        filterRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        String[][] filters = {
+                {"ALL", "全部 (" + unlocked.size() + ")"},
+                {"IN_1999", "1999 同期"},
+                {"MANGA", "原作漫画"},
+                {"SCREEN", "动画/剧场版"}
+        };
+        for (final String[] f : filters) {
+            boolean active = f[0].equals(canonFilterMode);
+            Button btn = makeActionButton(f[1], active ? "#DB2777" : "#334155");
+            btn.setOnClickListener(v -> {
+                canonFilterMode = f[0];
+                renderCurrentTab();
+            });
+            filterRow.addView(btn);
+        }
+        filterScroll.addView(filterRow);
+        layoutTabActions.addView(filterScroll);
+
+        TextView note = makeSubtleText("🎬 已解锁 " + unlocked.size() + " / " + allCanon.size()
+                + " 场原著对决（当前时间点 " + profile.currentTimelineDate
+                + "）· 原著用卡 100% 保留，不足 40 张部分以当期 OCG 卡池补足");
+        note.setPadding(0, dp(4), 0, 0);
+        layoutTabActions.addView(note);
+
+        // Sort newest first (timelineDate desc, then originalDate desc)
+        List<OcgCanonDuel> filtered = new ArrayList<>();
+        for (OcgCanonDuel d : unlocked) {
+            if ("IN_1999".equals(canonFilterMode) && d.isPreOcgOrigin()) continue;
+            if ("MANGA".equals(canonFilterMode) && !"MANGA".equals(d.mediaType)) continue;
+            if ("SCREEN".equals(canonFilterMode) && "MANGA".equals(d.mediaType)) continue;
+            filtered.add(d);
+        }
+        java.util.Collections.sort(filtered, (a, b) -> {
+            int c1 = (b.timelineDate != null ? b.timelineDate : "")
+                    .compareTo(a.timelineDate != null ? a.timelineDate : "");
+            if (c1 != 0) return c1;
+            return (b.originalDate != null ? b.originalDate : "")
+                    .compareTo(a.originalDate != null ? a.originalDate : "");
+        });
+
+        if (filtered.isEmpty()) {
+            LinearLayout empty = makeCardContainer();
+            empty.addView(makeTitleText("当前筛选条件下暂无已解锁的原著对决"));
+            empty.addView(makeSubtleText("提示：推进时间轴至 1999-03-02、1999-03-06、1999-03-30、1999-06-08、1999-11-09 可逐步解锁 1999 年同期连载与剧场版对决！"));
+            layoutContent.addView(empty);
+            return;
+        }
+
+        for (final OcgCanonDuel duel : filtered) {
+            if (duel == null || duel.sideA == null || duel.sideB == null) continue;
+            final CanonDuelDeckBuilder.BuiltCanonDeck deckA =
+                    CanonDuelDeckBuilder.buildDeck(catalog, duel, duel.sideA, duel.timelineDate);
+            final CanonDuelDeckBuilder.BuiltCanonDeck deckB =
+                    CanonDuelDeckBuilder.buildDeck(catalog, duel, duel.sideB, duel.timelineDate);
+
+            LinearLayout card = makeCardContainer();
+            boolean isExactDay = profile.currentTimelineDate.equals(duel.timelineDate) && !duel.isPreOcgOrigin();
+            if (isExactDay) {
+                GradientDrawable bg = new GradientDrawable();
+                bg.setColor(Color.parseColor("#1E293B"));
+                bg.setCornerRadius(dp(10));
+                bg.setStroke(dp(2), Color.parseColor("#EC4899"));
+                card.setBackground(bg);
+            }
+
+            // Title & Media/Date header
+            String todayTag = isExactDay ? " 🔥 当日解锁" : "";
+            TextView tvHead = makeTitleText("[" + duel.getMediaLabelCn() + "] " + duel.title + todayTag);
+            tvHead.setTextColor(Color.parseColor(isExactDay ? "#FBCFE8" : "#F8FAFC"));
+            card.addView(tvHead);
+
+            String dateLine = duel.episodeLabel + " · 原作日期 " + duel.originalDate
+                    + (duel.isPreOcgOrigin() ? ("（OCG 创世日 " + duel.timelineDate + " 解锁）") : ("（解锁日 " + duel.timelineDate + "）"));
+            TextView tvDate = makeSubtleText(dateLine);
+            tvDate.setTextColor(Color.parseColor("#38BDF8"));
+            card.addView(tvDate);
+
+            // Dual Avatar VS Strip
+            LinearLayout vsRow = new LinearLayout(this);
+            vsRow.setOrientation(LinearLayout.HORIZONTAL);
+            vsRow.setGravity(Gravity.CENTER_VERTICAL);
+            vsRow.setPadding(0, dp(8), 0, dp(6));
+
+            // Side A column
+            LinearLayout colA = new LinearLayout(this);
+            colA.setOrientation(LinearLayout.HORIZONTAL);
+            colA.setGravity(Gravity.CENTER_VERTICAL);
+            colA.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+            ImageView avA = new ImageView(this);
+            LinearLayout.LayoutParams lpAvA = new LinearLayout.LayoutParams(dp(56), dp(56));
+            lpAvA.setMarginEnd(dp(8));
+            avA.setLayoutParams(lpAvA);
+            avA.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            avA.setPadding(dp(2), dp(2), dp(2), dp(2));
+            avA.setBackground(RpgCardArtLoader.createAvatarPlaceholderDrawable());
+            RpgCardArtLoader.loadOpponentAvatarInto(this, avA, duel.sideA.avatarId);
+            colA.addView(avA);
+
+            LinearLayout txtA = new LinearLayout(this);
+            txtA.setOrientation(LinearLayout.VERTICAL);
+            txtA.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            TextView nameA = makeTitleText(duel.sideA.characterName);
+            nameA.setTextSize(13f);
+            nameA.setTextColor(Color.parseColor("#FDE68A"));
+            txtA.addView(nameA);
+            txtA.addView(makeSubtleText("原著" + deckA.canonMainCount + "张+补" + deckA.paddedMainCount + "张"
+                    + (deckA.extra.isEmpty() ? "" : (" · 额外" + deckA.extra.size()))));
+            colA.addView(txtA);
+            vsRow.addView(colA);
+
+            TextView tvVs = new TextView(this);
+            tvVs.setText("VS");
+            tvVs.setTextColor(Color.parseColor("#F43F5E"));
+            tvVs.setTextSize(15f);
+            tvVs.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvVs.setPadding(dp(6), 0, dp(6), 0);
+            vsRow.addView(tvVs);
+
+            // Side B column
+            LinearLayout colB = new LinearLayout(this);
+            colB.setOrientation(LinearLayout.HORIZONTAL);
+            colB.setGravity(Gravity.CENTER_VERTICAL);
+            colB.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+            LinearLayout txtB = new LinearLayout(this);
+            txtB.setOrientation(LinearLayout.VERTICAL);
+            txtB.setGravity(Gravity.END);
+            txtB.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            TextView nameB = makeTitleText(duel.sideB.characterName);
+            nameB.setTextSize(13f);
+            nameB.setTextColor(Color.parseColor("#A5F3FC"));
+            nameB.setGravity(Gravity.END);
+            txtB.addView(nameB);
+            TextView subB = makeSubtleText("原著" + deckB.canonMainCount + "张+补" + deckB.paddedMainCount + "张"
+                    + (deckB.extra.isEmpty() ? "" : (" · 额外" + deckB.extra.size())));
+            subB.setGravity(Gravity.END);
+            txtB.addView(subB);
+            colB.addView(txtB);
+
+            ImageView avB = new ImageView(this);
+            LinearLayout.LayoutParams lpAvB = new LinearLayout.LayoutParams(dp(56), dp(56));
+            lpAvB.setMarginStart(dp(8));
+            avB.setLayoutParams(lpAvB);
+            avB.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            avB.setPadding(dp(2), dp(2), dp(2), dp(2));
+            avB.setBackground(RpgCardArtLoader.createAvatarPlaceholderDrawable());
+            RpgCardArtLoader.loadOpponentAvatarInto(this, avB, duel.sideB.avatarId);
+            colB.addView(avB);
+            vsRow.addView(colB);
+
+            card.addView(vsRow);
+
+            if (duel.summary != null && !duel.summary.isEmpty()) {
+                TextView sumTv = makeSubtleText(duel.summary);
+                sumTv.setTextColor(Color.parseColor("#E2E8F0"));
+                card.addView(sumTv);
+            }
+
+            // Canon signature cards preview
+            TextView sigTv = makeSubtleText("• " + duel.sideA.characterName + " 核心："
+                    + formatCanonCardSample(duel.sideA) + "\n• " + duel.sideB.characterName + " 核心："
+                    + formatCanonCardSample(duel.sideB));
+            sigTv.setPadding(0, dp(4), 0, 0);
+            card.addView(sigTv);
+
+            // Row 1: Role-play either side's reconstructed deck
+            Button playAsABtn = makeActionButton("🎭 扮演 " + duel.sideA.characterName, "#DC2626");
+            playAsABtn.setOnClickListener(v -> launchCanonDuelRoleplay(duel, deckA, deckB));
+
+            Button playAsBBtn = makeActionButton("🎭 扮演 " + duel.sideB.characterName, "#7C3AED");
+            playAsBBtn.setOnClickListener(v -> launchCanonDuelRoleplay(duel, deckB, deckA));
+            card.addView(makeEqualWeightButtonRow(8, playAsABtn, playAsBBtn));
+
+            // Row 2: Bring player's own RPG deck against either side
+            Button ownVsABtn = makeActionButton("🃏 自组挑战 " + duel.sideA.characterName, "#D97706");
+            ownVsABtn.setOnClickListener(v -> launchCanonDuelWithOwnDeck(duel, deckA));
+
+            Button ownVsBBtn = makeActionButton("🃏 自组挑战 " + duel.sideB.characterName, "#059669");
+            ownVsBBtn.setOnClickListener(v -> launchCanonDuelWithOwnDeck(duel, deckB));
+            card.addView(makeEqualWeightButtonRow(6, ownVsABtn, ownVsBBtn));
+
+            // Row 3: Inspect both reconstructed decks visually
+            Button viewABtn = makeActionButton("👁 " + duel.sideA.characterName + " 卡组", "#0284C7");
+            viewABtn.setOnClickListener(v -> RpgPackVisualDialogs.showCanonDeckVisualDialog(
+                    this, catalog, profile, deckA, duel.episodeLabel));
+
+            Button viewBBtn = makeActionButton("👁 " + duel.sideB.characterName + " 卡组", "#475569");
+            viewBBtn.setOnClickListener(v -> RpgPackVisualDialogs.showCanonDeckVisualDialog(
+                    this, catalog, profile, deckB, duel.episodeLabel));
+            card.addView(makeEqualWeightButtonRow(6, viewABtn, viewBBtn));
+
+            layoutContent.addView(card);
+        }
+    }
+
+    private String formatCanonCardSample(OcgCanonDuel.DuelSide side) {
+        if (side == null) return "";
+        List<String> names = new ArrayList<>();
+        java.util.Set<Integer> seen = new java.util.LinkedHashSet<>();
+        if (side.canonExtraIds != null) {
+            for (Integer id : side.canonExtraIds) {
+                if (id != null && seen.add(id)) {
+                    RpgCard c = catalog.findCardOrCanon(id);
+                    names.add(c != null ? c.getDisplayName() : String.valueOf(id));
+                }
+            }
+        }
+        if (side.canonCardIds != null) {
+            for (Integer id : side.canonCardIds) {
+                if (names.size() >= 6) break;
+                if (id != null && seen.add(id)) {
+                    RpgCard c = catalog.findCardOrCanon(id);
+                    names.add(c != null ? c.getDisplayName() : String.valueOf(id));
+                }
+            }
+        }
+        int totalUnique = seen.size();
+        String joined = TextUtils.join("、", names);
+        return (side.canonCardIds != null && side.canonCardIds.size() > names.size())
+                ? (joined + " 等" + totalUnique + "种") : joined;
+    }
+
+    private AiOpponent buildCanonSyntheticOpponent(OcgCanonDuel duel, CanonDuelDeckBuilder.BuiltCanonDeck oppDeck) {
+        AiOpponent.EraDeckProfile ep = new AiOpponent.EraDeckProfile(
+                duel.timelineDate,
+                oppDeck.deckName,
+                duel.getMediaLabelCn(),
+                duel.summary != null ? duel.summary : "",
+                java.util.Collections.emptyMap(),
+                java.util.Collections.emptyMap(),
+                oppDeck.fillStyle);
+        return new AiOpponent(
+                "canon_" + duel.id + "_" + oppDeck.characterId,
+                oppDeck.characterName,
+                duel.title,
+                duel.timelineDate,
+                3,
+                260,
+                120,
+                80,
+                duel.summary != null ? duel.summary : "",
+                java.util.Collections.singletonList(ep));
+    }
+
+    private void launchCanonDuelRoleplay(OcgCanonDuel duel,
+                                         CanonDuelDeckBuilder.BuiltCanonDeck playerCanonDeck,
+                                         CanonDuelDeckBuilder.BuiltCanonDeck oppCanonDeck) {
+        RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
+            return;
+        }
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        OcgBanlist activeBanlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+        AiOpponent syntheticOpp = buildCanonSyntheticOpponent(duel, oppCanonDeck);
+        try {
+            File playerYdk = DeckValidator.exportToYdk(
+                    repository.getAiDeckYdkFile("canon_player_" + playerCanonDeck.characterId),
+                    playerCanonDeck.main, playerCanonDeck.extra);
+            File aiYdk = DeckValidator.exportToYdk(
+                    repository.getAiDeckYdkFile("canon_opp_" + oppCanonDeck.characterId),
+                    oppCanonDeck.main, oppCanonDeck.extra);
+
+            RpgSessionManager.beginRpgDuel(syntheticOpp, false, TAB_CANON_DUELS);
+            bridge.startRpgCanonDuel(
+                    this,
+                    playerCanonDeck.characterName,
+                    playerCanonDeck.avatarId,
+                    playerYdk.getAbsolutePath(),
+                    syntheticOpp,
+                    oppCanonDeck.avatarId,
+                    aiYdk.getAbsolutePath(),
+                    activeBanlist,
+                    activeRule,
+                    profile.currentTimelineDate);
+            finish();
+        } catch (IOException e) {
+            Toast.makeText(this, "导出还原卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void launchCanonDuelWithOwnDeck(OcgCanonDuel duel,
+                                            CanonDuelDeckBuilder.BuiltCanonDeck oppCanonDeck) {
+        DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
+        if (!val.valid) {
+            new AlertDialog.Builder(this)
+                    .setTitle("RPG 自组卡组未通过校验")
+                    .setMessage(TextUtils.join("\n", val.errors))
+                    .setPositiveButton("去组卡", (d, w) -> {
+                        TabLayout.Tab t = tabLayout.getTabAt(TAB_DECK);
+                        if (t != null) t.select();
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+        RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
+            return;
+        }
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        OcgBanlist activeBanlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+        AiOpponent syntheticOpp = buildCanonSyntheticOpponent(duel, oppCanonDeck);
+        try {
+            File playerYdk = DeckValidator.exportToYdk(
+                    repository.getPlayerDeckYdkFile(), profile.activeDeckMain, profile.activeDeckExtra);
+            File aiYdk = DeckValidator.exportToYdk(
+                    repository.getAiDeckYdkFile("canon_opp_" + oppCanonDeck.characterId),
+                    oppCanonDeck.main, oppCanonDeck.extra);
+
+            RpgSessionManager.beginRpgDuel(syntheticOpp, false, TAB_CANON_DUELS);
+            bridge.startRpgCanonDuel(
+                    this,
+                    null,
+                    null,
+                    playerYdk.getAbsolutePath(),
+                    syntheticOpp,
+                    oppCanonDeck.avatarId,
+                    aiYdk.getAbsolutePath(),
+                    activeBanlist,
+                    activeRule,
+                    profile.currentTimelineDate);
+            finish();
+        } catch (IOException e) {
+            Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 
     private void launchAiDuel(AiOpponent opponent) {

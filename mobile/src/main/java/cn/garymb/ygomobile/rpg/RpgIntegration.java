@@ -109,9 +109,7 @@ public final class RpgIntegration {
         boolean isDraw = (winner == 2);
         DuelRewardEngine.RewardSettlement settlement =
                 RpgSessionManager.onDuelFinished(activity.getApplicationContext(), selfWon, isDraw);
-        final int targetTab = RpgSessionManager.isLastDuelTournament()
-                ? RpgHomeActivity.TAB_TOURNAMENT
-                : RpgHomeActivity.TAB_AI_DUEL;
+        final int targetTab = RpgSessionManager.getLastDuelReturnTab();
         if (settlement != null) {
             activity.runOnUiThread(() -> {
                 Toast.makeText(
@@ -474,30 +472,58 @@ public final class RpgIntegration {
                                        OcgBanlist activeBanlist,
                                        OcgRuleSet activeRuleSet,
                                        String currentTimelineDate) {
-                activity.runOnUiThread(() -> {
-                    sAppContext = activity.getApplicationContext();
-                    // Record active historical OCG rule set so ServerDuelBase injects matching Lua rule overrides
-                    sActiveRpgDuelRuleSet = activeRuleSet;
-                    // Display the AI opponent's Yu-Gi-Oh! portrait in the top-right duel avatar frame
-                    sActiveDuelPlayerAvatarId = null;
-                    sActiveDuelOpponentAvatarId = (opponent != null) ? opponent.id : null;
+                launchLiveRpgDuel(activity, Constants.PlayerName, null, playerDeckYdkPath,
+                        opponent, (opponent != null) ? opponent.id : null, aiDeckYdkPath,
+                        activeRuleSet, currentTimelineDate, "OCG RPG [" + currentTimelineDate + "]");
+            }
 
-                    // Sync player's validated RPG .ydk into native deck/RPG/ and register via setLastDeckPath
-                    // so PlayerWaitingDialog loads the player's actual RPG deck instead of the default sample deck.
+            @Override
+            public void startRpgCanonDuel(Context context,
+                                          String playerDisplayName,
+                                          String playerAvatarId,
+                                          String playerDeckYdkPath,
+                                          AiOpponent opponent,
+                                          String opponentAvatarId,
+                                          String aiDeckYdkPath,
+                                          OcgBanlist activeBanlist,
+                                          OcgRuleSet activeRuleSet,
+                                          String currentTimelineDate) {
+                String pName = (playerDisplayName != null && !playerDisplayName.trim().isEmpty())
+                        ? playerDisplayName.trim() : Constants.PlayerName;
+                launchLiveRpgDuel(activity, pName, playerAvatarId, playerDeckYdkPath,
+                        opponent, opponentAvatarId, aiDeckYdkPath,
+                        activeRuleSet, currentTimelineDate, "原著对决还原 [" + currentTimelineDate + "]");
+            }
+
+            private void launchLiveRpgDuel(final YGOProActivity act,
+                                           final String playerName,
+                                           final String playerAvatarId,
+                                           final String playerDeckYdkPath,
+                                           final AiOpponent opponent,
+                                           final String opponentAvatarId,
+                                           final String aiDeckYdkPath,
+                                           final OcgRuleSet activeRuleSet,
+                                           final String currentTimelineDate,
+                                           final String roomTitle) {
+                act.runOnUiThread(() -> {
+                    sAppContext = act.getApplicationContext();
+                    sActiveRpgDuelRuleSet = activeRuleSet;
+                    sActiveDuelPlayerAvatarId = playerAvatarId;
+                    sActiveDuelOpponentAvatarId = opponentAvatarId;
+
                     syncYdkToNativeDeckDir(playerDeckYdkPath);
 
                     if (activeRuleSet != null) {
                         String ruleSummary = activeRuleSet.name
                                 + (activeRuleSet.tributeSummonEnabled ? "（上级需祭品" : "（上级免祭品")
                                 + (activeRuleSet.firstTurnDrawEnabled ? " · 先攻抽卡）" : " · 先攻不抽卡）");
-                        Toast.makeText(activity, "已应用 RPG 规则：" + ruleSummary, Toast.LENGTH_LONG).show();
+                        Toast.makeText(act, "已应用 RPG 规则：" + ruleSummary, Toast.LENGTH_LONG).show();
                     }
 
-                    GameEngine engine = activity.getEngine();
+                    GameEngine engine = act.getEngine();
                     engine.setBotMode(true);
-                    engine.setPlayerName(Constants.PlayerName);
+                    engine.setPlayerName(playerName);
 
-                    // Automatically apply the latest OCG rule version at currentTimelineDate
                     int duelMode = 0; // Single duel
                     int duelRule = activeRuleSet != null ? activeRuleSet.ygoproDuelRule : 1;
                     int startLp = activeRuleSet != null ? activeRuleSet.startLp : 8000;
@@ -506,7 +532,7 @@ public final class RpgIntegration {
                             0, 5, duelMode, duelRule,
                             true, false,
                             startLp, startHand, 1, 0,
-                            "OCG RPG [" + currentTimelineDate + "]", "");
+                            roomTitle, "");
                     engine.gameLflist = 0;
                     engine.gameRule = 5;
                     engine.gameMode = duelMode;
@@ -519,15 +545,13 @@ public final class RpgIntegration {
                     engine.gameTimeLimit = 0;
                     engine.hasJoinRoomInfoCache = true;
 
-                    PlayerWaitingDialog.showPlayerWaitingForBotHost(activity);
+                    PlayerWaitingDialog.showPlayerWaitingForBotHost(act);
 
-                    // Launch dedicated pure-Java 1999 OCG archetype-aware AI client directly
-                    // against the local LanGameServer (replaces generic WindBot Deck=Lucky).
                     cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
                     if (catalog == null) {
                         try {
                             catalog = cn.garymb.ygomobile.rpg.data.RpgCatalogLoader
-                                    .loadFromAssets(activity.getApplicationContext());
+                                    .loadFromAssets(act.getApplicationContext());
                             RpgSessionManager.setCachedCatalog(catalog);
                         } catch (Exception ignored) {
                         }

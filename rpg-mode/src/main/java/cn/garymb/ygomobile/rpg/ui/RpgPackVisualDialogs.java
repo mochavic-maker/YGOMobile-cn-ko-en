@@ -490,12 +490,41 @@ public final class RpgPackVisualDialogs {
                 orderedCards);
     }
 
+    public static void showCanonDeckVisualDialog(final Activity activity,
+                                                 final RpgCatalog catalog,
+                                                 final RpgProfile profile,
+                                                 final cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.BuiltCanonDeck builtDeck,
+                                                 final String episodeSubtitle) {
+        if (builtDeck == null) return;
+        Map<Integer, Integer> deckCopies = new LinkedHashMap<>();
+        List<RpgCard> orderedCards = new ArrayList<>();
+        collectDeckCards(catalog, builtDeck.main, deckCopies, orderedCards);
+        collectDeckCards(catalog, builtDeck.extra, deckCopies, orderedCards);
+        String subNote = (episodeSubtitle != null ? episodeSubtitle + " · " : "")
+                + "原著卡 " + builtDeck.canonMainCount + " 张 + 当期卡池补足 " + builtDeck.paddedMainCount + " 张"
+                + "（主卡 " + builtDeck.main.size() + " / 额外 " + builtDeck.extra.size()
+                + " · AI风格: " + RpgAiStrategy.getStyleDisplayName(builtDeck.fillStyle) + "）";
+        showCardPoolSplitDialog(
+                activity,
+                catalog,
+                profile,
+                "🎬 还原卡组 · ",
+                builtDeck.deckName,
+                null,
+                subNote,
+                false,
+                false,
+                null,
+                deckCopies,
+                orderedCards);
+    }
+
     private static void collectDeckCards(RpgCatalog catalog, List<Integer> ids,
                                          Map<Integer, Integer> counts, List<RpgCard> orderedOut) {
         if (ids == null || catalog == null) return;
         for (Integer id : ids) {
             if (id == null) continue;
-            RpgCard card = catalog.findCard(id);
+            RpgCard card = catalog.findCardOrCanon(id);
             if (card == null) continue;
             Integer prev = counts.get(id);
             if (prev == null) {
