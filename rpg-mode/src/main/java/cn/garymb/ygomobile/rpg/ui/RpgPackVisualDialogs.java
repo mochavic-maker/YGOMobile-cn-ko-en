@@ -721,7 +721,7 @@ public final class RpgPackVisualDialogs {
         final List<RpgCard> uniqueCards = new ArrayList<>();
         int unlockedCount = 0;
         int playset3Count = 0;
-        int unownedCount = 0;
+        int under3Count = 0;
         int highRarityCount = 0;
         int rareCount = 0;
         int normalCount = 0;
@@ -741,8 +741,8 @@ public final class RpgPackVisualDialogs {
                     uniqueCards.add(c);
                     int own = profile.getOwnedCount(c.id);
                     if (own >= 1) unlockedCount++;
-                    else unownedCount++;
                     if (own >= 3) playset3Count++;
+                    else under3Count++;
                     Rarity rr = c.getRarityEnum();
                     if (rr == Rarity.UR || rr == Rarity.SR || rr == Rarity.SCR) highRarityCount++;
                     else if (rr == Rarity.R) rareCount++;
@@ -954,9 +954,10 @@ public final class RpgPackVisualDialogs {
         listBg.setCornerRadius(dp(activity, 8));
         listBg.setStroke(dp(activity, 1), Color.parseColor("#1E293B"));
 
-        final GridLayout grid = new GridLayout(activity);
-        grid.setColumnCount(cols);
-        grid.setUseDefaultMargins(false);
+        final LinearLayout gridContainer = new LinearLayout(activity);
+        gridContainer.setOrientation(LinearLayout.VERTICAL);
+        gridContainer.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         final ScrollView gridScroll;
         if (embeddedInPage) {
@@ -967,7 +968,7 @@ public final class RpgPackVisualDialogs {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             gridWrapper.setBackground(listBg);
             gridWrapper.setPadding(dp(activity, 4), dp(activity, 4), dp(activity, 4), dp(activity, 4));
-            gridWrapper.addView(grid);
+            gridWrapper.addView(gridContainer);
             root.addView(gridWrapper);
         } else {
             gridScroll = new ScrollView(activity);
@@ -976,7 +977,7 @@ public final class RpgPackVisualDialogs {
             gridScroll.setLayoutParams(scrollLp);
             gridScroll.setBackground(listBg);
             gridScroll.setPadding(dp(activity, 4), dp(activity, 4), dp(activity, 4), dp(activity, 4));
-            gridScroll.addView(grid);
+            gridScroll.addView(gridContainer);
             root.addView(gridScroll);
         }
 
@@ -984,6 +985,7 @@ public final class RpgPackVisualDialogs {
         final PoolTileHolder[] selectedHolderRef = new PoolTileHolder[1];
         final Map<Integer, PoolTileHolder> holderByCardId = new LinkedHashMap<>();
         final int finalUnlockedCount = unlockedCount;
+        final int finalUnder3Count = under3Count;
         final int finalForbiddenCount = forbiddenCount;
         final int finalLimitedCount = limitedCount;
         final int finalSemiLimitedCount = semiLimitedCount;
@@ -1151,7 +1153,7 @@ public final class RpgPackVisualDialogs {
                 }
                 : new String[]{
                         "全部(" + uniqueCards.size() + ")",
-                        "未拥有(" + unownedCount + ")",
+                        "未拥有/缺张(" + finalUnder3Count + ")",
                         "高罕(" + highRarityCount + ")",
                         "R(" + rareCount + ")",
                         "N(" + normalCount + ")"
@@ -1159,8 +1161,116 @@ public final class RpgPackVisualDialogs {
         final String[] activeFilter = new String[]{"全部"};
         final List<Button> filterButtons = new ArrayList<>();
 
+        final java.util.function.Function<RpgCard, LinearLayout> createTileView = card -> {
+            int own = profile.getOwnedCount(card.id);
+            Rarity r = card.getRarityEnum();
+            int maxCopies = activeBanlist != null ? activeBanlist.getMaxCopies(card.id) : 3;
+
+            int rarityColor = parseRarityColor(r);
+            int limitBorderColor = maxCopies == 0 ? Color.parseColor("#EF4444")
+                    : (maxCopies == 1 ? Color.parseColor("#F97316") : Color.parseColor("#EAB308"));
+            boolean fullBright = deckMode || banlistMode || own > 0;
+            boolean isCanonCard = hasCanonHighlight && canonCoreIds.contains(card.id);
+            int normalStrokeW = dp(activity, fullBright ? 2 : 1);
+            int normalStrokeC = banlistMode ? limitBorderColor
+                    : (isCanonCard ? Color.parseColor("#EC4899")
+                    : (fullBright ? rarityColor : Color.parseColor("#334155")));
+
+            LinearLayout tile = new LinearLayout(activity);
+            tile.setOrientation(LinearLayout.VERTICAL);
+            tile.setGravity(Gravity.CENTER_HORIZONTAL);
+            tile.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
+            GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
+            glp.width = cardWidthPx;
+            glp.setMargins(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 5));
+            tile.setLayoutParams(glp);
+
+            FrameLayout frame = new FrameLayout(activity);
+            int innerArtW = Math.max(dp(activity, 44), cardWidthPx - dp(activity, 4));
+            int innerArtH = Math.round(innerArtW * 1.45f);
+            frame.setLayoutParams(new LinearLayout.LayoutParams(innerArtW, innerArtH));
+            frame.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(dp(activity, 5));
+            bg.setColor(Color.parseColor("#1E293B"));
+            bg.setStroke(normalStrokeW, normalStrokeC);
+            frame.setBackground(bg);
+
+            ImageView iv = new ImageView(activity);
+            iv.setLayoutParams(new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            iv.setAlpha(fullBright ? 1.0f : 0.45f);
+            RpgCardArtLoader.loadInto(iv, card.id, innerArtW);
+            frame.addView(iv);
+
+            final TextView tvTopLeft;
+            if (banlistMode) {
+                String badgeText = maxCopies == 0 ? "禁止" : (maxCopies == 1 ? "限制" : "准限");
+                int badgeBg = maxCopies == 0 ? Color.parseColor("#DC2626")
+                        : (maxCopies == 1 ? Color.parseColor("#EA580C") : Color.parseColor("#CA8A04"));
+                int badgeFg = maxCopies == 2 ? Color.parseColor("#0F172A") : Color.WHITE;
+                tvTopLeft = makeBadge(activity, badgeText, badgeBg, badgeFg);
+            } else {
+                tvTopLeft = makeBadge(activity, r.code, rarityColor, Color.parseColor("#0F172A"));
+            }
+            FrameLayout.LayoutParams rlp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP | Gravity.START);
+            rlp.setMargins(dp(activity, 2), dp(activity, 2), 0, 0);
+            tvTopLeft.setLayoutParams(rlp);
+            frame.addView(tvTopLeft);
+
+            if (isCanonCard) {
+                TextView tvCanon = makeBadge(activity, "原著", Color.parseColor("#DDDB2777"), Color.WHITE);
+                FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.TOP | Gravity.END);
+                clp.setMargins(0, dp(activity, 2), dp(activity, 2), 0);
+                tvCanon.setLayoutParams(clp);
+                frame.addView(tvCanon);
+            }
+
+            final TextView tvBottomRight;
+            if (deckMode) {
+                int copies = deckCopyCounts.getOrDefault(card.id, 1);
+                int copyBg = copies >= 3 ? Color.parseColor("#DD059669")
+                        : (copies == 2 ? Color.parseColor("#DD0284C7") : Color.parseColor("#CC475569"));
+                tvBottomRight = makeBadge(activity, "×" + copies, copyBg, Color.WHITE);
+            } else {
+                String ownLabel = own <= 0 ? "未拥有" : (own >= 3 ? "满3" : "×" + own);
+                int ownBg = own <= 0 ? Color.parseColor("#CC475569")
+                        : (own >= 3 ? Color.parseColor("#DD059669") : Color.parseColor("#DD0284C7"));
+                tvBottomRight = makeBadge(activity, ownLabel, ownBg, Color.WHITE);
+            }
+            FrameLayout.LayoutParams olp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Gravity.BOTTOM | Gravity.END);
+            olp.setMargins(0, 0, dp(activity, 2), dp(activity, 2));
+            tvBottomRight.setLayoutParams(olp);
+            frame.addView(tvBottomRight);
+
+            TextView tvName = new TextView(activity);
+            tvName.setText(card.getDisplayName());
+            tvName.setTextColor(fullBright ? Color.parseColor("#E2E8F0") : Color.parseColor("#64748B"));
+            tvName.setTextSize(9.5f);
+            tvName.setMaxLines(2);
+            tvName.setEllipsize(TextUtils.TruncateAt.END);
+            tvName.setGravity(Gravity.CENTER_HORIZONTAL);
+            tvName.setPadding(dp(activity, 1), dp(activity, 2), dp(activity, 1), 0);
+
+            tile.addView(frame);
+            tile.addView(tvName);
+
+            PoolTileHolder holder = new PoolTileHolder(card.id, tile, bg, normalStrokeC, normalStrokeW);
+            holderByCardId.put(card.id, holder);
+
+            tile.setOnClickListener(v -> selectCard.accept(card));
+            return tile;
+        };
+
         final Runnable renderPoolGrid = () -> {
-            grid.removeAllViews();
+            gridContainer.removeAllViews();
             holderByCardId.clear();
             selectedHolderRef[0] = null;
             for (Button fb : filterButtons) {
@@ -1172,139 +1282,100 @@ public final class RpgPackVisualDialogs {
             }
             RpgCard firstVisible = null;
             boolean currentStillVisible = false;
-            for (final RpgCard card : uniqueCards) {
-                int own = profile.getOwnedCount(card.id);
-                Rarity r = card.getRarityEnum();
-                int maxCopies = activeBanlist != null ? activeBanlist.getMaxCopies(card.id) : 3;
-                if (deckMode) {
-                    boolean isExtra = card.isExtraDeckCard();
-                    boolean isMonster = !isExtra && card.isMonster();
-                    boolean isTrap = !isExtra && !isMonster && card.frameType != null && "trap".equalsIgnoreCase(card.frameType);
-                    boolean isSpell = !isExtra && !isMonster && !isTrap;
-                    if ("原著".equals(activeFilter[0]) && !(hasCanonHighlight && canonCoreIds.contains(card.id))) continue;
-                    if ("怪兽".equals(activeFilter[0]) && !isMonster) continue;
-                    if ("魔法".equals(activeFilter[0]) && !isSpell) continue;
-                    if ("陷阱".equals(activeFilter[0]) && !isTrap) continue;
-                    if ("额外".equals(activeFilter[0]) && !isExtra) continue;
-                } else if (banlistMode) {
-                    if ("禁止".equals(activeFilter[0]) && maxCopies != 0) continue;
-                    if ("限制".equals(activeFilter[0]) && maxCopies != 1) continue;
-                    if ("准限".equals(activeFilter[0]) && maxCopies != 2) continue;
-                    if ("已拥有".equals(activeFilter[0]) && own <= 0) continue;
-                } else {
-                    if ("未拥有".equals(activeFilter[0]) && own > 0) continue;
-                    if ("高罕".equals(activeFilter[0])
-                            && !(r == Rarity.UR || r == Rarity.SR || r == Rarity.SCR)) continue;
-                    if ("R".equals(activeFilter[0]) && r != Rarity.R) continue;
-                    if ("N".equals(activeFilter[0]) && r != Rarity.N) continue;
+
+            boolean groupedUnownedMode = !deckMode && !banlistMode && "未拥有".equals(activeFilter[0]);
+            if (groupedUnownedMode) {
+                List<RpgCard> own0 = new ArrayList<>();
+                List<RpgCard> own1 = new ArrayList<>();
+                List<RpgCard> own2 = new ArrayList<>();
+                for (RpgCard card : uniqueCards) {
+                    int own = profile.getOwnedCount(card.id);
+                    if (own <= 0) own0.add(card);
+                    else if (own == 1) own1.add(card);
+                    else if (own == 2) own2.add(card);
                 }
+                List<List<RpgCard>> groups = new ArrayList<>();
+                groups.add(own0);
+                groups.add(own1);
+                groups.add(own2);
+                String[] titles = new String[]{
+                        "未拥有 · 持有 0 张",
+                        "仅拥有 1 张",
+                        "仅拥有 2 张"
+                };
+                String[] accentHexes = new String[]{"#F59E0B", "#38BDF8", "#34D399"};
+                boolean addedAnySection = false;
+                for (int g = 0; g < groups.size(); g++) {
+                    List<RpgCard> list = groups.get(g);
+                    if (list.isEmpty()) continue;
 
-                if (firstVisible == null) firstVisible = card;
-                if (selectedCardRef[0] != null && selectedCardRef[0].id == card.id) {
-                    currentStillVisible = true;
+                    TextView secHeader = new TextView(activity);
+                    secHeader.setText(titles[g] + " (" + list.size() + " 种)");
+                    secHeader.setTextColor(Color.parseColor(accentHexes[g]));
+                    secHeader.setTextSize(11.5f);
+                    secHeader.setTypeface(null, Typeface.BOLD);
+                    GradientDrawable hBg = new GradientDrawable();
+                    hBg.setColor(Color.parseColor("#1E293B"));
+                    hBg.setCornerRadius(dp(activity, 5));
+                    secHeader.setBackground(hBg);
+                    secHeader.setPadding(dp(activity, 8), dp(activity, 4), dp(activity, 8), dp(activity, 4));
+                    LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    hlp.topMargin = addedAnySection ? dp(activity, 8) : dp(activity, 2);
+                    hlp.bottomMargin = dp(activity, 4);
+                    secHeader.setLayoutParams(hlp);
+                    gridContainer.addView(secHeader);
+
+                    GridLayout secGrid = new GridLayout(activity);
+                    secGrid.setColumnCount(cols);
+                    secGrid.setUseDefaultMargins(false);
+                    for (RpgCard card : list) {
+                        if (firstVisible == null) firstVisible = card;
+                        if (selectedCardRef[0] != null && selectedCardRef[0].id == card.id) {
+                            currentStillVisible = true;
+                        }
+                        secGrid.addView(createTileView.apply(card));
+                    }
+                    gridContainer.addView(secGrid);
+                    addedAnySection = true;
                 }
+            } else {
+                GridLayout grid = new GridLayout(activity);
+                grid.setColumnCount(cols);
+                grid.setUseDefaultMargins(false);
+                for (final RpgCard card : uniqueCards) {
+                    int own = profile.getOwnedCount(card.id);
+                    Rarity r = card.getRarityEnum();
+                    int maxCopies = activeBanlist != null ? activeBanlist.getMaxCopies(card.id) : 3;
+                    if (deckMode) {
+                        boolean isExtra = card.isExtraDeckCard();
+                        boolean isMonster = !isExtra && card.isMonster();
+                        boolean isTrap = !isExtra && !isMonster && card.frameType != null && "trap".equalsIgnoreCase(card.frameType);
+                        boolean isSpell = !isExtra && !isMonster && !isTrap;
+                        if ("原著".equals(activeFilter[0]) && !(hasCanonHighlight && canonCoreIds.contains(card.id))) continue;
+                        if ("怪兽".equals(activeFilter[0]) && !isMonster) continue;
+                        if ("魔法".equals(activeFilter[0]) && !isSpell) continue;
+                        if ("陷阱".equals(activeFilter[0]) && !isTrap) continue;
+                        if ("额外".equals(activeFilter[0]) && !isExtra) continue;
+                    } else if (banlistMode) {
+                        if ("禁止".equals(activeFilter[0]) && maxCopies != 0) continue;
+                        if ("限制".equals(activeFilter[0]) && maxCopies != 1) continue;
+                        if ("准限".equals(activeFilter[0]) && maxCopies != 2) continue;
+                        if ("已拥有".equals(activeFilter[0]) && own <= 0) continue;
+                    } else {
+                        if ("高罕".equals(activeFilter[0])
+                                && !(r == Rarity.UR || r == Rarity.SR || r == Rarity.SCR)) continue;
+                        if ("R".equals(activeFilter[0]) && r != Rarity.R) continue;
+                        if ("N".equals(activeFilter[0]) && r != Rarity.N) continue;
+                    }
 
-                int rarityColor = parseRarityColor(r);
-                int limitBorderColor = maxCopies == 0 ? Color.parseColor("#EF4444")
-                        : (maxCopies == 1 ? Color.parseColor("#F97316") : Color.parseColor("#EAB308"));
-                boolean fullBright = deckMode || banlistMode || own > 0;
-                boolean isCanonCard = hasCanonHighlight && canonCoreIds.contains(card.id);
-                int normalStrokeW = dp(activity, fullBright ? 2 : 1);
-                int normalStrokeC = banlistMode ? limitBorderColor
-                        : (isCanonCard ? Color.parseColor("#EC4899")
-                        : (fullBright ? rarityColor : Color.parseColor("#334155")));
-
-                LinearLayout tile = new LinearLayout(activity);
-                tile.setOrientation(LinearLayout.VERTICAL);
-                tile.setGravity(Gravity.CENTER_HORIZONTAL);
-                tile.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
-                GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
-                glp.width = cardWidthPx;
-                glp.setMargins(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 5));
-                tile.setLayoutParams(glp);
-
-                FrameLayout frame = new FrameLayout(activity);
-                int innerArtW = Math.max(dp(activity, 44), cardWidthPx - dp(activity, 4));
-                int innerArtH = Math.round(innerArtW * 1.45f);
-                frame.setLayoutParams(new LinearLayout.LayoutParams(innerArtW, innerArtH));
-                frame.setPadding(dp(activity, 2), dp(activity, 2), dp(activity, 2), dp(activity, 2));
-                GradientDrawable bg = new GradientDrawable();
-                bg.setCornerRadius(dp(activity, 5));
-                bg.setColor(Color.parseColor("#1E293B"));
-                bg.setStroke(normalStrokeW, normalStrokeC);
-                frame.setBackground(bg);
-
-                ImageView iv = new ImageView(activity);
-                iv.setLayoutParams(new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                iv.setAlpha(fullBright ? 1.0f : 0.45f);
-                RpgCardArtLoader.loadInto(iv, card.id, innerArtW);
-                frame.addView(iv);
-
-                final TextView tvTopLeft;
-                if (banlistMode) {
-                    String badgeText = maxCopies == 0 ? "禁止" : (maxCopies == 1 ? "限制" : "准限");
-                    int badgeBg = maxCopies == 0 ? Color.parseColor("#DC2626")
-                            : (maxCopies == 1 ? Color.parseColor("#EA580C") : Color.parseColor("#CA8A04"));
-                    int badgeFg = maxCopies == 2 ? Color.parseColor("#0F172A") : Color.WHITE;
-                    tvTopLeft = makeBadge(activity, badgeText, badgeBg, badgeFg);
-                } else {
-                    tvTopLeft = makeBadge(activity, r.code, rarityColor, Color.parseColor("#0F172A"));
+                    if (firstVisible == null) firstVisible = card;
+                    if (selectedCardRef[0] != null && selectedCardRef[0].id == card.id) {
+                        currentStillVisible = true;
+                    }
+                    grid.addView(createTileView.apply(card));
                 }
-                FrameLayout.LayoutParams rlp = new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                        Gravity.TOP | Gravity.START);
-                rlp.setMargins(dp(activity, 2), dp(activity, 2), 0, 0);
-                tvTopLeft.setLayoutParams(rlp);
-                frame.addView(tvTopLeft);
-
-                if (isCanonCard) {
-                    TextView tvCanon = makeBadge(activity, "原著", Color.parseColor("#DDDB2777"), Color.WHITE);
-                    FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                            Gravity.TOP | Gravity.END);
-                    clp.setMargins(0, dp(activity, 2), dp(activity, 2), 0);
-                    tvCanon.setLayoutParams(clp);
-                    frame.addView(tvCanon);
-                }
-
-                final TextView tvBottomRight;
-                if (deckMode) {
-                    int copies = deckCopyCounts.getOrDefault(card.id, 1);
-                    int copyBg = copies >= 3 ? Color.parseColor("#DD059669")
-                            : (copies == 2 ? Color.parseColor("#DD0284C7") : Color.parseColor("#CC475569"));
-                    tvBottomRight = makeBadge(activity, "×" + copies, copyBg, Color.WHITE);
-                } else {
-                    String ownLabel = own <= 0 ? "未拥有" : (own >= 3 ? "满3" : "×" + own);
-                    int ownBg = own <= 0 ? Color.parseColor("#CC475569")
-                            : (own >= 3 ? Color.parseColor("#DD059669") : Color.parseColor("#DD0284C7"));
-                    tvBottomRight = makeBadge(activity, ownLabel, ownBg, Color.WHITE);
-                }
-                FrameLayout.LayoutParams olp = new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                        Gravity.BOTTOM | Gravity.END);
-                olp.setMargins(0, 0, dp(activity, 2), dp(activity, 2));
-                tvBottomRight.setLayoutParams(olp);
-                frame.addView(tvBottomRight);
-
-                TextView tvName = new TextView(activity);
-                tvName.setText(card.getDisplayName());
-                tvName.setTextColor(fullBright ? Color.parseColor("#E2E8F0") : Color.parseColor("#64748B"));
-                tvName.setTextSize(9.5f);
-                tvName.setMaxLines(2);
-                tvName.setEllipsize(TextUtils.TruncateAt.END);
-                tvName.setGravity(Gravity.CENTER_HORIZONTAL);
-                tvName.setPadding(dp(activity, 1), dp(activity, 2), dp(activity, 1), 0);
-
-                tile.addView(frame);
-                tile.addView(tvName);
-
-                PoolTileHolder holder = new PoolTileHolder(card.id, tile, bg, normalStrokeC, normalStrokeW);
-                holderByCardId.put(card.id, holder);
-
-                tile.setOnClickListener(v -> selectCard.accept(card));
-                grid.addView(tile);
+                gridContainer.addView(grid);
             }
 
             if (gridScroll != null) {
