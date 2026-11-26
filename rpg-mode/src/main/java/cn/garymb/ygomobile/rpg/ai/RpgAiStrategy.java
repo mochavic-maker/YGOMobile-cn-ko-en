@@ -461,8 +461,13 @@ public class RpgAiStrategy {
         int myEffectiveBest = Math.max(myBestOnField, myBestInHand);
         int oppStrongestAtk = state.getStrongestAtk(1);
         int oppStrongestThreat = state.getStrongestThreatValue(1);
+        int oppWeakestFaceUpAtk = getWeakestFaceUpMonsterAtk(1);
         boolean oppHasFaceDown = hasFaceDownMonster(1);
         boolean oppHasFaceUp = hasFaceUpMonster(1);
+        // First Flip monsters (Man-Eater Bug / Hane-Hane / Needle Worm) debuted in Vol.3 (1999-05-27)
+        boolean flipMonstersExist = state.currentTimelineDate.compareTo("1999-05-27") >= 0;
+        boolean clearForLethal = !state.isMain2() && p.canBattle
+                && (state.getTotalFaceUpAtk(0) + myBestInHand >= state.lp[1]);
 
         // 1) Change of Heart: huge tempo play in Main 1 (steal to tribute or beat down!)
         CmdEntry coh = findActivatable(p, RpgAiCardKnowledge.CHANGE_OF_HEART);
@@ -475,43 +480,48 @@ public class RpgAiStrategy {
             }
         }
 
-        // 2) Raigeki: one-sided wipe (never hurts our monsters)
+        // 2) Raigeki: one-sided wipe — preserve unless it earns real value (multi-kill, answers threat we
+        //    can't beat in battle, protects a Boss from post-Vol.3 Flip monsters, or secures immediate lethal!)
         CmdEntry raigeki = findActivatable(p, RpgAiCardKnowledge.RAIGEKI);
         if (raigeki != null) {
             boolean worthIt = oppMons.size() >= 2
                     || oppStrongestThreat >= myEffectiveBest
-                    || oppHasFaceDown
-                    || (!state.isMain2() && myEffectiveBest >= state.eraTopLowerAtk && oppStrongestAtk >= state.eraTypicalLowerAtk)
-                    || (!state.isMain2() && myBestOnField + myBestInHand >= state.lp[1]);
+                    || (flipMonstersExist && oppHasFaceDown && myEffectiveBest >= state.eraBossAtk)
+                    || clearForLethal
+                    || ((isExodiaStyle() || isBurnStyle()) && oppStrongestThreat >= state.eraTypicalLowerAtk);
             if (worthIt) {
                 return activateIdle(raigeki);
             }
         }
 
-        // 3) Dark Hole: STRICT anti-self-sabotage check!
-        //    - NEVER activate when we control monsters and are already winning/equal on board!
-        //    - ALWAYS evaluate BEFORE summoning our own monster so we wipe FIRST, then summon!
+        // 3) Dark Hole: STRICT anti-self-sabotage + resource conservation check!
+        //    - NEVER blow up our own advantage!
+        //    - Don't waste Dark Hole on a single weak monster our hand can already beat over in battle!
         CmdEntry darkHole = findActivatable(p, RpgAiCardKnowledge.DARK_HOLE);
-        if (darkHole != null && shouldActivateDarkHole(myMons, oppMons, myBestOnField, myBestInHand, oppStrongestThreat)) {
+        if (darkHole != null && shouldActivateDarkHole(myMons, oppMons, myBestOnField, myBestInHand,
+                oppStrongestThreat, flipMonstersExist, clearForLethal)) {
             return activateIdle(darkHole);
         }
 
-        // 4) Fissure: clean 1-for-1 face-up monster removal
+        // 4) Fissure: destroys opponent's LOWEST-ATK face-up monster!
+        //    Hold Fissure if our field/hand already beats over that target in battle (save Fissure for
+        //    Dark Magician / Gaia / Blue-Eyes / Summoned Skull, or use in M2 after clearing smaller monsters!).
         CmdEntry fissure = findActivatable(p, RpgAiCardKnowledge.FISSURE);
         if (fissure != null && oppHasFaceUp) {
-            boolean worthIt = oppStrongestAtk >= myEffectiveBest
-                    || (!state.isMain2() && (myEffectiveBest >= state.eraTopLowerAtk || oppStrongestAtk >= state.eraTypicalLowerAtk))
-                    || isExodiaStyle() || isBurnStyle();
-            if (worthIt) {
+            boolean targetBeatsOrTiesUs = oppWeakestFaceUpAtk >= myEffectiveBest;
+            boolean singleBlockerLethal = oppMons.size() == 1 && clearForLethal;
+            boolean stallClear = (isExodiaStyle() || isBurnStyle()) && oppWeakestFaceUpAtk >= state.eraTypicalLowerAtk;
+            if (targetBeatsOrTiesUs || singleBlockerLethal || stallClear) {
                 return activateIdle(fissure);
             }
         }
 
-        // 5) Tribute to the Doomed: costs a discard, so only use against real threats
+        // 5) Tribute to the Doomed: costs a discard (-1), so ONLY use against threats we can't beat over
+        //    in battle (or for immediate lethal / pre-errata Exodia Sangan discard combo)!
         CmdEntry ttd = findActivatable(p, RpgAiCardKnowledge.TRIBUTE_TO_THE_DOOMED);
         if (ttd != null && canSafelyDiscard(1)) {
             boolean bigThreat = oppStrongestThreat >= myEffectiveBest
-                    || oppStrongestThreat >= state.eraHighThreatAtk
+                    || (oppMons.size() == 1 && clearForLethal)
                     || (isExodiaStyle() && state.isPreErrataSanganEra() && hasSearcherInHand());
             if (bigThreat) {
                 return activateIdle(ttd);
@@ -535,14 +545,27 @@ public class RpgAiStrategy {
         return null;
     }
 
+    private int getWeakestFaceUpMonsterAtk(int localPlayer) {
+        int weakest = Integer.MAX_VALUE;
+        for (RpgAiDuelState.CardSlot m : state.getMonsters(localPlayer)) {
+            if (m.isFaceUp()) {
+                weakest = Math.min(weakest, Math.max(0, m.atk));
+            }
+        }
+        return weakest == Integer.MAX_VALUE ? 0 : weakest;
+    }
+
     /**
-     * Decides whether Dark Hole is genuinely advantageous (and never self-sabotaging).
+     * Decides whether Dark Hole is genuinely advantageous (never self-sabotaging, and conserving
+     * Dark Hole when our monster in hand cleanly beats over a lone weak opponent monster).
      */
     boolean shouldActivateDarkHole(List<RpgAiDuelState.CardSlot> myMons,
                                    List<RpgAiDuelState.CardSlot> oppMons,
                                    int myBestOnField,
                                    int myBestInHand,
-                                   int oppStrongestThreat) {
+                                   int oppStrongestThreat,
+                                   boolean flipMonstersExist,
+                                   boolean clearForLethal) {
         if (oppMons.isEmpty()) return false;
 
         // If we already have monsters on field, NEVER blow up our own advantage!
@@ -564,19 +587,19 @@ public class RpgAiStrategy {
                 }
             }
             // Even with weak monsters, don't blow up our own board unless opponent has a real threat
-            if (oppStrongestThreat < state.eraTopLowerAtk && oppMons.size() <= myMons.size()) {
+            if (oppStrongestThreat < Math.max(state.eraTopLowerAtk, myBestInHand) && oppMons.size() <= myMons.size()) {
                 return false;
             }
             return true;
         }
 
-        // Our monster zone is EMPTY -> Dark Hole is effectively a one-sided Raigeki!
-        // Use it if opponent has >=2 monsters, or a monster stronger than/equal to what we can summon,
-        // or a face-down wall, or we have a beater ready to summon right after for direct damage.
+        // Our monster zone is EMPTY -> Dark Hole is effectively a one-sided wipe.
+        // Still conserve it unless it hits 2+ monsters, answers a monster our hand can't beat,
+        // clears a post-Vol.3 Flip threat before our Boss attacks, or secures immediate lethal!
         if (oppMons.size() >= 2) return true;
         if (oppStrongestThreat >= myBestInHand) return true;
-        if (hasFaceDownMonster(1)) return true;
-        if (!state.isMain2() && myBestInHand >= state.eraTopLowerAtk && oppStrongestThreat >= state.eraTypicalLowerAtk) return true;
+        if (clearForLethal) return true;
+        if (flipMonstersExist && hasFaceDownMonster(1) && myBestInHand >= state.eraBossAtk) return true;
         if ((isExodiaStyle() || isBurnStyle()) && oppStrongestThreat >= state.eraTypicalLowerAtk) return true;
         return false;
     }
@@ -677,6 +700,7 @@ public class RpgAiStrategy {
         if (p.summonable.isEmpty() && p.msetable.isEmpty()) return null;
 
         int oppStrongest = state.getStrongestThreatValue(1);
+        int oppStrongestFaceUpAtk = state.getStrongestAtk(1);
         int myStrongestOnField = state.getStrongestAtk(0);
         boolean myBoardEmpty = state.getMonsters(0).isEmpty();
         boolean oppBoardEmpty = state.getMonsters(1).isEmpty();
@@ -692,11 +716,59 @@ public class RpgAiStrategy {
             }
         }
 
+        // Classic 1999 OCG tactic ("落穴踏み" / Trap Hole Baiting):
+        // When opponent has face-down Spell/Trap(s) and we hold BOTH a Boss/Tribute monster AND a
+        // 1000+ ATK non-tribute beater, probe the set backrow with the lower beater first instead of
+        // walking Dark Magician / Gaia / Blue-Eyes / Summoned Skull straight into Trap Hole!
+        boolean oppHasSetBackrow = countFaceDownBackrow(1) > 0;
+        int bestBossAtk = 0;
+        int bestBaitAtk = 0;
+        boolean hasBossOrTribute = false;
+        if (oppHasSetBackrow && !hasStolen && !isExodiaStyle() && !isBurnStyle()) {
+            for (CmdEntry e : p.summonable) {
+                int atk = state.getCardBaseAtk(e.code);
+                int def = state.getCardBaseDef(e.code);
+                int lv = state.getCardLevel(e.code);
+                int tributes = state.tributesNeededForLevel(lv);
+                if (atk >= state.eraBossAtk || tributes > 0) {
+                    hasBossOrTribute = true;
+                    bestBossAtk = Math.max(bestBossAtk, atk);
+                } else if (tributes == 0
+                        && !RpgAiCardKnowledge.isFlipMonster(e.code)
+                        && !RpgAiCardKnowledge.isExodiaPiece(e.code)
+                        && !RpgAiCardKnowledge.isSearcherMonster(e.code)
+                        && atk >= 1000 && atk < state.eraBossAtk && atk >= def) {
+                    bestBaitAtk = Math.max(bestBaitAtk, atk);
+                }
+            }
+        }
+        boolean bossWouldBeLethal = oppBoardEmpty && !state.isMain2() && p.canBattle
+                && (state.getTotalFaceUpAtk(0) + bestBossAtk >= state.lp[1]);
+        boolean preferTrapHoleBait = oppHasSetBackrow
+                && hasBossOrTribute
+                && bestBaitAtk >= 1000
+                && !bossWouldBeLethal
+                && oppStrongestFaceUpAtk <= Math.max(bestBaitAtk, myStrongestOnField)
+                && (state.lp[0] > 2500 || oppStrongestFaceUpAtk <= bestBaitAtk);
+
         // Evaluate best Normal Summon candidate
         CmdEntry bestSummon = null;
         int bestSummonScore = Integer.MIN_VALUE;
         for (CmdEntry e : p.summonable) {
             int score = scoreNormalSummon(e, oppStrongest, myStrongestOnField, oppBoardEmpty, hasBoardAdvantage, hasStolen);
+            if (preferTrapHoleBait && score > 0) {
+                int atk = state.getCardBaseAtk(e.code);
+                int def = state.getCardBaseDef(e.code);
+                int tributes = state.tributesNeededForLevel(state.getCardLevel(e.code));
+                if (atk >= state.eraBossAtk || tributes > 0) {
+                    // Hold Boss/Tribute behind the bait beater when probing opponent's set backrow
+                    score -= 1900;
+                } else if (tributes == 0 && atk >= 1000 && atk < state.eraBossAtk && atk >= def
+                        && !RpgAiCardKnowledge.isFlipMonster(e.code)
+                        && !RpgAiCardKnowledge.isSearcherMonster(e.code)) {
+                    score += 450;
+                }
+            }
             if (score > bestSummonScore) {
                 bestSummonScore = score;
                 bestSummon = e;
@@ -877,14 +949,63 @@ public class RpgAiStrategy {
     }
 
     private Integer tryEquipSpells(IdleCmdPrompt p) {
+        // Anti-2-for-1 discipline: NEVER equip in Main 2 or Turn 1 when we cannot attack with the boost!
+        if (state.isMain2() || !p.canBattle || state.turnCount == 1) {
+            return null;
+        }
+        List<RpgAiDuelState.CardSlot> oppMons = state.getMonsters(1);
+        int oppBackrow = countFaceDownBackrow(1);
+
         for (CmdEntry e : p.activatable) {
             if (!RpgAiCardKnowledge.isEquipSpell(e.code)) continue;
-            // CRITICAL: Only activate equip spell if WE have an eligible friendly monster!
-            if (state.hasEligibleFriendlyEquipTarget(e.code)) {
+            RpgAiDuelState.CardSlot target = findBestFriendlyAttackEquipTarget(e.code);
+            if (target == null) continue;
+
+            int bonus = Math.max(300, RpgAiCardKnowledge.getEquipAtkBonus(e.code));
+            // 1) Secures immediate lethal on an open board
+            if (oppMons.isEmpty() && state.getTotalFaceUpAtk(0) + bonus >= state.lp[1]) {
+                return activateIdle(e);
+            }
+            // 2) Flips a losing/tied combat matchup into a clean win (or crosses face-down poke threshold)
+            boolean flipsCombat = false;
+            for (RpgAiDuelState.CardSlot opp : oppMons) {
+                int oppVal = opp.effectiveCombatValue(state.eraEstimatedFaceDownDef);
+                if (opp.isFaceUp()) {
+                    if (target.atk <= oppVal && target.atk + bonus > oppVal) {
+                        flipsCombat = true;
+                        break;
+                    }
+                } else {
+                    int pokeThreshold = Math.max(900, state.eraEstimatedFaceDownDef + 100);
+                    if (target.atk < pokeThreshold && target.atk + bonus >= pokeThreshold) {
+                        flipsCombat = true;
+                        break;
+                    }
+                }
+            }
+            if (flipsCombat) {
+                return activateIdle(e);
+            }
+            // 3) Dedicated Equip Beatdown style pushing tempo when opponent has no set backrow
+            if (isEquipStyle() && oppBackrow == 0 && target.atk < state.eraBossAtk) {
                 return activateIdle(e);
             }
         }
         return null;
+    }
+
+    private RpgAiDuelState.CardSlot findBestFriendlyAttackEquipTarget(int equipCode) {
+        RpgAiDuelState.CardSlot best = null;
+        for (RpgAiDuelState.CardSlot m : state.getMonsters(0)) {
+            if (!m.isFaceUp() || !m.isAttackPos()) continue;
+            int attr = m.attribute != 0 ? m.attribute : state.getCardAttrMask(m.code);
+            int race = m.race != 0 ? m.race : state.getCardRaceMask(m.code);
+            if (!RpgAiCardKnowledge.canEquipTarget(equipCode, attr, race)) continue;
+            if (best == null || m.atk > best.atk) {
+                best = m;
+            }
+        }
+        return best;
     }
 
     private Integer tryReposition(IdleCmdPrompt p) {
@@ -913,16 +1034,20 @@ public class RpgAiStrategy {
     }
 
     private Integer tryUtilitySpellsAndEffects(IdleCmdPrompt p) {
-        // Burn spells
+        // Burn spells (hold low-impact Sparks for a 1-card Trap Hole bluff when we have 0 backrow & no real traps;
+        // note lethal Sparks already fired in tryImmediateLethal!)
+        boolean wantBluffSparks = !isBurnStyle() && !isExodiaStyle()
+                && countFaceDownBackrow(0) == 0 && !hasRealTrapInSsetable(p);
         for (CmdEntry e : p.activatable) {
             if (RpgAiCardKnowledge.getBurnDamage(e.code) > 0) {
+                if (e.code == RpgAiCardKnowledge.SPARKS && wantBluffSparks) continue;
                 return activateIdle(e);
             }
         }
-        // Heal spells (when damaged or in novice/burn decks)
+        // Heal spells (when damaged or in burn decks; when at full LP, keep as potential Trap Hole bluff)
         for (CmdEntry e : p.activatable) {
             if (RpgAiCardKnowledge.isHealSpell(e.code)) {
-                if (state.lp[0] < 8000 || isBurnStyle() || isNoviceStyle()) {
+                if (state.lp[0] < 8000 || isBurnStyle()) {
                     return activateIdle(e);
                 }
             }
@@ -963,21 +1088,73 @@ public class RpgAiStrategy {
 
     private Integer trySetTraps(IdleCmdPrompt p) {
         if (p.ssetable.isEmpty() || state.getFreeMainSzoneCount(0) <= 0) return null;
+        // 1) Always prioritize real Traps first
         for (CmdEntry e : p.ssetable) {
             RpgCard card = state.lookupCard(e.code);
             boolean isTrap = (card != null && "trap".equalsIgnoreCase(card.frameType))
                     || isKnownTrap(e.code);
-            if (!isTrap) {
-                // Do NOT blindly set normal spells (like Dark Hole/Raigeki/Pot of Greed) face-down!
-                continue;
-            }
+            if (!isTrap) continue;
             // Don't set Royal Decree if we're playing Crush Card Virus trap-heavy deck
             if (e.code == RpgAiCardKnowledge.ROYAL_DECREE && isDarkVirusStyle()) {
                 continue;
             }
             return (e.index << 16) + 4;
         }
+
+        // 2) Classic 1999 OCG Bluff Setting ("ブラフ伏せ"):
+        //    If we have 0 face-down backrow and no real Traps, set 1 low-opportunity-cost Spell
+        //    (e.g. unused Equip Spell, Stop Defense, full-LP Heal, or Sparks) to threaten Trap Hole
+        //    and deter opponent from slamming Dark Magician / Gaia / Blue-Eyes!
+        //    NEVER bluff-set core power Spells (Dark Hole, Raigeki, Fissure, Monster Reborn, etc.).
+        if (countFaceDownBackrow(0) == 0
+                && !isExodiaStyle()
+                && !state.hasCardInHand(RpgAiCardKnowledge.HEAVY_STORM)) {
+            CmdEntry bestBluff = null;
+            int bestBluffScore = 0;
+            for (CmdEntry e : p.ssetable) {
+                if (!RpgAiCardKnowledge.isSafeBluffSpell(e.code)) continue;
+                int score = 100;
+                if (RpgAiCardKnowledge.isEquipSpell(e.code)) {
+                    // Dead/unmatched Equip Spell is the ideal zero-cost bluff!
+                    score = state.hasEligibleFriendlyEquipTarget(e.code) ? 120 : 200;
+                } else if (e.code == RpgAiCardKnowledge.SPARKS) {
+                    score = 180;
+                } else if (e.code == RpgAiCardKnowledge.STOP_DEFENSE) {
+                    score = 160;
+                } else if (RpgAiCardKnowledge.isHealSpell(e.code) && state.lp[0] >= 8000) {
+                    score = 150;
+                }
+                if (score > bestBluffScore) {
+                    bestBluffScore = score;
+                    bestBluff = e;
+                }
+            }
+            if (bestBluff != null) {
+                return (bestBluff.index << 16) + 4;
+            }
+        }
         return null;
+    }
+
+    private boolean hasRealTrapInSsetable(IdleCmdPrompt p) {
+        for (CmdEntry e : p.ssetable) {
+            RpgCard card = state.lookupCard(e.code);
+            boolean isTrap = (card != null && "trap".equalsIgnoreCase(card.frameType))
+                    || isKnownTrap(e.code);
+            if (isTrap) return true;
+        }
+        return false;
+    }
+
+    private int countFaceDownBackrow(int localPlayer) {
+        int count = 0;
+        for (int i = 0; i < 5; i++) {
+            RpgAiDuelState.CardSlot s = state.szone[localPlayer][i];
+            if (s != null && (s.isFaceDown() || !s.isFaceUp())) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private int finishMainPhase(IdleCmdPrompt p) {
@@ -1121,6 +1298,18 @@ public class RpgAiStrategy {
         for (RpgAiDuelState.CardSlot c : state.hand[0]) {
             if (c != null && (c.isTrap() || isKnownTrap(c.code)) && state.getFreeMainSzoneCount(0) > 0) {
                 return true;
+            }
+        }
+        // Check if opponent still has a monster after Battle Phase and we hold removal (e.g. kill small monster in BP -> Fissure isolated Boss in M2!)
+        if (!state.getMonsters(1).isEmpty()) {
+            for (RpgAiDuelState.CardSlot c : state.hand[0]) {
+                if (c == null) continue;
+                if (c.code == RpgAiCardKnowledge.FISSURE
+                        || c.code == RpgAiCardKnowledge.RAIGEKI
+                        || c.code == RpgAiCardKnowledge.DARK_HOLE
+                        || c.code == RpgAiCardKnowledge.TRIBUTE_TO_THE_DOOMED) {
+                    return true;
+                }
             }
         }
         // Check if we have a stolen monster & Cannon Soldier or tribute monster

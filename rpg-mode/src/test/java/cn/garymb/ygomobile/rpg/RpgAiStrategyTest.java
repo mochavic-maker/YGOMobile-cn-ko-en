@@ -435,6 +435,177 @@ public class RpgAiStrategyTest {
                 0, lateStrategy.chooseChain(buildSingleChainPrompt(RpgAiCardKnowledge.TRAP_HOLE)));
     }
 
+    @Test
+    public void removalDisciplineHoldsFissureAndDarkHoleWhenMonsterCanBeatOver() {
+        final int MAMMOTH = 40374923; // 1200/800
+        final int GAIA = 6368038;     // 2300/2100
+
+        // Case 1: Vol.1 — Opponent has ONLY 1200 Mammoth, AI holds Dark Magician (2500) + Fissure + Dark Hole.
+        // AI MUST summon Dark Magician and beat over Mammoth in battle instead of wasting Fissure or Dark Hole!
+        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-02-04");
+        state.turnCount = 3;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[1] = 8000;
+        placeMonster(state, 1, 2, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        addHandCard(state, RpgAiCardKnowledge.DARK_MAGICIAN);
+        addHandCard(state, RpgAiCardKnowledge.FISSURE);
+        addHandCard(state, RpgAiCardKnowledge.DARK_HOLE);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "NO_TRIBUTE_BEAT");
+        RpgAiStrategy.IdleCmdPrompt p1 = new RpgAiStrategy.IdleCmdPrompt();
+        p1.summonable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.DARK_MAGICIAN, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p1.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.FISSURE, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 0));
+        p1.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.DARK_HOLE, 0, 0, RpgAiDuelState.LOC_HAND, 2, 0, 0, 1));
+        p1.canBattle = true;
+        p1.canEnd = true;
+
+        assertEquals("Should summon Dark Magician (0) instead of wasting Fissure/Dark Hole on 1200 Mammoth",
+                0, strategy.chooseIdleCmd(p1));
+
+        // Case 2: Opponent has Dark Magician (2500) + Mammoth (1200); AI has Gaia (2300) on field + Fissure.
+        // Fissure destroys the LOWEST-ATK face-up monster (1200 Mammoth), which Gaia already beats!
+        // AI should enter Battle Phase (6) first to kill Mammoth, then fire Fissure in Main 2 on isolated Dark Magician!
+        state.reset();
+        state.turnCount = 5;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        placeMonster(state, 0, 2, GAIA, RpgAiDuelState.POS_FACEUP_ATTACK, 2300, 2100);
+        placeMonster(state, 1, 1, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        placeMonster(state, 1, 2, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        addHandCard(state, RpgAiCardKnowledge.FISSURE);
+
+        RpgAiStrategy.IdleCmdPrompt p2 = new RpgAiStrategy.IdleCmdPrompt();
+        p2.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.FISSURE, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p2.canBattle = true;
+        p2.canEnd = true;
+        assertEquals("Should enter Battle Phase (6) to run over Mammoth instead of wasting Fissure on it",
+                6, strategy.chooseIdleCmd(p2));
+
+        // After Gaia destroys Mammoth in battle -> Main 2, only Dark Magician (2500) remains -> NOW fire Fissure!
+        state.mzone[1][2] = null;
+        state.phase = RpgAiDuelState.PHASE_MAIN2;
+        p2.canBattle = false;
+        assertEquals("In Main 2 with isolated Dark Magician (2500), MUST fire Fissure!",
+                (0 << 16) + 5, strategy.chooseIdleCmd(p2));
+
+        // Case 3: Immediate lethal — opponent has 1200 Mammoth and 2500 LP, AI has Dark Magician + Fissure -> fire Fissure for game!
+        state.reset();
+        state.turnCount = 7;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[1] = 2500;
+        placeMonster(state, 1, 2, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        addHandCard(state, RpgAiCardKnowledge.DARK_MAGICIAN);
+        addHandCard(state, RpgAiCardKnowledge.FISSURE);
+        RpgAiStrategy.IdleCmdPrompt p3 = new RpgAiStrategy.IdleCmdPrompt();
+        p3.summonable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.DARK_MAGICIAN, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p3.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.FISSURE, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 0));
+        p3.canBattle = true;
+        p3.canEnd = true;
+        assertEquals("Should fire Fissure when clearing sole blocker secures immediate lethal!",
+                (0 << 16) + 5, strategy.chooseIdleCmd(p3));
+    }
+
+    @Test
+    public void trapHoleBaitingSummonsLowerBeaterBeforeBossAgainstSetBackrow() {
+        final int MAMMOTH = 40374923; // 1200/800
+        final int GAIA = 6368038;     // 2300/2100
+
+        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-02-04");
+        state.turnCount = 3;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        addHandCard(state, RpgAiCardKnowledge.DARK_MAGICIAN);
+        addHandCard(state, MAMMOTH);
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "NO_TRIBUTE_BEAT");
+
+        RpgAiStrategy.IdleCmdPrompt p = new RpgAiStrategy.IdleCmdPrompt();
+        p.summonable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.DARK_MAGICIAN, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p.summonable.add(new RpgAiStrategy.CmdEntry(MAMMOTH, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 1));
+        p.canBattle = true;
+        p.canEnd = true;
+
+        // Case 1: Opponent has NO set backrow -> summon Dark Magician (index 0) directly!
+        assertEquals("With 0 opponent backrow, summon Dark Magician directly",
+                0 << 16, strategy.chooseIdleCmd(p));
+
+        // Case 2: Opponent has 1 face-down backrow (potential Trap Hole!) -> summon Mammoth (index 1) FIRST to bait!
+        placeSetBackrow(state, 1, 2);
+        assertEquals("Against opponent's face-down backrow, summon 1200 Mammoth (index 1) first to bait Trap Hole!",
+                1 << 16, strategy.chooseIdleCmd(p));
+
+        // Case 3: Opponent ALSO has face-up Gaia (2300) -> 1200 bait can't handle Gaia -> summon Dark Magician (index 0)!
+        placeMonster(state, 1, 2, GAIA, RpgAiDuelState.POS_FACEUP_ATTACK, 2300, 2100);
+        assertEquals("When opponent controls face-up 2300 Gaia, summon Dark Magician (index 0) instead of weak bait",
+                0 << 16, strategy.chooseIdleCmd(p));
+    }
+
+    @Test
+    public void equipSpellDisciplineAndBluffSettingFollows1999Metagame() {
+        final int MAMMOTH = 40374923; // 1200/800
+
+        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-02-04");
+        state.turnCount = 3;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "NO_TRIBUTE_BEAT");
+
+        // Equip discipline: Dark Magician (2500) on field vs opponent's 1200 Mammoth + Book of Secret Arts (+300) in hand.
+        // Already beats Mammoth without equip -> DO NOT risk 2-for-1! Enter Battle Phase (6) instead!
+        placeMonster(state, 0, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        placeMonster(state, 1, 2, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        addHandCard(state, RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS);
+
+        RpgAiStrategy.IdleCmdPrompt p1 = new RpgAiStrategy.IdleCmdPrompt();
+        p1.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p1.canBattle = true;
+        p1.canEnd = true;
+        assertEquals("Should NOT equip Book of Secret Arts when Dark Magician already beats 1200 Mammoth",
+                6, strategy.chooseIdleCmd(p1));
+
+        // Now opponent has Dark Magician (2500) -> tie! Book of Secret Arts flips 2500 vs 2500 into 2800 win -> EQUIP!
+        placeMonster(state, 1, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        assertEquals("Should equip Book of Secret Arts to break 2500 vs 2500 tie!",
+                (0 << 16) + 5, strategy.chooseIdleCmd(p1));
+
+        // Bluff Setting: Turn 1, 0 backrow, no real Traps, holding Dark Hole (core spell) + Power of Kaishin (dead equip).
+        // MUST bluff-set Power of Kaishin (index 1, +4) to threaten Trap Hole, NEVER Dark Hole!
+        state.reset();
+        state.turnCount = 1;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        addHandCard(state, RpgAiCardKnowledge.DARK_HOLE);
+        addHandCard(state, RpgAiCardKnowledge.POWER_OF_KAISHIN);
+        RpgAiStrategy.IdleCmdPrompt pBluff = new RpgAiStrategy.IdleCmdPrompt();
+        pBluff.ssetable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.DARK_HOLE, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pBluff.ssetable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.POWER_OF_KAISHIN, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 1));
+        pBluff.canBattle = false;
+        pBluff.canEnd = true;
+        assertEquals("Should bluff-set dead Power of Kaishin (index 1) to fake Trap Hole, never Dark Hole",
+                (1 << 16) + 4, strategy.chooseIdleCmd(pBluff));
+
+        // Once AI already has 1 set backrow -> do NOT set a 2nd bluff!
+        placeSetBackrow(state, 0, 2);
+        assertEquals("Should NOT set a 2nd bluff spell when already holding 1 face-down backrow",
+                7, strategy.chooseIdleCmd(pBluff));
+    }
+
+    private void placeSetBackrow(RpgAiDuelState state, int localPlayer, int seq) {
+        RpgAiDuelState.CardSlot s = new RpgAiDuelState.CardSlot();
+        s.code = 0;
+        s.controller = localPlayer;
+        s.owner = localPlayer;
+        s.location = RpgAiDuelState.LOC_SZONE;
+        s.sequence = seq;
+        s.position = RpgAiDuelState.POS_FACEDOWN_DEFENSE;
+        state.szone[localPlayer][seq] = s;
+    }
+
     private void simulateOppSummon(RpgAiDuelState state, int code, int seq, int atk, int def) {
         placeMonster(state, 1, seq, code, RpgAiDuelState.POS_FACEUP_ATTACK, atk, def);
         ByteBuffer b = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);

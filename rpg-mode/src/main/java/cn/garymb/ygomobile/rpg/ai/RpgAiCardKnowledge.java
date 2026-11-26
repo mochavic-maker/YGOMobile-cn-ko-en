@@ -54,6 +54,7 @@ public final class RpgAiCardKnowledge {
     public static final int VIOLET_CRYSTAL = 15052462;         // 紫水晶 (Zombie +300/+300)
     public static final int LASER_CANNON_ARMOR = 77007920;     // 激光炮机甲 (Insect +300/+300)
     public static final int VILE_GERMS = 39774685;             // 猛兽之牙/植物装备 (Plant +300/+300)
+    public static final int POWER_OF_KAISHIN = 77027445;       // 波塞冬之力 (Aqua +300/+300)
     public static final int BLACK_PENDANT = 65169794;          // 黑项坠 (+500)
 
     // ===== Traps =====
@@ -124,7 +125,7 @@ public final class RpgAiCardKnowledge {
     public static final Set<Integer> EQUIP_SPELLS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             SWORD_OF_DARK_DESTRUCTION, ELFS_LIGHT, INVIGORATION, LEGENDARY_SWORD,
             BEAST_FANGS, BOOK_OF_SECRET_ARTS, DARK_ENERGY, VIOLET_CRYSTAL,
-            LASER_CANNON_ARMOR, VILE_GERMS, BLACK_PENDANT
+            LASER_CANNON_ARMOR, VILE_GERMS, POWER_OF_KAISHIN, BLACK_PENDANT
     )));
 
     public static final Set<Integer> HIGH_THREAT_SPELLS_TO_NEGATE = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
@@ -245,6 +246,7 @@ public final class RpgAiCardKnowledge {
             case VILE_GERMS:                return (race & 0x400) != 0;
             case LASER_CANNON_ARMOR:        return (race & 0x800) != 0;
             case BEAST_FANGS:               return (race & 0x4000) != 0;
+            case POWER_OF_KAISHIN:          return (race & 0x40) != 0;
             default:                        return true;
         }
     }
@@ -262,8 +264,21 @@ public final class RpgAiCardKnowledge {
             case VIOLET_CRYSTAL:
             case VILE_GERMS:
             case LASER_CANNON_ARMOR:
+            case POWER_OF_KAISHIN:
             case BEAST_FANGS: return 300;
             default: return 0;
         }
+    }
+
+    /**
+     * Returns true if this Spell is low-opportunity-cost enough to Set face-down as a 1-card
+     * Trap Hole bluff ("ブラフ伏せ") when we have 0 Traps set. High-value core Spells (Dark Hole,
+     * Raigeki, Fissure, Monster Reborn, Change of Heart, Pot of Greed, etc.) are NEVER bluffed.
+     */
+    public static boolean isSafeBluffSpell(int code) {
+        return isEquipSpell(code)
+                || code == STOP_DEFENSE
+                || isHealSpell(code)
+                || code == SPARKS;
     }
 }
