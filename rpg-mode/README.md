@@ -28,4 +28,4 @@ git merge upstream/master
 
 ## 扩展更多 OCG 卡包、禁限表与 AI 对手
 - 卡包/特典/禁限表/规则：向 `rpg-mode/src/main/assets/rpg/ocg_demo_catalog.json` 追加新条目，勘误追加至 `ocg_errata_history.json`。
-- **新增 AI 对手或为已有对手新增卡组（强制规范）**：在 `AiDeckGenerator.java` 新增对手或 `EraDeckProfile` 时，必须同步更新 `RpgAiCardKnowledge.java`、`RpgAiStrategy.java`（含 `SUPPORTED_STYLES` 注册）与 `RpgAiStrategyTest.java`，详见 [`docs/OCG_TIMELINE_DATA_SOURCES.md`](docs/OCG_TIMELINE_DATA_SOURCES.md) 第 8 节。
+- **新卡池新流派 / 新增 AI 对手或卡组（强制规范）**：延长时间线若因新卡池诞生了新流派，或在 `AiDeckGenerator.java` 新增对手 / `EraDeckProfile` 时，必须同步提供对应的纯 Java 专属 AI 系统——更新 `RpgAiCardKnowledge.java`、`RpgAiDuelState.java`（含新规则/新机制评估）、`RpgAiStrategy.java`（含 `SUPPORTED_STYLES` 注册、专属连招及 `inferStyleFromDeck` 自选卡组自动识别）与 `RpgAiStrategyTest.java`，详见 [`docs/OCG_TIMELINE_DATA_SOURCES.md`](docs/OCG_TIMELINE_DATA_SOURCES.md) 第 7~8 节。
