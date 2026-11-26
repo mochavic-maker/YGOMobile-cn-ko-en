@@ -98,8 +98,9 @@ public final class RpgIntegration {
         if (!RpgSessionManager.hasActiveRpgDuel()) {
             if (sActiveRpgDuelRuleSet != null) {
                 sActiveRpgDuelRuleSet = null;
+                final int backTab = sSpectateReturnTab;
                 cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.stopActive();
-                activity.runOnUiThread(() -> scheduleReturnToRpg(activity, 7, null));
+                activity.runOnUiThread(() -> scheduleReturnToRpg(activity, backTab, null));
             }
             return;
         }
@@ -157,6 +158,7 @@ public final class RpgIntegration {
     private static volatile java.util.Map<Integer, Integer> sRpgDeckAllowedCaps = null;
     private static volatile java.util.Map<Integer, Integer> sRpgDeckCurrentCounts = null;
     private static volatile OcgRuleSet sActiveRpgDuelRuleSet = null;
+    private static volatile int sSpectateReturnTab = RpgHomeActivity.TAB_AI_SHOWDOWN;
 
     /**
      * Writes historical OCG rule overrides (e.g. 1999-02-04 no-tribute summon/set, no Turn 1 draw,
@@ -641,9 +643,11 @@ public final class RpgIntegration {
                     String sideAName, java.util.List<Integer> mainA, java.util.List<Integer> extraA, String styleA,
                     String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
                     OcgRuleSet activeRuleSet,
-                    String currentTimelineDate) {
+                    String currentTimelineDate,
+                    int returnTab) {
                 activity.runOnUiThread(() -> {
                     sActiveRpgDuelRuleSet = activeRuleSet;
+                    sSpectateReturnTab = returnTab;
                     GameEngine engine = activity.getEngine();
                     engine.setBotMode(true);
                     engine.setPlayerName("观战席·" + Constants.PlayerName);
@@ -714,6 +718,107 @@ public final class RpgIntegration {
                             Toast.LENGTH_LONG).show();
                 });
             }
+
+            @Override
+            public void startRpgReplay(Context context, String replayFilePath, int returnTab) {
+                if (replayFilePath == null || replayFilePath.isEmpty()) {
+                    activity.runOnUiThread(() -> Toast.makeText(activity, "录像文件不存在", Toast.LENGTH_SHORT).show());
+                    return;
+                }
+                File f = new File(replayFilePath);
+                if (!f.exists()) {
+                    activity.runOnUiThread(() -> Toast.makeText(activity, "录像文件已丢失：" + replayFilePath, Toast.LENGTH_SHORT).show());
+                    return;
+                }
+                activity.runOnUiThread(() -> launchNative3dReplayForRpg(activity, replayFilePath, returnTab));
+            }
         });
+    }
+
+    /**
+     * Plays a recorded RPG V2 .yrp file inside YGOMobile's native 3D duel screen via {@link cn.garymb.ygomobile.game.replay.ReplayPlayer},
+     * returning cleanly to {@code returnTab} in {@link RpgHomeActivity} once finished.
+     */
+    private static void launchNative3dReplayForRpg(final YGOProActivity activity,
+                                                   final String replayPath,
+                                                   final int returnTab) {
+        final cn.garymb.ygomobile.game.replay.ReplayPlayer player = activity.getReplayPlayer();
+        if (player == null) {
+            Toast.makeText(activity, "3D 回放播放器尚未就绪", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        cn.garymb.ygomobile.ui.dialogs.replay.ReplayModeDialog showing = activity.getReplayModeDialog();
+        if (showing != null && showing.isShowing()) {
+            showing.setOnDismissListener(null);
+            showing.dismiss();
+        }
+        player.detachListener();
+        activity.getFieldCtl().resetField();
+        activity.enterReplayUI();
+        final java.util.concurrent.atomic.AtomicBoolean endDlgShown = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        player.setListener(new cn.garymb.ygomobile.game.replay.ReplayPlayer.Listener() {
+            @Override
+            public void onReplayStateChanged(cn.garymb.ygomobile.game.replay.ReplayPlayer.State state) {
+                activity.runOnUiThread(() -> {
+                    switch (state) {
+                        case PLAYING:
+                            activity.getCardDetailPanel().showReplayControls();
+                            activity.getCardDetailPanel().updateReplayButtonStates(false);
+                            activity.updateChatUIVisibility();
+                            break;
+                        case PAUSED:
+                            activity.getCardDetailPanel().updateReplayButtonStates(true);
+                            break;
+                        case FINISHED:
+                        case ERROR:
+                            activity.getCardDetailPanel().hideReplayControls();
+                            activity.getCardDetailPanel().closeGameButtons();
+                            activity.dismissDuelDialogsForExit();
+                            if (endDlgShown.compareAndSet(false, true)) {
+                                String err = player.getLastErrorMessage();
+                                String msg = (state == cn.garymb.ygomobile.game.replay.ReplayPlayer.State.ERROR && err != null)
+                                        ? ("回放异常：" + err)
+                                        : ("RPG 对局 3D 回放结束（共 " + Math.max(0, player.getCurrentStep()) + " 步）");
+                                cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog dlg =
+                                        new cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog(activity);
+                                dlg.setTitle(state == cn.garymb.ygomobile.game.replay.ReplayPlayer.State.ERROR ? "回放异常" : "3D 回放结束")
+                                        .setMessage(msg)
+                                        .setType(cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog.TYPE_MESSAGE)
+                                        .setPositiveButtonText("返回 RPG 模式")
+                                        .setPositiveButton(v -> {
+                                            player.detachListener();
+                                            player.stop();
+                                            activity.dismissDuelDialogsForExit();
+                                            activity.getCardDetailPanel().hideReplayControls();
+                                            activity.hideGameUI();
+                                            activity.setWindowBackground(Constants.CORE_SKIN_PATH + "/" + Constants.CORE_SKIN_BG_MENU);
+                                            activity.getSoundManager().playBGM(cn.garymb.ygomobile.audio.SoundManager.BGM.MENU);
+                                            Intent back = new Intent(activity, RpgHomeActivity.class);
+                                            back.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                            back.putExtra(RpgHomeActivity.EXTRA_INITIAL_TAB, returnTab);
+                                            activity.startActivity(back);
+                                        })
+                                        .setCenterInView(activity.findViewById(R.id.layout_game_right))
+                                        .setCancelable(false)
+                                        .show();
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                });
+            }
+
+            @Override
+            public void onReplayHintMessage(String hint) {
+            }
+
+            @Override
+            public void onReplayFinished(int winner, int reason) {
+                activity.runOnUiThread(() -> activity.showReplayResult(winner, reason));
+            }
+        });
+        player.loadAndPlay(replayPath, 1);
     }
 }

@@ -2,6 +2,8 @@ package cn.garymb.ygomobile.rpg;
 
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -9,10 +11,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import cn.garymb.ygomobile.AppsSettings;
+import cn.garymb.ygomobile.Constants;
 import cn.garymb.ygomobile.engine.NativeScriptBootstrap;
 import cn.garymb.ygomobile.engine.OcgDuelEngine;
 import cn.garymb.ygomobile.game.replay.ReplayMessageSlicer;
+import cn.garymb.ygomobile.network.server.EngineMessage;
+import cn.garymb.ygomobile.network.server.YrpWriter;
 import cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels;
 import cn.garymb.ygomobile.rpg.ai.RpgAiDuelState;
 import cn.garymb.ygomobile.rpg.ai.RpgAiStrategy;
@@ -195,17 +202,49 @@ public final class RpgOcgHeadlessDuelRunner {
                 Collections.shuffle(p0Main, random);
                 Collections.shuffle(p1Main, random);
 
-                loadZone(pduel, p0Main, 0, OcgDuelEngine.LOCATION_DECK);
-                loadZone(pduel, p0Extra, 0, OcgDuelEngine.LOCATION_EXTRA);
-                loadZone(pduel, p1Main, 1, OcgDuelEngine.LOCATION_DECK);
-                loadZone(pduel, p1Extra, 1, OcgDuelEngine.LOCATION_EXTRA);
+                String[] names = new String[]{
+                        sideAFirst ? sideAName : sideBName,
+                        sideAFirst ? sideBName : sideAName
+                };
+                int opt = (duelRule << 16);
+
+                YrpWriter yrp = null;
+                if (recordReplay) {
+                    int startTime = (int) (System.currentTimeMillis() / 1000L);
+                    yrp = new YrpWriter(seed, Constants.PRO_VERSION, YrpWriter.REPLAY_UNIFORM, startTime);
+                    yrp.writeName(names[0] != null ? names[0] : "Player1");
+                    yrp.writeName(names[1] != null ? names[1] : "Player2");
+                    yrp.writeInt32(startLp);
+                    yrp.writeInt32(startHand);
+                    yrp.writeInt32(1);
+                    yrp.writeInt32(opt);
+                }
+
+                loadZone(pduel, p0Main, 0, OcgDuelEngine.LOCATION_DECK, yrp);
+                loadZone(pduel, p0Extra, 0, OcgDuelEngine.LOCATION_EXTRA, yrp);
+                loadZone(pduel, p1Main, 1, OcgDuelEngine.LOCATION_DECK, yrp);
+                loadZone(pduel, p1Extra, 1, OcgDuelEngine.LOCATION_EXTRA, yrp);
 
                 // Inject exact 1999 historical OCG Lua rule overrides
                 if (ruleSet != null && RpgIntegration.writeRuleOverrideScript(ruleSet)) {
                     OcgDuelEngine.preloadScript(pduel, "./rpg_rule_override.lua");
                 }
 
-                int opt = (duelRule << 16);
+                if (yrp != null) {
+                    byte[] startBuf = new byte[19];
+                    ByteBuffer sb = ByteBuffer.wrap(startBuf).order(ByteOrder.LITTLE_ENDIAN);
+                    sb.put((byte) EngineMessage.MSG_START);
+                    sb.put((byte) 0);
+                    sb.put((byte) duelRule);
+                    sb.putInt(startLp);
+                    sb.putInt(startLp);
+                    sb.putShort((short) OcgDuelEngine.queryFieldCount(pduel, 0, OcgDuelEngine.LOCATION_DECK));
+                    sb.putShort((short) OcgDuelEngine.queryFieldCount(pduel, 0, OcgDuelEngine.LOCATION_EXTRA));
+                    sb.putShort((short) OcgDuelEngine.queryFieldCount(pduel, 1, OcgDuelEngine.LOCATION_DECK));
+                    sb.putShort((short) OcgDuelEngine.queryFieldCount(pduel, 1, OcgDuelEngine.LOCATION_EXTRA));
+                    yrp.writeMessage(startBuf, startBuf.length);
+                }
+
                 OcgDuelEngine.startDuel(pduel, opt);
 
                 RpgAiDuelState[] states = new RpgAiDuelState[]{
@@ -215,10 +254,6 @@ public final class RpgOcgHeadlessDuelRunner {
                 RpgAiStrategy[] strategies = new RpgAiStrategy[]{
                         new RpgAiStrategy(states[0], null, sideAFirst ? effStyleA : effStyleB),
                         new RpgAiStrategy(states[1], null, sideAFirst ? effStyleB : effStyleA)
-                };
-                String[] names = new String[]{
-                        sideAFirst ? sideAName : sideBName,
-                        sideAFirst ? sideBName : sideAName
                 };
 
                 // Initialize both AI states with MSG_START
@@ -239,10 +274,12 @@ public final class RpgOcgHeadlessDuelRunner {
 
                 int winnerProto = -1; // 0, 1, or 2 (draw)
                 int winReason = 0;
+                boolean recordedWinFrame = false;
                 int turnCount = 0;
                 int curTurnProto = 0;
                 String curPhaseLabel = "开局";
                 int lastLogCursor = 0;
+                int lastYrpRespLen = 0;
                 byte[][] lastQuestion = new byte[2][];
                 int[] repeatCount = new int[2];
 
@@ -267,6 +304,11 @@ public final class RpgOcgHeadlessDuelRunner {
                                 if (msgType == MSG_WIN) {
                                     winnerProto = body.length >= 1 ? (body[0] & 0xFF) : 2;
                                     winReason = body.length >= 2 ? (body[1] & 0xFF) : 0;
+                                    if (yrp != null) {
+                                        byte[] winFrame = buildFullFrame(msgType, body);
+                                        yrp.writeMessage(winFrame, winFrame.length);
+                                        recordedWinFrame = true;
+                                    }
                                     if (recordReplay) {
                                         String winText = (winnerProto <= 1)
                                                 ? (names[winnerProto] + " 获胜（" + describeWinReason(winReason) + "）！")
@@ -290,6 +332,9 @@ public final class RpgOcgHeadlessDuelRunner {
                                         if (recordReplay) logs.add("达到最大回合上限（" + MAX_TURNS + "），按剩余 LP 裁定胜负。");
                                         break;
                                     }
+                                    if (yrp != null) {
+                                        recordAllZonesToYrp(pduel, yrp);
+                                    }
                                     if (recordReplay) {
                                         logs.add("━━ 第 " + turnCount + " 回合 · " + names[curTurnProto] + " ━━");
                                     }
@@ -304,6 +349,30 @@ public final class RpgOcgHeadlessDuelRunner {
                                         lastLogCursor = captureFrame(frames, logs, lastLogCursor,
                                                 turnCount, curPhaseLabel, names[curTurnProto],
                                                 states[pSideA], states[pSideB], false);
+                                    }
+                                }
+
+                                // Record authoritative game frame to V2 .yrp MSG stream for real 3D replay
+                                if (yrp != null && !ReplayMessageSlicer.isNoFeed(msgType) && msgType != MSG_RETRY) {
+                                    byte[] fullFrame = buildFullFrame(msgType, body);
+                                    if (msgType == MSG_MOVE && fullFrame.length >= 13) {
+                                        int cl = fullFrame[1 + 9] & 0xFF;
+                                        if ((cl & EngineMessage.LOCATION_ONFIELD) != 0) {
+                                            EngineMessage.stripRevealFlag(fullFrame, 1 + 8);
+                                        }
+                                    }
+                                    yrp.writeMessage(fullFrame, fullFrame.length);
+                                    if (msgType == MSG_NEW_PHASE
+                                            || msgType == MSG_CHAIN_END
+                                            || msgType == EngineMessage.MSG_SUMMONED
+                                            || msgType == EngineMessage.MSG_SPSUMMONED
+                                            || msgType == EngineMessage.MSG_FLIPSUMMONED
+                                            || msgType == EngineMessage.MSG_EQUIP) {
+                                        recordAllZonesToYrp(pduel, yrp);
+                                    } else if (msgType == MSG_SHUFFLE_HAND && body.length >= 1) {
+                                        recordZoneToYrp(pduel, yrp, body[0] & 1, OcgDuelEngine.LOCATION_HAND, 0x181fff);
+                                    } else if (msgType == EngineMessage.MSG_SWAP_GRAVE_DECK && body.length >= 1) {
+                                        recordZoneToYrp(pduel, yrp, body[0] & 1, OcgDuelEngine.LOCATION_GRAVE, 0x81fff);
                                     }
                                 }
 
@@ -338,8 +407,15 @@ public final class RpgOcgHeadlessDuelRunner {
                                     }
 
                                     byte[] resp = computeResponse(msgType, body, strategies[responder], random, useFallback);
+                                    if (yrp != null) {
+                                        lastYrpRespLen = yrp.writeResponse(resp, resp.length);
+                                    }
                                     OcgDuelEngine.setResponseB(pduel, pad256(resp));
                                 } else if (msgType == MSG_RETRY) {
+                                    if (yrp != null && lastYrpRespLen > 0) {
+                                        yrp.removeData(lastYrpRespLen);
+                                        lastYrpRespLen = 0;
+                                    }
                                     OcgDuelEngine.setResponseB(pduel, pad256(RpgAiStrategy.intBytes(-1)));
                                 }
                             }
@@ -368,6 +444,16 @@ public final class RpgOcgHeadlessDuelRunner {
                     sideAWon = lpA > lpB;
                 }
 
+                String savedReplayPath = null;
+                if (yrp != null) {
+                    if (!recordedWinFrame) {
+                        int finalWinProto = isDraw ? 2 : (sideAWon ? pSideA : pSideB);
+                        byte[] synthWin = new byte[]{(byte) MSG_WIN, (byte) finalWinProto, (byte) winReason};
+                        yrp.writeMessage(synthWin, synthWin.length);
+                    }
+                    savedReplayPath = saveYrpReplayFile(yrp);
+                }
+
                 if (recordReplay) {
                     captureFrame(frames, logs, lastLogCursor,
                             Math.max(1, turnCount), "结束", names[curTurnProto & 1],
@@ -375,26 +461,107 @@ public final class RpgOcgHeadlessDuelRunner {
                 }
                 return new RpgAiAutoDuelModels.DuelResult(
                         sideAWon, isDraw, lpA, lpB, Math.max(1, turnCount),
-                        ruleSet, logs, sideAName, sideBName, effStyleA, effStyleB, frames);
+                        ruleSet, logs, sideAName, sideBName, effStyleA, effStyleB, frames, savedReplayPath);
             } catch (Throwable t) {
                 Log.e(TAG, "Headless ocgcore duel error", t);
                 logs.add("引擎异常：" + t.getMessage());
                 return new RpgAiAutoDuelModels.DuelResult(
                         false, true, startLp, startLp, 0, ruleSet, logs,
-                        sideAName, sideBName, effStyleA, effStyleB, frames);
+                        sideAName, sideBName, effStyleA, effStyleB, frames, null);
             } finally {
                 OcgDuelEngine.endDuel(pduel);
             }
         }
     }
 
-    private static void loadZone(long pduel, List<Integer> cards, int player, int location) {
-        if (cards == null) return;
-        for (int i = cards.size() - 1; i >= 0; i--) {
-            Integer code = cards.get(i);
-            if (code != null && code > 0) {
-                OcgDuelEngine.newCard(pduel, code, player, player, location, 0, OcgDuelEngine.POS_FACEDOWN_DEFENSE);
+    private static final AtomicInteger sReplaySeq = new AtomicInteger(0);
+
+    private static void loadZone(long pduel, List<Integer> cards, int player, int location, YrpWriter yrp) {
+        if (cards == null) {
+            if (yrp != null) yrp.writeInt32(0);
+            return;
+        }
+        List<Integer> valid = new ArrayList<>();
+        for (Integer code : cards) {
+            if (code != null && code > 0) valid.add(code);
+        }
+        if (yrp != null) yrp.writeInt32(valid.size());
+        for (int i = valid.size() - 1; i >= 0; i--) {
+            int code = valid.get(i);
+            OcgDuelEngine.newCard(pduel, code, player, player, location, 0, OcgDuelEngine.POS_FACEDOWN_DEFENSE);
+            if (yrp != null) yrp.writeInt32(code);
+        }
+    }
+
+    private static byte[] buildFullFrame(int msgType, byte[] body) {
+        byte[] full = new byte[1 + body.length];
+        full[0] = (byte) msgType;
+        System.arraycopy(body, 0, full, 1, body.length);
+        return full;
+    }
+
+    private static void recordAllZonesToYrp(long pduel, YrpWriter yrp) {
+        recordZoneToYrp(pduel, yrp, 0, OcgDuelEngine.LOCATION_MZONE, REFRESH_MZONE_FLAG);
+        recordZoneToYrp(pduel, yrp, 1, OcgDuelEngine.LOCATION_MZONE, REFRESH_MZONE_FLAG);
+        recordZoneToYrp(pduel, yrp, 0, OcgDuelEngine.LOCATION_SZONE, REFRESH_SZONE_FLAG);
+        recordZoneToYrp(pduel, yrp, 1, OcgDuelEngine.LOCATION_SZONE, REFRESH_SZONE_FLAG);
+        recordZoneToYrp(pduel, yrp, 0, OcgDuelEngine.LOCATION_HAND, REFRESH_HAND_FLAG);
+        recordZoneToYrp(pduel, yrp, 1, OcgDuelEngine.LOCATION_HAND, REFRESH_HAND_FLAG);
+    }
+
+    private static void recordZoneToYrp(long pduel, YrpWriter yrp, int player, int location, int flag) {
+        byte[] blocks = OcgDuelEngine.queryFieldCard(pduel, player, location, flag, 0);
+        if (blocks == null || blocks.length == 0) return;
+        if (location == OcgDuelEngine.LOCATION_MZONE || location == OcgDuelEngine.LOCATION_SZONE) {
+            int qpos = 0;
+            while (qpos + 4 <= blocks.length) {
+                int clen = (blocks[qpos] & 0xFF)
+                        | ((blocks[qpos + 1] & 0xFF) << 8)
+                        | ((blocks[qpos + 2] & 0xFF) << 16)
+                        | ((blocks[qpos + 3] & 0xFF) << 24);
+                qpos += 4;
+                if (clen <= 4) continue;
+                if (qpos + 12 <= blocks.length) {
+                    EngineMessage.stripRevealFlag(blocks, qpos + 8);
+                }
+                qpos += clen - 4;
             }
+        }
+        byte[] frame = new byte[3 + blocks.length];
+        frame[0] = (byte) EngineMessage.MSG_UPDATE_DATA;
+        frame[1] = (byte) player;
+        frame[2] = (byte) location;
+        System.arraycopy(blocks, 0, frame, 3, blocks.length);
+        yrp.writeMessage(frame, frame.length);
+    }
+
+    private static String saveYrpReplayFile(YrpWriter yrp) {
+        try {
+            byte[] yrpBytes = yrp.build();
+            if (yrpBytes == null || yrpBytes.length == 0) return null;
+            File dir = new File(AppsSettings.get().getReplayDir(), "RPG");
+            if (!dir.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                dir.mkdirs();
+            }
+            // Keep latest 25 RPG replay files to avoid unbounded disk growth
+            File[] existing = dir.listFiles((d, n) -> n.endsWith(".yrp"));
+            if (existing != null && existing.length >= 25) {
+                Arrays.sort(existing, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
+                for (int i = 0; i < existing.length - 24; i++) {
+                    //noinspection ResultOfMethodCallIgnored
+                    existing[i].delete();
+                }
+            }
+            String fileName = "rpg_" + System.currentTimeMillis() + "_" + sReplaySeq.incrementAndGet() + ".yrp";
+            File outFile = new File(dir, fileName);
+            try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                fos.write(yrpBytes);
+            }
+            return outFile.getAbsolutePath();
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to save RPG .yrp replay file", t);
+            return null;
         }
     }
 

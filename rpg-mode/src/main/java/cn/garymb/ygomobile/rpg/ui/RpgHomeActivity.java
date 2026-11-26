@@ -1104,9 +1104,12 @@ public class RpgHomeActivity extends AppCompatActivity {
             Button quickBtn = makeActionButton("⚡ AI托管快战", "#D97706");
             quickBtn.setOnClickListener(v -> runQuickDuel(opp));
 
-            box.addView(makeEqualWeightButtonRow(8, fightBtn, quickBtn));
+            Button spectateBtn = makeActionButton("👁️ 3D观战", "#7C3AED");
+            spectateBtn.setOnClickListener(v -> launchAiSpectateDuel(opp));
 
-            Button viewDeckBtn = makeActionButton("👁️ 查看卡组", "#0284C7");
+            box.addView(makeEqualWeightButtonRow(8, fightBtn, quickBtn, spectateBtn));
+
+            Button viewDeckBtn = makeActionButton("🃏 查看卡组", "#0284C7");
             viewDeckBtn.setOnClickListener(v -> openAiDeckReadonlyViewer(opp));
 
             if (opp.deckEvolutions != null && opp.deckEvolutions.size() > 1) {
@@ -1120,25 +1123,47 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
     }
 
-    private void openAiDeckReadonlyViewer(AiOpponent opponent) {
+    private void launchAiSpectateDuel(AiOpponent opponent) {
+        DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
+        if (!val.valid) {
+            new AlertDialog.Builder(this)
+                    .setTitle("RPG 卡组未通过校验")
+                    .setMessage(android.text.TextUtils.join("\n", val.errors))
+                    .setPositiveButton("去组卡", (d, w) -> {
+                        TabLayout.Tab t = tabLayout.getTabAt(TAB_DECK);
+                        if (t != null) t.select();
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
         RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
         if (bridge == null) {
             Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
             return;
         }
+        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
+                catalog, opponent, profile.currentTimelineDate, new Random());
+        String playerStyle = RpgAiStrategy.inferStyleFromDeck(
+                profile.activeDeckMain, profile.activeDeckExtra, activeRule);
+        String aiStyle = (aiDeck.appliedProfile != null && aiDeck.appliedProfile.fillStyle != null)
+                ? aiDeck.appliedProfile.fillStyle
+                : RpgAiStrategy.inferStyleFromDeck(aiDeck.main, aiDeck.extra, activeRule);
+        bridge.startRpgAiSpectateDuel(
+                this,
+                "我方AI(" + RpgAiStrategy.getStyleDisplayName(playerStyle) + ")",
+                profile.activeDeckMain, profile.activeDeckExtra, playerStyle,
+                opponent.name, aiDeck.main, aiDeck.extra, aiStyle,
+                activeRule, profile.currentTimelineDate, TAB_AI_DUEL);
+        finish();
+    }
+
+    private void openAiDeckReadonlyViewer(AiOpponent opponent) {
         long stableSeed = (profile.currentTimelineDate + "|" + opponent.id).hashCode();
         AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
                 catalog, opponent, profile.currentTimelineDate, new Random(stableSeed));
-        try {
-            File aiYdk = DeckValidator.exportToYdk(
-                    repository.getAiDeckYdkFile(opponent.id), aiDeck.main, aiDeck.extra);
-            AiOpponent.EraDeckProfile activeDeck = opponent.getActiveDeckProfile(profile.currentTimelineDate);
-            String title = opponent.name + (activeDeck != null ? ("-" + activeDeck.deckName) : "");
-            bridge.openReadonlyAiDeckViewer(this, aiYdk.getAbsolutePath(), title);
-            finish();
-        } catch (IOException e) {
-            Toast.makeText(this, "导出 AI 卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
+        RpgPackVisualDialogs.showAiDeckVisualDialog(this, catalog, profile, opponent, aiDeck);
     }
 
     private void showAiEvolutionDialog(AiOpponent opp) {
@@ -1269,18 +1294,14 @@ public class RpgHomeActivity extends AppCompatActivity {
                     sumTv.setTextColor(Color.parseColor("#34D399"));
                     mBox.addView(sumTv);
                     if (m.logs != null && !m.logs.isEmpty()) {
-                        LinearLayout lr = new LinearLayout(this);
-                        lr.setOrientation(LinearLayout.HORIZONTAL);
-                        lr.setPadding(0, dp(6), 0, 0);
-                        if (m.replayReport != null && !m.replayReport.replayFrames.isEmpty()) {
-                            Button replayBtn = makeActionButton("🎬 回放观战", "#0284C7");
-                            replayBtn.setOnClickListener(v -> showQuickDuelReplayDialog(m.replayReport));
-                            lr.addView(replayBtn);
+                        Button replayBtn = null;
+                        if (m.replayReport != null && m.replayReport.replayFilePath != null) {
+                            replayBtn = makeActionButton("🎬 3D回放", "#0284C7");
+                            replayBtn.setOnClickListener(v -> launchNative3dReplay(m.replayReport, TAB_TOURNAMENT));
                         }
-                        Button logBtn = makeActionButton("📜 查看战报", "#334155");
+                        Button logBtn = makeActionButton("📜 文字战报", "#334155");
                         logBtn.setOnClickListener(v -> showTournamentLogDialog(m));
-                        lr.addView(logBtn);
-                        mBox.addView(lr);
+                        mBox.addView(makeEqualWeightButtonRow(6, replayBtn, logBtn));
                     }
                 } else {
                     mBox.addView(makeSubtleText(m.involvesPlayer() ? "⏳ 等待你的对局结果（同轮 AI 比赛将同步结算）" : "⏳ 同轮次 AI 对阵，待本轮推进"));
@@ -1369,7 +1390,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                 new AlertDialog.Builder(this)
                         .setTitle("🏆 锦标赛赛果 · " + bracket.getRoundTitle(match.roundIndex))
                         .setMessage(msg)
-                        .setNeutralButton("🎬 回放本局战报", (d, w) -> showQuickDuelReplayDialog(report))
+                        .setNeutralButton("🎬 3D回放本局", (d, w) -> launchNative3dReplay(report, TAB_TOURNAMENT))
                         .setPositiveButton("查看对阵表", null)
                         .show();
             });
@@ -1653,7 +1674,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                 new AlertDialog.Builder(this)
                         .setTitle("⚡ AI 托管快战结算 · " + settlement.outcomeLabel)
                         .setMessage(sb.toString())
-                        .setNeutralButton("🎬 回放本局战报", (d, w) -> showQuickDuelReplayDialog(report))
+                        .setNeutralButton("🎬 3D回放本局", (d, w) -> launchNative3dReplay(report, TAB_AI_DUEL))
                         .setPositiveButton("收下代币", null)
                         .show();
             });
@@ -1661,127 +1682,21 @@ public class RpgHomeActivity extends AppCompatActivity {
     }
 
     /**
-     * Interactive step-by-step replay viewer for real ocgcore AI-vs-AI duels and tournament AI matches.
-     * Supports Play/Pause, Prev/Next step, and 1x/2x/4x speed without altering player stats.
+     * Launches YGOMobile's real 3D duel replay screen to play back the recorded V2 .yrp file
+     * generated by the real ocgcore engine, then returns to {@code returnTab} in RPG Mode.
      */
-    private void showQuickDuelReplayDialog(final RpgAiAutoDuelModels.DuelResult report) {
-        if (report == null || report.replayFrames == null || report.replayFrames.isEmpty()) {
-            Toast.makeText(this, "本局暂无可回放的帧记录", Toast.LENGTH_SHORT).show();
+    private void launchNative3dReplay(final RpgAiAutoDuelModels.DuelResult report, final int returnTab) {
+        if (report == null || report.replayFilePath == null || report.replayFilePath.isEmpty()) {
+            Toast.makeText(this, "本局暂无可播放的 3D 录像文件", Toast.LENGTH_SHORT).show();
             return;
         }
-        final List<RpgAiAutoDuelModels.ReplayFrame> frames = report.replayFrames;
-        final int[] curIdx = {0};
-        final boolean[] playing = {true};
-        final int[] speed = {1};
-        final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.parseColor("#0F172A"));
-        root.setPadding(dp(14), dp(12), dp(14), dp(12));
-
-        final TextView tvStep = makeTitleText("");
-        tvStep.setTextColor(Color.parseColor("#F59E0B"));
-        root.addView(tvStep);
-
-        final TextView tvBoard = makeSubtleText("");
-        tvBoard.setTextColor(Color.parseColor("#E2E8F0"));
-        tvBoard.setPadding(0, dp(8), 0, dp(8));
-        root.addView(tvBoard);
-
-        final TextView tvLogs = makeSubtleText("");
-        tvLogs.setTextColor(Color.parseColor("#94A3B8"));
-        tvLogs.setPadding(0, dp(4), 0, dp(10));
-        root.addView(tvLogs);
-
-        LinearLayout controls = new LinearLayout(this);
-        controls.setOrientation(LinearLayout.HORIZONTAL);
-        final Button btnPrev = makeActionButton("⏮ 上步", "#334155");
-        final Button btnToggle = makeActionButton("⏸ 暂停", "#0284C7");
-        final Button btnNext = makeActionButton("⏭ 下步", "#334155");
-        final Button btnSpeed = makeActionButton("1x", "#475569");
-        controls.addView(btnPrev);
-        controls.addView(btnToggle);
-        controls.addView(btnNext);
-        controls.addView(btnSpeed);
-        root.addView(controls);
-
-        final Runnable renderFrame = () -> {
-            RpgAiAutoDuelModels.ReplayFrame f = frames.get(curIdx[0]);
-            tvStep.setText("🎬 帧 " + (curIdx[0] + 1) + "/" + frames.size()
-                    + " · Turn " + f.turn + " [" + f.phase + "] · 行动方：" + f.activeName);
-            String mA = f.sideAMonsters.isEmpty() ? "（空场）" : android.text.TextUtils.join("、", f.sideAMonsters);
-            String mB = f.sideBMonsters.isEmpty() ? "（空场）" : android.text.TextUtils.join("、", f.sideBMonsters);
-            tvBoard.setText(report.sideBName + "  LP: " + f.sideBLp
-                    + "  手牌:" + f.sideBHandCount + "  卡组:" + f.sideBDeckCount
-                    + "\n  场上: " + mB
-                    + "\n──────────────\n"
-                    + report.sideAName + "  LP: " + f.sideALp
-                    + "  手牌:" + f.sideAHandCount + "  卡组:" + f.sideADeckCount
-                    + "\n  场上: " + mA);
-            StringBuilder lsb = new StringBuilder("【本步战报】\n");
-            for (String line : f.newLogs) {
-                lsb.append("• ").append(line).append("\n");
-            }
-            tvLogs.setText(lsb.toString().trim());
-            btnToggle.setText(playing[0] ? "⏸ 暂停" : "▶ 播放");
-            btnSpeed.setText(speed[0] + "x");
-        };
-
-        final Runnable[] ticker = new Runnable[1];
-        ticker[0] = () -> {
-            if (!playing[0]) return;
-            if (curIdx[0] < frames.size() - 1) {
-                curIdx[0]++;
-                renderFrame.run();
-                long delay = speed[0] == 4 ? 220L : (speed[0] == 2 ? 450L : 900L);
-                handler.postDelayed(ticker[0], delay);
-            } else {
-                playing[0] = false;
-                renderFrame.run();
-            }
-        };
-
-        btnPrev.setOnClickListener(v -> {
-            playing[0] = false;
-            handler.removeCallbacks(ticker[0]);
-            if (curIdx[0] > 0) curIdx[0]--;
-            renderFrame.run();
-        });
-        btnNext.setOnClickListener(v -> {
-            playing[0] = false;
-            handler.removeCallbacks(ticker[0]);
-            if (curIdx[0] < frames.size() - 1) curIdx[0]++;
-            renderFrame.run();
-        });
-        btnToggle.setOnClickListener(v -> {
-            if (playing[0]) {
-                playing[0] = false;
-                handler.removeCallbacks(ticker[0]);
-            } else {
-                if (curIdx[0] >= frames.size() - 1) curIdx[0] = 0;
-                playing[0] = true;
-                handler.postDelayed(ticker[0], 300L);
-            }
-            renderFrame.run();
-        });
-        btnSpeed.setOnClickListener(v -> {
-            speed[0] = speed[0] == 1 ? 2 : (speed[0] == 2 ? 4 : 1);
-            renderFrame.run();
-        });
-
-        renderFrame.run();
-        AlertDialog dlg = new AlertDialog.Builder(this)
-                .setTitle("🎬 快战回放观战 · " + report.sideAName + " vs " + report.sideBName)
-                .setView(root)
-                .setPositiveButton("退出回放", null)
-                .create();
-        dlg.setOnDismissListener(d -> {
-            playing[0] = false;
-            handler.removeCallbacksAndMessages(null);
-        });
-        dlg.show();
-        handler.postDelayed(ticker[0], 700L);
+        RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
+            return;
+        }
+        bridge.startRpgReplay(this, report.replayFilePath, returnTab);
+        finish();
     }
 
     private void launchAiDuel(AiOpponent opponent) {
@@ -2121,7 +2036,8 @@ public class RpgHomeActivity extends AppCompatActivity {
                     choiceA.shortName, choiceA.main, choiceA.extra, choiceA.fillStyle,
                     choiceB.shortName, choiceB.main, choiceB.extra, choiceB.fillStyle,
                     activeRule,
-                    profile.currentTimelineDate);
+                    profile.currentTimelineDate,
+                    TAB_AI_SHOWDOWN);
             finish();
         });
 
@@ -2161,14 +2077,10 @@ public class RpgHomeActivity extends AppCompatActivity {
                     r.getSideASecondWinRate(), r.sideASecondWins, r.sideASecondGames)));
             resCard.addView(makeSubtleText("说明：由真实 ocgcore 引擎 + 专属 OCG AI 实战演算，不计入战绩也不发放代币。"));
 
-            if (r.sampleLastResult != null && !r.sampleLastResult.replayFrames.isEmpty()) {
-                LinearLayout repRow = new LinearLayout(this);
-                repRow.setOrientation(LinearLayout.HORIZONTAL);
-                repRow.setPadding(0, dp(8), 0, 0);
-                Button sampleBtn = makeActionButton("🎬 回放样本战报(第" + r.totalGames + "局)", "#0284C7");
-                sampleBtn.setOnClickListener(v -> showQuickDuelReplayDialog(r.sampleLastResult));
-                repRow.addView(sampleBtn);
-                resCard.addView(repRow);
+            if (r.sampleLastResult != null && r.sampleLastResult.replayFilePath != null) {
+                Button sampleBtn = makeActionButton("🎬 3D回放样本对局(第" + r.totalGames + "局)", "#0284C7");
+                sampleBtn.setOnClickListener(v -> launchNative3dReplay(r.sampleLastResult, TAB_AI_SHOWDOWN));
+                resCard.addView(makeEqualWeightButtonRow(8, sampleBtn));
             }
             layoutContent.addView(resCard);
         }

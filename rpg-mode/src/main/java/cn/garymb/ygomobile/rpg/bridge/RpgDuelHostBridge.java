@@ -92,5 +92,23 @@ public interface RpgDuelHostBridge {
             String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
             OcgRuleSet activeRuleSet,
             String currentTimelineDate) {
+        startRpgAiSpectateDuel(context, sideAName, mainA, extraA, styleA,
+                sideBName, mainB, extraB, styleB, activeRuleSet, currentTimelineDate, 7);
+    }
+
+    default void startRpgAiSpectateDuel(
+            Context context,
+            String sideAName, java.util.List<Integer> mainA, java.util.List<Integer> extraA, String styleA,
+            String sideBName, java.util.List<Integer> mainB, java.util.List<Integer> extraB, String styleB,
+            OcgRuleSet activeRuleSet,
+            String currentTimelineDate,
+            int returnTab) {
+    }
+
+    /**
+     * Plays back a recorded V2 .yrp replay file inside YGOMobile's real 3D duel screen
+     * via {@code ReplayPlayer}, then returns to {@code returnTab} in {@code RpgHomeActivity}.
+     */
+    default void startRpgReplay(Context context, String replayFilePath, int returnTab) {
     }
 }
