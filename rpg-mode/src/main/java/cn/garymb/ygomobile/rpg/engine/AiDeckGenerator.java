@@ -206,16 +206,16 @@ public final class AiDeckGenerator {
                         )
                 ),
 
-                // 4. Seto Kaiba (1999-03-06): No-Tribute Blue-Eyes Dark Age -> Expert Transition -> La Jinn/Mechanicalchaser -> EX Kaiba
+                // 4. Seto Kaiba (1999-03-18): No-Tribute Blue-Eyes Dark Age -> Expert Transition -> La Jinn/Mechanicalchaser -> EX Kaiba
                 new AiOpponent(
                         "ai_starter_kaiba",
                         "社长·海马濑人",
                         "Lv.3 · 青眼与高打点压制",
-                        "1999-03-06",
+                        "1999-03-18",
                         3, 350, 150, 90,
                         "3~4月再现 yugioh-history「生け贄無し最上級」暗黑期（免祭品3青眼+3雷击），5月后自动转型高打点压制流！",
                         Arrays.asList(
-                                new AiOpponent.EraDeckProfile("1999-03-06", "【生け贄無し最上級 · 青眼雷击】", "1999.03~04 暗黑期顶配",
+                                new AiOpponent.EraDeckProfile("1999-03-18", "【生け贄無し最上級 · 青眼雷击】", "1999.03~04 暗黑期顶配",
                                         "完全复刻 yugioh-history《生け贄無し最上級》：公式规则免祭品直拍 3 青眼白龙＋3 黑魔＋3 盖亚＋3 雷击＋3 黑洞！",
                                         recipe(89631139, 3, 46986414, 3, 6368038, 3, 28279543, 3, 85639257, 3, 1784619, 3, 12580477, 3, 83764718, 3, 66788016, 3, 72302403, 3, 53129443, 3, 4206964, 3, 83887306, 1),
                                         null, "NO_TRIBUTE_BEAT"),

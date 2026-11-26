@@ -80,7 +80,7 @@ public class RpgAiStrategyTest {
     public void darkHoleAlwaysUsedBeforeSummoningAndNeverBlowsUpOwnAdvantage() {
         // Case 1: Empty AI board, opponent has Blue-Eyes (3000), AI has Dark Hole + Dark Magician in hand.
         // AI MUST activate Dark Hole (opcode 5) FIRST, NOT Normal Summon first!
-        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-03-06");
+        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-03-18");
         state.phase = RpgAiDuelState.PHASE_MAIN1;
         state.turnPlayer = 0;
         placeMonster(state, 1, 2, RpgAiCardKnowledge.BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
@@ -117,7 +117,7 @@ public class RpgAiStrategyTest {
 
     @Test
     public void potOfGreedAlwaysRunsFirstAndNoTributeSummonsBlueEyes() {
-        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-03-06");
+        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-03-18");
         state.phase = RpgAiDuelState.PHASE_MAIN1;
         state.turnPlayer = 0;
         addHandCard(state, RpgAiCardKnowledge.POT_OF_GREED);
@@ -786,7 +786,7 @@ public class RpgAiStrategyTest {
             RpgAiDuelClient client = new RpgAiDuelClient(
                     "127.0.0.1", port, 0x1360, null, "NO_TRIBUTE_BEAT",
                     main, Collections.emptyList(), Collections.emptyList(),
-                    catalog, noTributeRule, "1999-03-06", 0L);
+                    catalog, noTributeRule, "1999-03-18", 0L);
             client.start();
 
             try (Socket accepted = server.accept()) {

@@ -75,16 +75,16 @@ public class RpgEnginesTest {
         assertEquals("OCG", catalog.format);
         assertEquals("1999-02-04", catalog.minTimelineDate);
         assertEquals("1999-12-31", catalog.maxTimelineDate);
-        assertEquals(20, catalog.packs.size());
-        assertEquals(11, catalog.events.size());
+        assertEquals(19, catalog.packs.size());
+        assertEquals(12, catalog.events.size());
         assertTrue("Full 1999 catalog should have 600+ unique OCG cards",
                 catalog.getAllCardsMap().size() >= 600);
 
-        // Authentic JPY pricing
+        // Authentic JPY pricing (variant Starter Box Theater removed; only retail STARTER BOX kept)
         assertEquals(150, catalog.findPack("ocg_vol1").priceTokens);
         assertEquals(100, catalog.findPack("ocg_booster1").priceTokens);
         assertEquals(3, catalog.findPack("ocg_booster1").cardsPerPack);
-        assertEquals(3480, catalog.findPack("ocg_starter_box_theater").priceTokens);
+        assertNull(catalog.findPack("ocg_starter_box_theater"));
         assertEquals(3480, catalog.findPack("ocg_starter_box").priceTokens);
         assertEquals(50, catalog.findPack("ocg_starter_box").cards.size());
         assertEquals(300, catalog.findPack("ocg_le1_yugi").priceTokens);
@@ -112,15 +112,15 @@ public class RpgEnginesTest {
         // 1999-03-01: Vol.1 + Booster 1
         assertEquals(2, TimelineEngine.getAvailablePacks(catalog, "1999-03-01").size());
 
-        // 1999-03-18: Vol.1 + Booster 1 + Starter Box (Theatrical + Retail)
-        assertEquals(4, TimelineEngine.getAvailablePacks(catalog, "1999-03-18").size());
+        // 1999-03-18: Vol.1 + Booster 1 + Starter Box (retail only)
+        assertEquals(3, TimelineEngine.getAvailablePacks(catalog, "1999-03-18").size());
 
         // 1999-03-27: + Vol.2
-        assertEquals(5, TimelineEngine.getAvailablePacks(catalog, "1999-03-27").size());
+        assertEquals(4, TimelineEngine.getAvailablePacks(catalog, "1999-03-27").size());
 
-        // 1999-12-31: all 20 products & all 11 events unlocked
-        assertEquals(20, TimelineEngine.getAvailablePacks(catalog, "1999-12-31").size());
-        assertEquals(11, TimelineEngine.getAvailableEvents(catalog, "1999-12-31").size());
+        // 1999-12-31: all 19 products & all 12 events unlocked
+        assertEquals(19, TimelineEngine.getAvailablePacks(catalog, "1999-12-31").size());
+        assertEquals(12, TimelineEngine.getAvailableEvents(catalog, "1999-12-31").size());
 
         // 1999-02-04: unrestricted
         OcgBanlist febBan = TimelineEngine.getActiveBanlist(catalog, "1999-02-04");
@@ -349,8 +349,8 @@ public class RpgEnginesTest {
         assertNotNull(exodia);
         assertNotNull(millMorphing);
 
-        // Kaiba auto-switches from No-Tribute Blue-Eyes (03-06) -> Expert Transition (05-05) -> High ATK (08-26) -> EX (12-16)
-        assertEquals("1999-03-06", kaiba.getActiveDeckProfile("1999-03-18").effectiveDate);
+        // Kaiba auto-switches from No-Tribute Blue-Eyes (03-18) -> Expert Transition (05-05) -> High ATK (08-26) -> EX (12-16)
+        assertEquals("1999-03-18", kaiba.getActiveDeckProfile("1999-03-18").effectiveDate);
         assertEquals("1999-05-05", kaiba.getActiveDeckProfile("1999-05-05").effectiveDate);
         assertEquals("1999-08-26", kaiba.getActiveDeckProfile("1999-08-26").effectiveDate);
         assertEquals("1999-12-16", kaiba.getActiveDeckProfile("1999-12-31").effectiveDate);

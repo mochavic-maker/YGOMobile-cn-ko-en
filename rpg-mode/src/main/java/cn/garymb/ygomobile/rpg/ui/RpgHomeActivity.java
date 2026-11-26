@@ -508,9 +508,16 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     // ==================== TAB 0: SHOP & PACK OPENING ====================
     private void renderShopTab() {
-        List<OcgPack> availPacks = TimelineEngine.getAvailablePacks(catalog, profile.currentTimelineDate);
+        List<OcgPack> availPacks = new ArrayList<>(
+                TimelineEngine.getAvailablePacks(catalog, profile.currentTimelineDate));
+        java.util.Collections.reverse(availPacks);
+        availPacks.sort((a, b) -> {
+            String da = a.releaseDate != null ? a.releaseDate : "";
+            String db = b.releaseDate != null ? b.releaseDate : "";
+            return db.compareTo(da);
+        });
         TextView hint = makeSubtleText("仅显示 " + profile.currentTimelineDate
-                + " 已解锁的 " + availPacks.size() + " 款商品（代币价 1:1 还原当年日元定价）");
+                + " 已解锁的 " + availPacks.size() + " 款商品（按发售日降序 · 代币价 1:1 还原当年日元定价）");
         layoutTabActions.addView(hint);
 
         for (final OcgPack pack : availPacks) {
