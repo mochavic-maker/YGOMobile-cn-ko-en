@@ -36,6 +36,7 @@ import cn.garymb.ygomobile.rpg.engine.CardErrataEngine;
 import cn.garymb.ygomobile.rpg.engine.PackOpeningEngine;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
+import cn.garymb.ygomobile.rpg.model.OcgEvent;
 import cn.garymb.ygomobile.rpg.model.OcgPack;
 import cn.garymb.ygomobile.rpg.model.Rarity;
 import cn.garymb.ygomobile.rpg.model.RpgCard;
@@ -381,6 +382,46 @@ public final class RpgPackVisualDialogs {
                                                 final RpgCatalog catalog,
                                                 final RpgProfile profile,
                                                 final OcgPack pack) {
+        showCardPoolSplitDialog(
+                activity,
+                catalog,
+                profile,
+                "🃏 卡池 · ",
+                pack.name,
+                pack.id,
+                null,
+                pack.fixedContents,
+                pack.cards);
+    }
+
+    public static void showEventPoolVisualDialog(final Activity activity,
+                                                 final RpgCatalog catalog,
+                                                 final RpgProfile profile,
+                                                 final OcgEvent event) {
+        String extraNote = ("RANDOM_PICK".equalsIgnoreCase(event.mode) && event.randomPickCount > 0)
+                ? (" · 随机抽 " + event.randomPickCount + " 张")
+                : " · 全部赠送";
+        showCardPoolSplitDialog(
+                activity,
+                catalog,
+                profile,
+                "🎁 特典卡池 · ",
+                event.name,
+                null,
+                extraNote,
+                false,
+                event.rewardCards);
+    }
+
+    private static void showCardPoolSplitDialog(final Activity activity,
+                                                final RpgCatalog catalog,
+                                                final RpgProfile profile,
+                                                final String titlePrefix,
+                                                final String poolName,
+                                                final String packCoverIdOrNull,
+                                                final String extraSubtitleNote,
+                                                final boolean showBoxQuantity,
+                                                final List<RpgCard> rawCards) {
         final Dialog dialog = createFullWidthDialog(activity);
         final boolean landscape = isLandscape(activity);
         final int cols = landscape ? 6 : 4;
@@ -404,21 +445,23 @@ public final class RpgPackVisualDialogs {
         int highRarityCount = 0;
         int rareCount = 0;
         int normalCount = 0;
-        for (RpgCard c : pack.cards) {
-            if (seenIds.add(c.id)) {
-                uniqueCards.add(c);
-                int own = profile.getOwnedCount(c.id);
-                if (own >= 1) unlockedCount++;
-                else unownedCount++;
-                if (own >= 3) playset3Count++;
-                Rarity rr = c.getRarityEnum();
-                if (rr == Rarity.UR || rr == Rarity.SR || rr == Rarity.SCR) highRarityCount++;
-                else if (rr == Rarity.R) rareCount++;
-                else if (rr == Rarity.N) normalCount++;
+        if (rawCards != null) {
+            for (RpgCard c : rawCards) {
+                if (c != null && seenIds.add(c.id)) {
+                    uniqueCards.add(c);
+                    int own = profile.getOwnedCount(c.id);
+                    if (own >= 1) unlockedCount++;
+                    else unownedCount++;
+                    if (own >= 3) playset3Count++;
+                    Rarity rr = c.getRarityEnum();
+                    if (rr == Rarity.UR || rr == Rarity.SR || rr == Rarity.SCR) highRarityCount++;
+                    else if (rr == Rarity.R) rareCount++;
+                    else if (rr == Rarity.N) normalCount++;
+                }
             }
         }
 
-        // Compact header bar with pack thumbnail, title, progress, and inline Close button
+        // Compact header bar with pack cover (or first promo card thumbnail), title, progress, and inline Close button
         LinearLayout poolHeader = new LinearLayout(activity);
         poolHeader.setOrientation(LinearLayout.HORIZONTAL);
         poolHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -429,15 +472,20 @@ public final class RpgPackVisualDialogs {
         pCoverLp.setMarginEnd(dp(activity, 8));
         ivPoolCover.setLayoutParams(pCoverLp);
         ivPoolCover.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        RpgCardArtLoader.loadPackCoverInto(activity, ivPoolCover, pack.id);
-        poolHeader.addView(ivPoolCover);
+        if (packCoverIdOrNull != null && !packCoverIdOrNull.isEmpty()) {
+            RpgCardArtLoader.loadPackCoverInto(activity, ivPoolCover, packCoverIdOrNull);
+            poolHeader.addView(ivPoolCover);
+        } else if (!uniqueCards.isEmpty()) {
+            RpgCardArtLoader.loadInto(ivPoolCover, uniqueCards.get(0).id, dp(activity, 28));
+            poolHeader.addView(ivPoolCover);
+        }
 
         LinearLayout pHeaderText = new LinearLayout(activity);
         pHeaderText.setOrientation(LinearLayout.VERTICAL);
         pHeaderText.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         TextView tvTitle = new TextView(activity);
-        tvTitle.setText("🃏 卡池 · " + pack.name);
+        tvTitle.setText(titlePrefix + poolName);
         tvTitle.setTextColor(Color.parseColor("#F8FAFC"));
         tvTitle.setTextSize(14f);
         tvTitle.setTypeface(null, Typeface.BOLD);
@@ -447,7 +495,8 @@ public final class RpgPackVisualDialogs {
 
         TextView tvSub = new TextView(activity);
         tvSub.setText("共 " + uniqueCards.size() + " 种 · 已解锁 " + unlockedCount + "/" + uniqueCards.size()
-                + " · 满3张 " + playset3Count + "/" + uniqueCards.size());
+                + " · 满3张 " + playset3Count + "/" + uniqueCards.size()
+                + (extraSubtitleNote != null ? extraSubtitleNote : ""));
         tvSub.setTextColor(Color.parseColor("#38BDF8"));
         tvSub.setTextSize(11f);
         tvSub.setSingleLine(true);
@@ -656,7 +705,7 @@ public final class RpgPackVisualDialogs {
             String ownStr = owned <= 0 ? "未拥有" : (owned >= 3 ? "已满3 (×" + owned + ")" : "已有 ×" + owned);
             StringBuilder metaSb = new StringBuilder();
             metaSb.append(ownStr);
-            if (pack.fixedContents && card.quantity > 1) {
+            if (showBoxQuantity && card.quantity > 1) {
                 metaSb.append(" · 盒内×").append(card.quantity);
             }
             if (card.setCode != null && !card.setCode.isEmpty()) {

@@ -593,28 +593,36 @@ public class RpgHomeActivity extends AppCompatActivity {
         for (final OcgEvent ev : catalog.events) {
             boolean unlocked = TimelineEngine.isReleasedOnOrBefore(ev.releaseDate, profile.currentTimelineDate);
             boolean claimed = profile.claimedEventIds != null && profile.claimedEventIds.contains(ev.id);
+            int rewardCount = ev.rewardCards != null ? ev.rewardCards.size() : 0;
+            String modeNote = ("RANDOM_PICK".equalsIgnoreCase(ev.mode) && ev.randomPickCount > 0)
+                    ? (" · 随机抽 " + ev.randomPickCount + " 张（共 " + rewardCount + " 种）")
+                    : (" · 含 " + rewardCount + " 张特典卡");
 
             LinearLayout card = makeCardContainer();
             card.addView(makeTitleText(ev.name + (claimed ? " 【已领取】" : "")));
             card.addView(makeSubtleText("活动日期: " + ev.releaseDate
                     + (ev.endDate != null && !ev.endDate.equals(ev.releaseDate) ? " ~ " + ev.endDate : "")
-                    + (ev.requiredWins > 0 ? " · 需累计胜场 ≥ " + ev.requiredWins : " · 免费领取")));
+                    + (ev.requiredWins > 0 ? " · 需累计胜场 ≥ " + ev.requiredWins : " · 免费领取")
+                    + modeNote));
             card.addView(makeSubtleText(ev.description));
 
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, dp(8), 0, 0);
+            Button poolBtn = makeActionButton("查看卡池", "#475569");
+            poolBtn.setOnClickListener(v -> RpgPackVisualDialogs.showEventPoolVisualDialog(this, catalog, profile, ev));
 
             if (claimed) {
                 TextView done = makeSubtleText("✓ 特典已收入卡库");
                 done.setTextColor(Color.parseColor("#34D399"));
-                row.addView(done);
+                done.setPadding(0, dp(6), 0, 0);
+                card.addView(done);
+                card.addView(makeEqualWeightButtonRow(6, poolBtn));
             } else if (!unlocked) {
                 TextView locked = makeSubtleText("未到活动日期（时间轴 ≥ " + ev.releaseDate + " 开启）");
                 locked.setTextColor(Color.parseColor("#F87171"));
-                row.addView(locked);
+                locked.setPadding(0, dp(6), 0, 0);
+                card.addView(locked);
+                card.addView(makeEqualWeightButtonRow(6, poolBtn));
             } else {
-                Button btn = makeActionButton("领取特典单卡", "#7C3AED");
+                Button btn = makeActionButton("🎁 领取特典单卡", "#7C3AED");
                 btn.setOnClickListener(v -> {
                     EventClaimEngine.ClaimResult r = EventClaimEngine.claim(profile, ev, new Random());
                     if (!r.success) {
@@ -637,9 +645,8 @@ public class RpgHomeActivity extends AppCompatActivity {
                             .setPositiveButton("收下特典", null)
                             .show();
                 });
-                row.addView(btn);
+                card.addView(makeEqualWeightButtonRow(8, btn, poolBtn));
             }
-            card.addView(row);
             layoutContent.addView(card);
         }
     }
