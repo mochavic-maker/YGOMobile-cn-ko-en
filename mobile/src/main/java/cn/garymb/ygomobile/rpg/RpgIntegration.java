@@ -364,13 +364,22 @@ public final class RpgIntegration {
     }
 
     /**
+     * Returns true while the native deck editor is open for an RPG deck session.
+     */
+    public static boolean isRpgDeckEditorActive() {
+        return sRpgDeckAllowedCaps != null;
+    }
+
+    /**
      * Hook called from DeckEditorManagerBase.notifyDeckChanged():
-     * Recomputes current in-deck copy counts and refreshes the search list so maxed-out cards
-     * vanish immediately and removed cards reappear immediately.
+     * Recomputes current in-deck copy counts and refreshes the search list (preserving scroll
+     * position!) only when at least one card crossed its cap visibility boundary.
      */
     public static void onDeckEditorDeckChanged(cn.garymb.ygomobile.bean.DeckInfo currentDeck,
                                                cn.garymb.ygomobile.game.deck.CardSearcherManagerBase searcher) {
-        if (sRpgDeckAllowedCaps == null) return;
+        java.util.Map<Integer, Integer> caps = sRpgDeckAllowedCaps;
+        if (caps == null) return;
+        java.util.Map<Integer, Integer> prevCounts = sRpgDeckCurrentCounts;
         java.util.Map<Integer, Integer> counts = new java.util.HashMap<>();
         if (currentDeck != null) {
             if (currentDeck.mainCards != null) {
@@ -389,9 +398,25 @@ public final class RpgIntegration {
                 }
             }
         }
+        boolean visibilityChanged = (prevCounts == null);
+        if (!visibilityChanged) {
+            java.util.Set<Integer> affected = new java.util.HashSet<>(prevCounts.keySet());
+            affected.addAll(counts.keySet());
+            for (Integer code : affected) {
+                Integer capObj = caps.get(code);
+                if (capObj == null || capObj <= 0) continue;
+                int cap = capObj;
+                boolean wasVisible = prevCounts.getOrDefault(code, 0) < cap;
+                boolean nowVisible = counts.getOrDefault(code, 0) < cap;
+                if (wasVisible != nowVisible) {
+                    visibilityChanged = true;
+                    break;
+                }
+            }
+        }
         sRpgDeckCurrentCounts = counts;
-        if (searcher != null) {
-            searcher.refreshRpgSearch();
+        if (searcher != null && visibilityChanged) {
+            searcher.refreshRpgSearchPreservingScroll();
         }
     }
 

@@ -331,6 +331,7 @@ abstract class DeckEditorManagerBase {
         boolean result = (seq >= 0 && seq <= currentDeck.mainCards.size())
                 ? currentDeck.addMainCards(seq, card, isPackMode) : currentDeck.addMainCards(card);
         if (result) {
+            if (cn.garymb.ygomobile.rpg.RpgIntegration.isRpgDeckEditorActive()) currentDeck.sortAll();
             isModified = true;
             notifyDeckChanged();
         }
@@ -344,6 +345,7 @@ abstract class DeckEditorManagerBase {
         boolean result = (seq >= 0 && seq <= currentDeck.extraCards.size())
                 ? currentDeck.addExtraCards(seq, card) : currentDeck.addExtraCards(card);
         if (result) {
+            if (cn.garymb.ygomobile.rpg.RpgIntegration.isRpgDeckEditorActive()) currentDeck.sortAll();
             isModified = true;
             notifyDeckChanged();
         }
@@ -357,6 +359,7 @@ abstract class DeckEditorManagerBase {
         boolean result = (seq >= 0 && seq <= currentDeck.sideCards.size())
                 ? currentDeck.addSideCards(seq, card) : currentDeck.addSideCards(card);
         if (result) {
+            if (cn.garymb.ygomobile.rpg.RpgIntegration.isRpgDeckEditorActive()) currentDeck.sortAll();
             isModified = true;
             notifyDeckChanged();
         }

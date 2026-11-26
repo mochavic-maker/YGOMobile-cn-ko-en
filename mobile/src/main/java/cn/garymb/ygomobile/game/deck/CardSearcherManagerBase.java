@@ -238,11 +238,21 @@ public abstract class CardSearcherManagerBase {
     }
 
     public void refreshRpgSearch() {
-        executeFilterAsync();
+        executeFilterAsync(false);
+    }
+
+    public void refreshRpgSearchPreservingScroll() {
+        executeFilterAsync(true);
     }
 
     protected void executeFilterAsync() {
-        showSearchResultSearching();
+        executeFilterAsync(false);
+    }
+
+    protected void executeFilterAsync(boolean preserveScroll) {
+        if (!preserveScroll) {
+            showSearchResultSearching();
+        }
         int gen = searchGeneration.incrementAndGet();
         List<String> keywordTerms = parseKeywordTerms();
         new Thread(() -> {
@@ -257,19 +267,40 @@ public abstract class CardSearcherManagerBase {
                 results.add(card);
             }
             Collections.sort(results, buildSortComparator());
-            mainHandler.post(() -> applySearchResults(gen, results));
+            mainHandler.post(() -> applySearchResults(gen, results, preserveScroll));
         }).start();
     }
 
     protected void applySearchResults(int gen, List<Card> results) {
+        applySearchResults(gen, results, false);
+    }
+
+    protected void applySearchResults(int gen, List<Card> results, boolean preserveScroll) {
         if (searchGeneration.get() != gen) return;
+        int firstPos = RecyclerView.NO_POSITION;
+        int topOffset = 0;
+        LinearLayoutManager llm = null;
+        if (preserveScroll && rvSearchResults != null
+                && rvSearchResults.getLayoutManager() instanceof LinearLayoutManager) {
+            llm = (LinearLayoutManager) rvSearchResults.getLayoutManager();
+            firstPos = llm.findFirstVisibleItemPosition();
+            View firstView = firstPos != RecyclerView.NO_POSITION ? llm.findViewByPosition(firstPos) : null;
+            topOffset = firstView != null ? firstView.getTop() - rvSearchResults.getPaddingTop() : 0;
+        }
         searchResults.clear();
         // 卡名与关键词完全命中的卡一律置顶，且不随排序档位变化（用户规格：
         // 卡组管理页、卡查页、本页三处都要保持这个顺序）
         searchResults.addAll(pinKeywordMatches(results, getKeywordText()));
         showSearchResultCount(searchResults.size());
         if (searchAdapter != null) searchAdapter.setCards(searchResults);
-        if (rvSearchResults != null) rvSearchResults.scrollToPosition(0);
+        if (rvSearchResults != null) {
+            if (preserveScroll && llm != null && firstPos != RecyclerView.NO_POSITION && !searchResults.isEmpty()) {
+                int clampedPos = Math.min(firstPos, searchResults.size() - 1);
+                llm.scrollToPositionWithOffset(clampedPos, topOffset);
+            } else if (!preserveScroll) {
+                rvSearchResults.scrollToPosition(0);
+            }
+        }
         if (listener != null) listener.onSearchResultsUpdated(searchResults.size());
     }
 
