@@ -111,4 +111,9 @@ public interface RpgDuelHostBridge {
      */
     default void startRpgReplay(Context context, String replayFilePath, int returnTab) {
     }
+
+    default void startRpgReplay(Context context, String replayFilePath,
+                                String player0Name, String player1Name, int returnTab) {
+        startRpgReplay(context, replayFilePath, returnTab);
+    }
 }

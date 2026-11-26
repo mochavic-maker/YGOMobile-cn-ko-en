@@ -92,6 +92,7 @@ public class MainMenuDialog {
                 });
             }
         }
+        cn.garymb.ygomobile.rpg.RpgIntegration.onMainMenuShown();
         activity.hideGameUI();
         activity.updateBGM();
         activity.applySettingsToEngine();

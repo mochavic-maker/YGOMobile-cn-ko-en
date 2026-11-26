@@ -461,13 +461,13 @@ public final class RpgOcgHeadlessDuelRunner {
                 }
                 return new RpgAiAutoDuelModels.DuelResult(
                         sideAWon, isDraw, lpA, lpB, Math.max(1, turnCount),
-                        ruleSet, logs, sideAName, sideBName, effStyleA, effStyleB, frames, savedReplayPath);
+                        ruleSet, logs, sideAName, sideBName, effStyleA, effStyleB, frames, savedReplayPath, sideAFirst);
             } catch (Throwable t) {
                 Log.e(TAG, "Headless ocgcore duel error", t);
                 logs.add("引擎异常：" + t.getMessage());
                 return new RpgAiAutoDuelModels.DuelResult(
                         false, true, startLp, startLp, 0, ruleSet, logs,
-                        sideAName, sideBName, effStyleA, effStyleB, frames, null);
+                        sideAName, sideBName, effStyleA, effStyleB, frames, null, sideAFirst);
             } finally {
                 OcgDuelEngine.endDuel(pduel);
             }

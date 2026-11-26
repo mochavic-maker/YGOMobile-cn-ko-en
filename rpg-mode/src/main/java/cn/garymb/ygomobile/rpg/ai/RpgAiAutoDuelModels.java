@@ -66,6 +66,8 @@ public final class RpgAiAutoDuelModels {
         public final List<ReplayFrame> replayFrames;
         /** Absolute path to recorded V2 .yrp replay file for native 3D YGOMobile ReplayPlayer playback (may be null). */
         public final String replayFilePath;
+        /** Whether Side A acted as Seat 0 (went first) in the recorded duel / .yrp replay. */
+        public final boolean sideAFirst;
 
         public DuelResult(boolean sideAWon, boolean isDraw, int sideALp, int sideBLp,
                           int turns, OcgRuleSet appliedRule, List<String> logs,
@@ -73,7 +75,7 @@ public final class RpgAiAutoDuelModels {
                           String sideAStyle, String sideBStyle,
                           List<ReplayFrame> replayFrames) {
             this(sideAWon, isDraw, sideALp, sideBLp, turns, appliedRule, logs,
-                    sideAName, sideBName, sideAStyle, sideBStyle, replayFrames, null);
+                    sideAName, sideBName, sideAStyle, sideBStyle, replayFrames, null, true);
         }
 
         public DuelResult(boolean sideAWon, boolean isDraw, int sideALp, int sideBLp,
@@ -82,6 +84,17 @@ public final class RpgAiAutoDuelModels {
                           String sideAStyle, String sideBStyle,
                           List<ReplayFrame> replayFrames,
                           String replayFilePath) {
+            this(sideAWon, isDraw, sideALp, sideBLp, turns, appliedRule, logs,
+                    sideAName, sideBName, sideAStyle, sideBStyle, replayFrames, replayFilePath, true);
+        }
+
+        public DuelResult(boolean sideAWon, boolean isDraw, int sideALp, int sideBLp,
+                          int turns, OcgRuleSet appliedRule, List<String> logs,
+                          String sideAName, String sideBName,
+                          String sideAStyle, String sideBStyle,
+                          List<ReplayFrame> replayFrames,
+                          String replayFilePath,
+                          boolean sideAFirst) {
             this.sideAWon = sideAWon;
             this.isDraw = isDraw;
             this.sideALp = sideALp;
@@ -95,6 +108,7 @@ public final class RpgAiAutoDuelModels {
             this.sideBStyle = sideBStyle;
             this.replayFrames = replayFrames != null ? replayFrames : new ArrayList<ReplayFrame>();
             this.replayFilePath = replayFilePath;
+            this.sideAFirst = sideAFirst;
         }
     }
 

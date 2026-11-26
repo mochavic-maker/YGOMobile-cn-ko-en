@@ -1721,7 +1721,9 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
             return;
         }
-        bridge.startRpgReplay(this, report.replayFilePath, returnTab);
+        String p0Name = report.sideAFirst ? report.sideAName : report.sideBName;
+        String p1Name = report.sideAFirst ? report.sideBName : report.sideAName;
+        bridge.startRpgReplay(this, report.replayFilePath, p0Name, p1Name, returnTab);
         finish();
     }
 

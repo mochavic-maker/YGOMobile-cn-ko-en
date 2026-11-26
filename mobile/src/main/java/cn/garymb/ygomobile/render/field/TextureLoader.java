@@ -285,6 +285,8 @@ public class TextureLoader {
     }
 
     public Bitmap getAvatar(boolean isMe) {
+        Bitmap rpgOverride = cn.garymb.ygomobile.rpg.RpgIntegration.getActiveDuelAvatarOverride(isMe);
+        if (rpgOverride != null) return rpgOverride;
         return getTexture(isMe ? "me.jpg" : "opponent.jpg");
     }
 

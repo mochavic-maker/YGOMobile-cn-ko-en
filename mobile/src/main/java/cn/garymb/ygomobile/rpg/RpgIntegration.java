@@ -159,6 +159,47 @@ public final class RpgIntegration {
     private static volatile java.util.Map<Integer, Integer> sRpgDeckCurrentCounts = null;
     private static volatile OcgRuleSet sActiveRpgDuelRuleSet = null;
     private static volatile int sSpectateReturnTab = RpgHomeActivity.TAB_AI_SHOWDOWN;
+    private static volatile Context sAppContext = null;
+    private static volatile String sActiveDuelPlayerAvatarId = null;
+    private static volatile String sActiveDuelOpponentAvatarId = null;
+
+    /**
+     * Hook called from {@link cn.garymb.ygomobile.render.field.TextureLoader#getAvatar(boolean)}:
+     * returns the active RPG AI opponent's portrait Bitmap during live RPG duels / 3D spectates / 3D replays,
+     * or {@code null} to fall back to YGOMobile's standard {@code me.jpg} / {@code opponent.jpg}.
+     */
+    public static android.graphics.Bitmap getActiveDuelAvatarOverride(boolean isMe) {
+        String oppId = isMe ? sActiveDuelPlayerAvatarId : sActiveDuelOpponentAvatarId;
+        Context ctx = sAppContext;
+        if (oppId == null || oppId.isEmpty() || ctx == null) {
+            return null;
+        }
+        return cn.garymb.ygomobile.rpg.ui.RpgCardArtLoader.loadOpponentAvatarSync(ctx, oppId);
+    }
+
+    /**
+     * Hook called from {@link cn.garymb.ygomobile.ui.dialogs.lobby.MainMenuDialog#showMainMenu()}:
+     * guarantees RPG in-duel avatar & rule overrides never leak into normal LAN / Single / WindBot duels
+     * even if the player cancels the waiting room or surrenders early.
+     */
+    public static void onMainMenuShown() {
+        sActiveDuelPlayerAvatarId = null;
+        sActiveDuelOpponentAvatarId = null;
+        sActiveRpgDuelRuleSet = null;
+    }
+
+    private static String resolveOpponentIdByName(String displayName) {
+        if (displayName == null || displayName.trim().isEmpty()) return null;
+        String trimmed = displayName.trim();
+        for (AiOpponent opp : cn.garymb.ygomobile.rpg.engine.AiDeckGenerator.getDemoOpponents()) {
+            if (opp != null && opp.name != null && !opp.name.isEmpty()) {
+                if (trimmed.equals(opp.name) || trimmed.startsWith(opp.name)) {
+                    return opp.id;
+                }
+            }
+        }
+        return null;
+    }
 
     /**
      * Writes historical OCG rule overrides (e.g. 1999-02-04 no-tribute summon/set, no Turn 1 draw,
@@ -421,6 +462,9 @@ public final class RpgIntegration {
     }
 
     private static void registerBridge(final YGOProActivity activity) {
+        if (activity != null) {
+            sAppContext = activity.getApplicationContext();
+        }
         RpgSessionManager.registerHostBridge(new RpgDuelHostBridge() {
             @Override
             public void startRpgAiDuel(Context context,
@@ -431,8 +475,12 @@ public final class RpgIntegration {
                                        OcgRuleSet activeRuleSet,
                                        String currentTimelineDate) {
                 activity.runOnUiThread(() -> {
+                    sAppContext = activity.getApplicationContext();
                     // Record active historical OCG rule set so ServerDuelBase injects matching Lua rule overrides
                     sActiveRpgDuelRuleSet = activeRuleSet;
+                    // Display the AI opponent's Yu-Gi-Oh! portrait in the top-right duel avatar frame
+                    sActiveDuelPlayerAvatarId = null;
+                    sActiveDuelOpponentAvatarId = (opponent != null) ? opponent.id : null;
 
                     // Sync player's validated RPG .ydk into native deck/RPG/ and register via setLastDeckPath
                     // so PlayerWaitingDialog loads the player's actual RPG deck instead of the default sample deck.
@@ -646,8 +694,11 @@ public final class RpgIntegration {
                     String currentTimelineDate,
                     int returnTab) {
                 activity.runOnUiThread(() -> {
+                    sAppContext = activity.getApplicationContext();
                     sActiveRpgDuelRuleSet = activeRuleSet;
                     sSpectateReturnTab = returnTab;
+                    sActiveDuelPlayerAvatarId = resolveOpponentIdByName(sideAName);
+                    sActiveDuelOpponentAvatarId = resolveOpponentIdByName(sideBName);
                     GameEngine engine = activity.getEngine();
                     engine.setBotMode(true);
                     engine.setPlayerName("观战席·" + Constants.PlayerName);
@@ -721,6 +772,12 @@ public final class RpgIntegration {
 
             @Override
             public void startRpgReplay(Context context, String replayFilePath, int returnTab) {
+                startRpgReplay(context, replayFilePath, null, null, returnTab);
+            }
+
+            @Override
+            public void startRpgReplay(Context context, String replayFilePath,
+                                       String player0Name, String player1Name, int returnTab) {
                 if (replayFilePath == null || replayFilePath.isEmpty()) {
                     activity.runOnUiThread(() -> Toast.makeText(activity, "录像文件不存在", Toast.LENGTH_SHORT).show());
                     return;
@@ -730,7 +787,12 @@ public final class RpgIntegration {
                     activity.runOnUiThread(() -> Toast.makeText(activity, "录像文件已丢失：" + replayFilePath, Toast.LENGTH_SHORT).show());
                     return;
                 }
-                activity.runOnUiThread(() -> launchNative3dReplayForRpg(activity, replayFilePath, returnTab));
+                activity.runOnUiThread(() -> {
+                    sAppContext = activity.getApplicationContext();
+                    sActiveDuelPlayerAvatarId = resolveOpponentIdByName(player0Name);
+                    sActiveDuelOpponentAvatarId = resolveOpponentIdByName(player1Name);
+                    launchNative3dReplayForRpg(activity, replayFilePath, returnTab);
+                });
             }
         });
     }
@@ -787,6 +849,8 @@ public final class RpgIntegration {
                                         .setType(cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog.TYPE_MESSAGE)
                                         .setPositiveButtonText("返回 RPG 模式")
                                         .setPositiveButton(v -> {
+                                            sActiveDuelPlayerAvatarId = null;
+                                            sActiveDuelOpponentAvatarId = null;
                                             player.detachListener();
                                             player.stop();
                                             activity.dismissDuelDialogsForExit();

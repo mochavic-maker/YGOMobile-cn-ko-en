@@ -163,6 +163,28 @@ public final class RpgCardArtLoader {
         });
     }
 
+    /**
+     * Synchronously returns the cached (or decoded from assets) Yu-Gi-Oh!-style portrait Bitmap
+     * for an RPG AI opponent. Used by YGOMobile's live duel UI ({@code TextureLoader.getAvatar}).
+     */
+    public static Bitmap loadOpponentAvatarSync(android.content.Context context, String opponentId) {
+        if (context == null || opponentId == null || opponentId.isEmpty()) return null;
+        Bitmap cached = sAvatarCache.get(opponentId);
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
+        }
+        try (java.io.InputStream is = context.getApplicationContext().getAssets()
+                .open("rpg/avatars/" + opponentId + ".webp")) {
+            Bitmap bmp = BitmapFactory.decodeStream(is);
+            if (bmp != null) {
+                sAvatarCache.put(opponentId, bmp);
+            }
+            return bmp;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     public static GradientDrawable createAvatarPlaceholderDrawable() {
         GradientDrawable bg = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
