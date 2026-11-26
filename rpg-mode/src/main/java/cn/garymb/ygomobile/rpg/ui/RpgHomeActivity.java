@@ -460,69 +460,123 @@ public class RpgHomeActivity extends AppCompatActivity {
     }
 
     /**
-     * Opens a Year + Month filterable OCG event-date picker dialog that restricts selection strictly
-     * to dates with actual OCG historical events (packs, promos, rules, banlists, errata, AI shifts).
+     * Opens a custom calendar dialog with `<` [Month ▼] [Year ▼] `>` dropdown controls,
+     * a Monday-first 7-column calendar grid, light-green circular badges for dates with OCG events,
+     * and strict click enforcement so ONLY event dates can be selected.
      */
     private void openDatePicker() {
         final List<AiOpponent> allOpponents = AiDeckGenerator.getDemoOpponents();
         if (timelineEventDates == null || timelineEventDates.isEmpty()) {
             timelineEventDates = TimelineEngine.getTimelineEventDates(catalog, allOpponents);
         }
-        final List<String> allEventDates = timelineEventDates;
-        final List<String> years = TimelineEngine.getEventYears(allEventDates);
-        if (years.isEmpty()) {
-            Toast.makeText(this, "暂无可选历史事件时间点", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        final java.util.Set<String> eventDateSet = new java.util.HashSet<>(timelineEventDates);
 
-        String curYear = (profile.currentTimelineDate != null && profile.currentTimelineDate.length() >= 4)
-                ? profile.currentTimelineDate.substring(0, 4) : years.get(0);
-        if (!years.contains(curYear)) {
-            curYear = years.get(0);
-        }
+        int minYear = 1999;
+        int maxYear = 1999;
+        try {
+            if (catalog.minTimelineDate != null && catalog.minTimelineDate.length() >= 4) {
+                minYear = Integer.parseInt(catalog.minTimelineDate.substring(0, 4));
+            }
+            if (catalog.maxTimelineDate != null && catalog.maxTimelineDate.length() >= 4) {
+                maxYear = Integer.parseInt(catalog.maxTimelineDate.substring(0, 4));
+            }
+        } catch (Exception ignored) {}
+        if (maxYear < minYear) maxYear = minYear;
+        final int finalMinYear = minYear;
+        final int finalMaxYear = maxYear;
 
-        final String[] selectedYear = new String[]{curYear};
-        final String[] selectedMonth = new String[]{"ALL"}; // "ALL" or "02".."12"
+        int initYear = finalMinYear;
+        int initMonth = 2; // 1..12
+        try {
+            String[] parts = profile.currentTimelineDate.split("-");
+            initYear = Integer.parseInt(parts[0]);
+            initMonth = Integer.parseInt(parts[1]);
+        } catch (Exception ignored) {}
+        if (initYear < finalMinYear) initYear = finalMinYear;
+        if (initYear > finalMaxYear) initYear = finalMaxYear;
+        if (initMonth < 1 || initMonth > 12) initMonth = 1;
+
+        final int[] curYearRef = new int[]{initYear};
+        final int[] curMonthRef = new int[]{initMonth}; // 1..12
+        final boolean[] updatingSpinners = new boolean[]{false};
+
+        android.widget.ScrollView outerScroll = new android.widget.ScrollView(this);
+        outerScroll.setBackgroundColor(Color.parseColor("#0F172A"));
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.parseColor("#0F172A"));
-        root.setPadding(dp(14), dp(12), dp(14), dp(10));
+        root.setPadding(dp(12), dp(12), dp(12), dp(10));
+        outerScroll.addView(root);
 
-        // Year dropdown row (scales cleanly from 1 year to 25+ years)
-        LinearLayout yearRow = new LinearLayout(this);
-        yearRow.setOrientation(LinearLayout.HORIZONTAL);
-        yearRow.setGravity(Gravity.CENTER_VERTICAL);
-        yearRow.setPadding(0, 0, 0, dp(8));
+        // ==================== TOP BAR: <  [Month ▼]  [Year ▼]  > ====================
+        LinearLayout navRow = new LinearLayout(this);
+        navRow.setOrientation(LinearLayout.HORIZONTAL);
+        navRow.setGravity(Gravity.CENTER_VERTICAL);
+        navRow.setPadding(0, 0, 0, dp(10));
 
-        TextView tvYearLabel = makeTitleText("年份：");
-        tvYearLabel.setTextSize(13f);
-        yearRow.addView(tvYearLabel);
+        final Button btnPrevMonth = new Button(this);
+        btnPrevMonth.setText("‹");
+        btnPrevMonth.setTextSize(18f);
+        btnPrevMonth.setTextColor(Color.parseColor("#F8FAFC"));
+        btnPrevMonth.setMinWidth(0);
+        btnPrevMonth.setMinHeight(0);
+        btnPrevMonth.setPadding(0, 0, 0, 0);
+        GradientDrawable navBtnBg = new GradientDrawable();
+        navBtnBg.setColor(Color.parseColor("#1E293B"));
+        navBtnBg.setCornerRadius(dp(6));
+        navBtnBg.setStroke(dp(1), Color.parseColor("#475569"));
+        btnPrevMonth.setBackground(navBtnBg);
+        LinearLayout.LayoutParams prevLp = new LinearLayout.LayoutParams(dp(34), dp(36));
+        prevLp.setMarginEnd(dp(6));
+        btnPrevMonth.setLayoutParams(prevLp);
+        navRow.addView(btnPrevMonth);
 
-        final List<String> yearKeys = new ArrayList<>();
+        final android.widget.Spinner spMonth = new android.widget.Spinner(this);
+        LinearLayout.LayoutParams spMonthLp = new LinearLayout.LayoutParams(0, dp(36), 1f);
+        spMonthLp.setMarginEnd(dp(6));
+        spMonth.setLayoutParams(spMonthLp);
+        GradientDrawable spBg1 = new GradientDrawable();
+        spBg1.setColor(Color.parseColor("#1E293B"));
+        spBg1.setCornerRadius(dp(8));
+        spBg1.setStroke(dp(1), Color.parseColor("#475569"));
+        spMonth.setBackground(spBg1);
+        navRow.addView(spMonth);
+
+        final android.widget.Spinner spYear = new android.widget.Spinner(this);
+        LinearLayout.LayoutParams spYearLp = new LinearLayout.LayoutParams(0, dp(36), 1f);
+        spYearLp.setMarginEnd(dp(6));
+        spYear.setLayoutParams(spYearLp);
+        GradientDrawable spBg2 = new GradientDrawable();
+        spBg2.setColor(Color.parseColor("#1E293B"));
+        spBg2.setCornerRadius(dp(8));
+        spBg2.setStroke(dp(1), Color.parseColor("#475569"));
+        spYear.setBackground(spBg2);
+        navRow.addView(spYear);
+
+        final Button btnNextMonth = new Button(this);
+        btnNextMonth.setText("›");
+        btnNextMonth.setTextSize(18f);
+        btnNextMonth.setTextColor(Color.parseColor("#F8FAFC"));
+        btnNextMonth.setMinWidth(0);
+        btnNextMonth.setMinHeight(0);
+        btnNextMonth.setPadding(0, 0, 0, 0);
+        GradientDrawable navBtnBg2 = new GradientDrawable();
+        navBtnBg2.setColor(Color.parseColor("#1E293B"));
+        navBtnBg2.setCornerRadius(dp(6));
+        navBtnBg2.setStroke(dp(1), Color.parseColor("#475569"));
+        btnNextMonth.setBackground(navBtnBg2);
+        btnNextMonth.setLayoutParams(new LinearLayout.LayoutParams(dp(34), dp(36)));
+        navRow.addView(btnNextMonth);
+
+        root.addView(navRow);
+
+        // Populate Year dropdown (minYear .. maxYear)
+        final List<Integer> yearValues = new ArrayList<>();
         final List<String> yearLabels = new ArrayList<>();
-        if (years.size() > 1) {
-            yearKeys.add("ALL");
-            yearLabels.add("全部年份 (" + allEventDates.size() + "节点)");
+        for (int y = finalMinYear; y <= finalMaxYear; y++) {
+            yearValues.add(y);
+            yearLabels.add(y + "年 ▾");
         }
-        for (String y : years) {
-            int cnt = 0;
-            for (String d : allEventDates) {
-                if (d.startsWith(y + "-")) cnt++;
-            }
-            yearKeys.add(y);
-            yearLabels.add(y + " 年 (" + cnt + "节点)");
-        }
-
-        android.widget.Spinner spYear = new android.widget.Spinner(this);
-        LinearLayout.LayoutParams spLp = new LinearLayout.LayoutParams(0, dp(38), 1f);
-        spLp.setMarginEnd(dp(8));
-        spYear.setLayoutParams(spLp);
-        GradientDrawable spBg = new GradientDrawable();
-        spBg.setColor(Color.parseColor("#1E293B"));
-        spBg.setCornerRadius(dp(6));
-        spBg.setStroke(dp(1), Color.parseColor("#475569"));
-        spYear.setBackground(spBg);
         android.widget.ArrayAdapter<String> yearAdapter = new android.widget.ArrayAdapter<String>(
                 this, android.R.layout.simple_spinner_item, yearLabels) {
             @Override
@@ -530,167 +584,307 @@ public class RpgHomeActivity extends AppCompatActivity {
                 TextView tv = (TextView) super.getView(position, convertView, parent);
                 tv.setTextColor(Color.parseColor("#F8FAFC"));
                 tv.setTextSize(13f);
-                tv.setPadding(dp(10), dp(6), dp(10), dp(6));
+                tv.setGravity(Gravity.CENTER);
+                tv.setPadding(dp(6), dp(4), dp(6), dp(4));
                 return tv;
             }
 
             @Override
             public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
                 TextView tv = (TextView) super.getDropDownView(position, convertView, parent);
-                tv.setBackgroundColor(Color.parseColor("#1E293B"));
-                tv.setTextColor(Color.parseColor("#F8FAFC"));
-                tv.setTextSize(13f);
-                tv.setPadding(dp(12), dp(10), dp(12), dp(10));
+                int y = yearValues.get(position);
+                boolean isSel = (y == curYearRef[0]);
+                tv.setBackgroundColor(Color.parseColor(isSel ? "#1E3A5F" : "#1E293B"));
+                tv.setTextColor(Color.parseColor(isSel ? "#86EFAC" : "#F8FAFC"));
+                tv.setText(y + "年" + (isSel ? "  ✓" : ""));
+                tv.setTextSize(13.5f);
+                tv.setPadding(dp(14), dp(10), dp(14), dp(10));
                 return tv;
             }
         };
         spYear.setAdapter(yearAdapter);
-        int initYearPos = Math.max(0, yearKeys.indexOf(curYear));
-        spYear.setSelection(initYearPos);
-        yearRow.addView(spYear);
 
-        final TextView tvMatchCount = makeSubtleText("");
-        tvMatchCount.setTextColor(Color.parseColor("#38BDF8"));
-        yearRow.addView(tvMatchCount);
-        root.addView(yearRow);
+        // Month dropdown labels dynamically mark months that contain OCG events
+        final List<String> monthLabels = new ArrayList<>();
+        for (int m = 1; m <= 12; m++) {
+            monthLabels.add(m + "月 ▾");
+        }
+        final android.widget.ArrayAdapter<String> monthAdapter = new android.widget.ArrayAdapter<String>(
+                this, android.R.layout.simple_spinner_item, monthLabels) {
+            @Override
+            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView tv = (TextView) super.getView(position, convertView, parent);
+                tv.setTextColor(Color.parseColor("#F8FAFC"));
+                tv.setTextSize(13f);
+                tv.setGravity(Gravity.CENTER);
+                tv.setPadding(dp(6), dp(4), dp(6), dp(4));
+                return tv;
+            }
 
-        // Quick 1-tap Month pill bar for the selected year
-        android.widget.HorizontalScrollView monthScroll = new android.widget.HorizontalScrollView(this);
-        monthScroll.setHorizontalScrollBarEnabled(false);
-        LinearLayout.LayoutParams msLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        msLp.bottomMargin = dp(8);
-        monthScroll.setLayoutParams(msLp);
-        final LinearLayout monthRow = new LinearLayout(this);
-        monthRow.setOrientation(LinearLayout.HORIZONTAL);
-        monthScroll.addView(monthRow);
-        root.addView(monthScroll);
+            @Override
+            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView tv = (TextView) super.getDropDownView(position, convertView, parent);
+                int m = position + 1;
+                String ymPrefix = String.format(Locale.US, "%04d-%02d-", curYearRef[0], m);
+                int evCount = 0;
+                for (String d : timelineEventDates) {
+                    if (d.startsWith(ymPrefix)) evCount++;
+                }
+                boolean isSel = (m == curMonthRef[0]);
+                tv.setBackgroundColor(Color.parseColor(isSel ? "#1E3A5F" : "#1E293B"));
+                tv.setTextColor(Color.parseColor(evCount > 0 ? "#86EFAC" : "#94A3B8"));
+                tv.setText(m + "月" + (evCount > 0 ? ("  ●(" + evCount + ")") : "  (无事件)") + (isSel ? "  ✓" : ""));
+                tv.setTextSize(13f);
+                tv.setPadding(dp(14), dp(10), dp(14), dp(10));
+                return tv;
+            }
+        };
+        spMonth.setAdapter(monthAdapter);
 
-        // Scrollable filtered event-date list
-        android.widget.ScrollView listScroll = new android.widget.ScrollView(this);
-        int maxListH = Math.round(getResources().getDisplayMetrics().heightPixels * 0.48f);
-        listScroll.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, maxListH));
-        final LinearLayout listContainer = new LinearLayout(this);
-        listContainer.setOrientation(LinearLayout.VERTICAL);
-        listScroll.addView(listContainer);
-        root.addView(listScroll);
+        // ==================== WEEKDAY HEADER: 一 二 三 四 五 六 日 ====================
+        String[] weekHeaders = {"一", "二", "三", "四", "五", "六", "日"};
+        LinearLayout weekRow = new LinearLayout(this);
+        weekRow.setOrientation(LinearLayout.HORIZONTAL);
+        weekRow.setPadding(0, dp(2), 0, dp(6));
+        for (String wh : weekHeaders) {
+            TextView tv = new TextView(this);
+            tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            tv.setGravity(Gravity.CENTER);
+            tv.setText(wh);
+            tv.setTextColor(Color.parseColor("#94A3B8"));
+            tv.setTextSize(12f);
+            weekRow.addView(tv);
+        }
+        root.addView(weekRow);
+
+        // ==================== CALENDAR MONTH GRID ====================
+        final LinearLayout gridContainer = new LinearLayout(this);
+        gridContainer.setOrientation(LinearLayout.VERTICAL);
+        root.addView(gridContainer);
+
+        // ==================== LEGEND & MONTH EVENTS PREVIEW ====================
+        TextView tvLegend = makeSubtleText("🟢 浅绿圆：有 OCG 事件（可点击）   🟠 金框：当前时间点   ⚪ 灰字：无事件");
+        tvLegend.setPadding(dp(2), dp(8), dp(2), dp(4));
+        tvLegend.setTextSize(11f);
+        tvLegend.setTextColor(Color.parseColor("#94A3B8"));
+        root.addView(tvLegend);
+
+        final TextView tvMonthSummary = makeSubtleText("");
+        tvMonthSummary.setPadding(dp(8), dp(6), dp(8), dp(6));
+        tvMonthSummary.setTextSize(11.5f);
+        GradientDrawable sumBg = new GradientDrawable();
+        sumBg.setColor(Color.parseColor("#1E293B"));
+        sumBg.setCornerRadius(dp(6));
+        tvMonthSummary.setBackground(sumBg);
+        root.addView(tvMonthSummary);
 
         final AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("📅 选择 OCG 历史事件时间点")
-                .setView(root)
+                .setTitle("📅 移动 OCG 时间点")
+                .setView(outerScroll)
                 .setNegativeButton("关闭", null)
                 .create();
 
-        final Runnable[] renderEventListRef = new Runnable[1];
-        final Runnable renderMonthChips = () -> {
-            monthRow.removeAllViews();
-            if ("ALL".equals(selectedYear[0])) {
-                selectedMonth[0] = "ALL";
-                monthScroll.setVisibility(View.GONE);
-                return;
+        final Runnable[] renderCalendarRef = new Runnable[1];
+        renderCalendarRef[0] = () -> {
+            int year = curYearRef[0];
+            int month = curMonthRef[0]; // 1..12
+
+            updatingSpinners[0] = true;
+            int yPos = yearValues.indexOf(year);
+            if (yPos >= 0 && spYear.getSelectedItemPosition() != yPos) {
+                spYear.setSelection(yPos);
             }
-            monthScroll.setVisibility(View.VISIBLE);
-            List<String> months = TimelineEngine.getEventMonthsForYear(allEventDates, selectedYear[0]);
-            if (!"ALL".equals(selectedMonth[0]) && !months.contains(selectedMonth[0])) {
-                selectedMonth[0] = "ALL";
+            if (spMonth.getSelectedItemPosition() != month - 1) {
+                spMonth.setSelection(month - 1);
             }
-            List<String> keys = new ArrayList<>();
-            keys.add("ALL");
-            keys.addAll(months);
-            for (final String mKey : keys) {
-                Button mb = new Button(this);
-                boolean active = mKey.equals(selectedMonth[0]);
-                String mLabel = "ALL".equals(mKey) ? "全部月份" : (Integer.parseInt(mKey) + "月");
-                mb.setText(mLabel);
-                mb.setTextSize(11.5f);
-                mb.setAllCaps(false);
-                mb.setTextColor(Color.WHITE);
-                mb.setMinWidth(0);
-                mb.setMinHeight(0);
-                mb.setPadding(dp(10), 0, dp(10), 0);
-                GradientDrawable bg = new GradientDrawable();
-                bg.setColor(Color.parseColor(active ? "#0284C7" : "#1E293B"));
-                bg.setCornerRadius(dp(6));
-                mb.setBackground(bg);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT, dp(30));
-                lp.setMarginEnd(dp(6));
-                mb.setLayoutParams(lp);
-                mb.setOnClickListener(v -> {
-                    selectedMonth[0] = mKey;
-                    if (renderEventListRef[0] != null) renderEventListRef[0].run();
-                });
-                monthRow.addView(mb);
+            updatingSpinners[0] = false;
+
+            boolean canPrev = (year > finalMinYear) || (month > 1);
+            boolean canNext = (year < finalMaxYear) || (month < 12);
+            btnPrevMonth.setEnabled(canPrev);
+            btnPrevMonth.setAlpha(canPrev ? 1.0f : 0.35f);
+            btnNextMonth.setEnabled(canNext);
+            btnNextMonth.setAlpha(canNext ? 1.0f : 0.35f);
+
+            gridContainer.removeAllViews();
+
+            Calendar cal = Calendar.getInstance(Locale.US);
+            cal.set(Calendar.DAY_OF_MONTH, 1);
+            cal.set(Calendar.YEAR, year);
+            cal.set(Calendar.MONTH, month - 1);
+            int daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
+            int dow = cal.get(Calendar.DAY_OF_WEEK); // SUNDAY=1 .. SATURDAY=7
+            int leading = (dow + 5) % 7; // Monday-first offset: Mon=0 .. Sun=6
+
+            Calendar prevCal = (Calendar) cal.clone();
+            prevCal.add(Calendar.MONTH, -1);
+            int prevMonthDays = prevCal.getActualMaximum(Calendar.DAY_OF_MONTH);
+
+            int totalCells = ((leading + daysInMonth + 6) / 7) * 7;
+            int rows = totalCells / 7;
+            int cellSize = dp(34);
+
+            List<String> monthEvents = new ArrayList<>();
+
+            for (int r = 0; r < rows; r++) {
+                LinearLayout rowLayout = new LinearLayout(this);
+                rowLayout.setOrientation(LinearLayout.HORIZONTAL);
+                rowLayout.setPadding(0, dp(3), 0, dp(3));
+
+                for (int c = 0; c < 7; c++) {
+                    int cellIdx = r * 7 + c;
+                    int dayNum = cellIdx - leading + 1;
+
+                    LinearLayout cellBox = new LinearLayout(this);
+                    cellBox.setOrientation(LinearLayout.VERTICAL);
+                    cellBox.setGravity(Gravity.CENTER);
+                    cellBox.setLayoutParams(new LinearLayout.LayoutParams(
+                            0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+                    TextView dayTv = new TextView(this);
+                    dayTv.setGravity(Gravity.CENTER);
+                    dayTv.setLayoutParams(new LinearLayout.LayoutParams(cellSize, cellSize));
+                    dayTv.setTextSize(13f);
+
+                    if (dayNum < 1) {
+                        // Overflow day from previous month
+                        dayTv.setText(String.valueOf(prevMonthDays + dayNum));
+                        dayTv.setTextColor(Color.parseColor("#334155"));
+                        cellBox.addView(dayTv);
+                    } else if (dayNum > daysInMonth) {
+                        // Overflow day from next month
+                        dayTv.setText(String.valueOf(dayNum - daysInMonth));
+                        dayTv.setTextColor(Color.parseColor("#334155"));
+                        cellBox.addView(dayTv);
+                    } else {
+                        final String dateStr = String.format(Locale.US, "%04d-%02d-%02d", year, month, dayNum);
+                        boolean hasEvent = eventDateSet.contains(dateStr);
+                        boolean isCurrent = dateStr.equals(profile.currentTimelineDate);
+
+                        dayTv.setText(String.valueOf(dayNum));
+                        if (hasEvent) {
+                            monthEvents.add(dateStr);
+                            GradientDrawable circle = new GradientDrawable();
+                            circle.setShape(GradientDrawable.OVAL);
+                            if (isCurrent) {
+                                // Current active date: bright light-green fill + amber gold ring
+                                circle.setColor(Color.parseColor("#86EFAC"));
+                                circle.setStroke(dp(2), Color.parseColor("#F59E0B"));
+                                dayTv.setTextColor(Color.parseColor("#052E16"));
+                            } else {
+                                // Event date: light-green circle
+                                circle.setColor(Color.parseColor("#BBF7D0"));
+                                circle.setStroke(dp(1), Color.parseColor("#22C55E"));
+                                dayTv.setTextColor(Color.parseColor("#052E16"));
+                            }
+                            dayTv.setTypeface(null, android.graphics.Typeface.BOLD);
+                            dayTv.setBackground(circle);
+                            cellBox.setClickable(true);
+                            cellBox.setFocusable(true);
+                            cellBox.setOnClickListener(v -> {
+                                dialog.dismiss();
+                                selectTimelineDate(dateStr);
+                            });
+                        } else if (isCurrent) {
+                            // Legacy non-event saved date: faint amber outline only, non-clickable
+                            GradientDrawable ring = new GradientDrawable();
+                            ring.setShape(GradientDrawable.OVAL);
+                            ring.setColor(Color.TRANSPARENT);
+                            ring.setStroke(dp(1), Color.parseColor("#F59E0B"));
+                            dayTv.setBackground(ring);
+                            dayTv.setTextColor(Color.parseColor("#FDE68A"));
+                        } else {
+                            // Non-event date: muted gray, strictly non-clickable
+                            dayTv.setTextColor(Color.parseColor("#64748B"));
+                        }
+
+                        cellBox.addView(dayTv);
+
+                        // Subtle indicator dot under current date (like reference screenshot)
+                        View dot = new View(this);
+                        LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(dp(4), dp(4));
+                        dotLp.topMargin = dp(2);
+                        dot.setLayoutParams(dotLp);
+                        if (isCurrent) {
+                            GradientDrawable dotBg = new GradientDrawable();
+                            dotBg.setShape(GradientDrawable.OVAL);
+                            dotBg.setColor(Color.parseColor("#F59E0B"));
+                            dot.setBackground(dotBg);
+                            dot.setVisibility(View.VISIBLE);
+                        } else {
+                            dot.setVisibility(View.INVISIBLE);
+                        }
+                        cellBox.addView(dot);
+                    }
+                    rowLayout.addView(cellBox);
+                }
+                gridContainer.addView(rowLayout);
+            }
+
+            if (monthEvents.isEmpty()) {
+                tvMonthSummary.setText(year + "年" + month + "月无 OCG 历史事件，请通过上方下拉菜单切换至带绿点 ● 的月份。");
+                tvMonthSummary.setTextColor(Color.parseColor("#94A3B8"));
+            } else {
+                StringBuilder sb = new StringBuilder();
+                sb.append(year).append("年").append(month).append("月事件（").append(monthEvents.size()).append("日）：");
+                for (int i = 0; i < monthEvents.size(); i++) {
+                    String ed = monthEvents.get(i);
+                    TimelineEngine.TimelineDigest d = TimelineEngine.buildDigestAtDate(catalog, allOpponents, ed);
+                    String raw = d.buildShortSummary();
+                    String pfx = "📰 " + ed + "：";
+                    String clean = raw.startsWith(pfx) ? raw.substring(pfx.length()) : raw;
+                    sb.append("\n• ").append(ed.substring(5)).append("：").append(clean);
+                }
+                tvMonthSummary.setText(sb.toString());
+                tvMonthSummary.setTextColor(Color.parseColor("#BBF7D0"));
             }
         };
 
-        renderEventListRef[0] = () -> {
-            renderMonthChips.run();
-            listContainer.removeAllViews();
-            List<String> filtered = new ArrayList<>();
-            for (String d : allEventDates) {
-                if (!"ALL".equals(selectedYear[0]) && !d.startsWith(selectedYear[0] + "-")) continue;
-                if (!"ALL".equals(selectedMonth[0]) && !d.startsWith(selectedYear[0] + "-" + selectedMonth[0] + "-")) continue;
-                filtered.add(d);
+        btnPrevMonth.setOnClickListener(v -> {
+            if (curMonthRef[0] > 1) {
+                curMonthRef[0]--;
+            } else if (curYearRef[0] > finalMinYear) {
+                curYearRef[0]--;
+                curMonthRef[0] = 12;
             }
-            tvMatchCount.setText("共 " + filtered.size() + " 项");
+            renderCalendarRef[0].run();
+        });
 
-            for (final String date : filtered) {
-                boolean isCur = date.equals(profile.currentTimelineDate);
-                TimelineEngine.TimelineDigest digest = TimelineEngine.buildDigestAtDate(catalog, allOpponents, date);
-                String rawSummary = digest.buildShortSummary();
-                String prefix = "📰 " + date + "：";
-                String cleanSummary = rawSummary.startsWith(prefix)
-                        ? rawSummary.substring(prefix.length()) : rawSummary;
-
-                LinearLayout rowCard = new LinearLayout(this);
-                rowCard.setOrientation(LinearLayout.VERTICAL);
-                GradientDrawable cbg = new GradientDrawable();
-                cbg.setColor(Color.parseColor(isCur ? "#1E3A5F" : "#1E293B"));
-                cbg.setCornerRadius(dp(8));
-                cbg.setStroke(dp(isCur ? 2 : 1), Color.parseColor(isCur ? "#F59E0B" : "#334155"));
-                rowCard.setBackground(cbg);
-                rowCard.setPadding(dp(10), dp(8), dp(10), dp(8));
-                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                rlp.bottomMargin = dp(6);
-                rowCard.setLayoutParams(rlp);
-
-                TextView tvDate = makeTitleText((isCur ? "▶ [当前] " : "📅 ") + date);
-                tvDate.setTextSize(13.5f);
-                tvDate.setTextColor(Color.parseColor(isCur ? "#FBBF24" : "#F8FAFC"));
-                rowCard.addView(tvDate);
-
-                TextView tvDesc = makeSubtleText(cleanSummary);
-                tvDesc.setTextColor(Color.parseColor(isCur ? "#FDE68A" : "#CBD5E1"));
-                rowCard.addView(tvDesc);
-
-                rowCard.setOnClickListener(v -> {
-                    dialog.dismiss();
-                    selectTimelineDate(date);
-                });
-                listContainer.addView(rowCard);
+        btnNextMonth.setOnClickListener(v -> {
+            if (curMonthRef[0] < 12) {
+                curMonthRef[0]++;
+            } else if (curYearRef[0] < finalMaxYear) {
+                curYearRef[0]++;
+                curMonthRef[0] = 1;
             }
-            listScroll.scrollTo(0, 0);
-        };
+            renderCalendarRef[0].run();
+        });
 
         spYear.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                String yk = yearKeys.get(position);
-                if (!yk.equals(selectedYear[0])) {
-                    selectedYear[0] = yk;
-                    selectedMonth[0] = "ALL";
-                }
-                renderEventListRef[0].run();
+                if (updatingSpinners[0]) return;
+                curYearRef[0] = yearValues.get(position);
+                renderCalendarRef[0].run();
             }
 
             @Override
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
 
-        renderEventListRef[0].run();
+        spMonth.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                if (updatingSpinners[0]) return;
+                curMonthRef[0] = position + 1;
+                renderCalendarRef[0].run();
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+
+        renderCalendarRef[0].run();
         dialog.show();
     }
 
