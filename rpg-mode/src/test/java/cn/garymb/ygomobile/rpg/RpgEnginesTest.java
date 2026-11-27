@@ -438,6 +438,9 @@ public class RpgEnginesTest {
                 cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple ca =
                         cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(a.id, milestone);
                 assertNotNull("Missing calibrated Elo for " + a.id + " @ " + milestone, ca);
+                int winA = a.getWinRewardTokens(milestone);
+                assertTrue("Win bounty must stay within [120, 300] at " + milestone + " for " + a.id + " (got " + winA + ")",
+                        winA >= 120 && winA <= 300);
                 for (int j = 0; j < avail.size(); j++) {
                     AiOpponent b = avail.get(j);
                     cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple cb =
@@ -445,9 +448,9 @@ public class RpgEnginesTest {
                     assertNotNull(cb);
                     if (ca.benchmarkElo > cb.benchmarkElo) {
                         assertTrue("Reward must be monotonic with Elo at " + milestone + ": "
-                                        + a.id + "(" + ca.benchmarkElo + "->" + a.getWinRewardTokens(milestone) + ") vs "
+                                        + a.id + "(" + ca.benchmarkElo + "->" + winA + ") vs "
                                         + b.id + "(" + cb.benchmarkElo + "->" + b.getWinRewardTokens(milestone) + ")",
-                                a.getWinRewardTokens(milestone) >= b.getWinRewardTokens(milestone));
+                                winA >= b.getWinRewardTokens(milestone));
                     }
                 }
             }

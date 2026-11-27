@@ -181,10 +181,36 @@
    - **自动化守卫**：`RpgEnginesTest#allAiAndCanonDecksHaveZeroUnsummonableNomiOrDeadDependencyFillers` 对全部里程碑日期的所有 AI 与原著对决补位卡做全量扫描，任何违规都会在单测直接失败。
 3. **【强制】全环境 AI 天梯（瑞士轮 + Bradley-Terry Elo `±SE`）与实测奖金校准（`EraBountyCalibrator`）**
    - `RoundRobinLeagueEngine` 提供 $O(N \log N)$ **瑞士轮天梯**（默认每组 **6 局 = 3 先 3 后**，消除先后手偏差；同日期固定 AI 卡组种子；全局贝叶斯 Bradley-Terry MLE 解算 Elo、对手均分 SOS 与 Fisher 信息量标准误差 `±SE`；支持随时增量追加轮次）以及全量循环赛。
-   - **实测驱动奖金校准**：AI 对战奖金不再靠主观估算——每当扩展新年代、增补 AI 卡组或大幅迭代 AI 策略后，用同源 `ocgcore` 引擎跑一次各里程碑节点的高精度循环赛，将实测 Elo 写入 `EraBountyCalibrator`（按年代区间线性映射并单调递增），确保同一时间点内**AI 实测越强奖金越高**，且 `RpgEnginesTest` 强制校验全里程碑 Elo-奖金严格单调。
+   - **实测驱动奖金校准与经济区间约束**：AI 对战奖金不再靠主观估算——每当扩展新年代、增补 AI 卡组或大幅迭代 AI 策略后，用同源 `ocgcore` 引擎跑一次各里程碑节点的高精度循环赛，将实测 Elo 写入 `EraBountyCalibrator`，**单场胜利奖金严格控制在 `120 ~ 300` 代币之间**（前期如 `120~220`，随年代平滑递增至年末 `120~300`，以 5 代币为步长，平局约 `43%`、败北约 `25%`），确保同一时间点内**AI 实测越强奖金越高**，且 `RpgEnginesTest` 强制校验全里程碑 Elo-奖金严格单调与 `[120, 300]` 区间边界。
 4. **产品体验与打包约束**
    - 组卡页不提供劣质「智能一键组卡」，坚持玩家自主构筑 + 卡组管理/导入导出 + 严格时间轴/拥有数/禁限表校验。
    - RPG 独立共存包名固定为 `cn.garymb.ygomobile.CN.rpg`，并持续沿用同一 Release 签名（SHA-256 `81:CC:69:4D:93:A2:47:98:A5:89:BF:D1:40:F0:9F:0C:EB:18:2E:47:FD:4A:93:9B:BE:32:86:59:14:29:C9:7C`），保证每次更新可直接覆盖安装且存档无损。
+
+---
+
+## 11. 添加或升级 AI 对手与卡组的完整标准流程（SOP）
+
+无论是扩展新年份（2000+），还是在既有年代新增/修改一套 AI 卡组，均按以下 **8 步闭环流程** 执行，缺一不可：
+
+1. **步骤 1 · 环境史考据与流派定位**
+   - 查阅 `yugioh-history.com` 对应时期环境年表，明确该 AI 对手的定位（入门/休闲/中坚/主流竞技/特色自闭等）、首次解锁日期 `unlockDate` 及随发售节点演变的多套 `EraDeckProfile`。
+2. **步骤 2 · 制定核心卡组配方与头像生成**
+   - 在 `AiDeckGenerator.java` 中编写各阶段的 `coreMain` / `coreExtra` 与 `fillStyle`，确保每张卡满足 `发售日 <= effectiveDate`、严守当期 OCG 禁限表且配齐核心联动件（例如带 `死毒` 必配 ≥6 张暗属性 ≤1000 祭品、带装备必配充足合规目标怪、带融合必配额外怪与融合手段）。
+   - 为新增 AI 对手生成 1:1 游戏王动画风格头像并保存至 `rpg-mode/src/main/assets/rpg/avatars/<opponent_id>.webp`（`256×256` WebP）。
+3. **步骤 3 · 登记单卡知识与制定专属 AI 策略**
+   - 在 `RpgAiCardKnowledge.java` 中补齐新卡角色、装备兼容表、检索/苏生/回收/康牌优先级；
+   - 在 `RpgAiStrategy.java` 中注册新 `fillStyle`（`SUPPORTED_STYLES`、`getStyleDisplayName`、`inferStyleFromDeck`），实现先后手偏好、主阶出牌序、资源保留（如单表侧怪优先地割保雷击、单后场优先魔除/陷除保羽毛扫、不炸自己优势盘面）、盖牌/献祭/连锁/弃牌逻辑，并在 `RpgAiStrategyTest.java` 补充战术单测。
+4. **步骤 4 · 核查历史原版效果（Pre-Errata Lua）**
+   - 对照 `yugioh-wiki.net` 勘误总表与 `mobile/assets/data/scripts.zip`，确认该卡组用到的关键卡在当前时间线是否尚未被现代 Errata 削弱；若 `scripts.zip` 为现代改版，在 `RpgHistoricalLuaBuilder.java` 补充按日期生效的原版 Lua 覆盖并写单测。
+5. **步骤 5 · 全年代卡组合理性与「零废牌」检查**
+   - 检查新卡组是否引入新的特召限定 Nomi 怪、仪式魔法、融合依赖卡、指定卡名联动卡或种族/属性装备魔法，同步更新 `AiDeckGenerator.isUnsafeFillerCard` 守卫规则；
+   - 运行 `RpgEnginesTest#allAiAndCanonDecksHaveZeroUnsummonableNomiOrDeadDependencyFillers`，确认全部里程碑日期下生成出的 40 张实装卡组（核心+补位）**零不可召唤怪、零死卡、零禁限表/时间轴越界**。
+6. **步骤 6 · 跑真实 `ocgcore` 全环境天梯基准**
+   - 使用与 App 同源的 `ocgcore` + `RpgAiStrategy` + `RpgHistoricalLuaBuilder`（主机侧或 App 内瑞士轮/全量循环赛），在受影响的每个里程碑日期跑均衡先后手对局（建议每对 10~16 局，压低误差 `±SE`），产出每位 AI 的实测 Bradley-Terry Elo 与胜率。
+7. **步骤 7 · 按实测 Elo 校准奖金（`120 ~ 300` 代币区间）**
+   - 将最新实测 Elo 快照写入 `EraBountyCalibrator.java`，按年代阶梯（如 `120~220` 递进至 `120~300`，单场胜场奖金严格限定在 **`120 ~ 300`** 代币内，步长 5，平局 43%，败北 25%）自动映射并保证同时间点内 **Elo 越高奖金越高**。
+8. **步骤 8 · 全量自动化守卫验收与打包发布**
+   - 运行 `./gradlew :rpg-mode:testDebugUnitTest :mobile:assembleCnRelease`，确认全部战术单测、零废牌审计、17 年代 Elo-奖金单调与 `[120, 300]` 边界校验、头像守卫 100% 通过，核验 Release 签名 SHA-256 无误后推送并更新安装包。
 
 
 

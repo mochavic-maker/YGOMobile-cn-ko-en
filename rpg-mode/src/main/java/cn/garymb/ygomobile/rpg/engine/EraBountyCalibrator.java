@@ -16,6 +16,9 @@ import java.util.Map;
  * older decks get power-crept or counter-meta decks surge.
  */
 public final class EraBountyCalibrator {
+    public static final int MIN_WIN_BOUNTY = 120;
+    public static final int MAX_WIN_BOUNTY = 300;
+
     private EraBountyCalibrator() {}
 
     public static final class RewardTriple {
@@ -62,8 +65,8 @@ public final class EraBountyCalibrator {
 
         EraSnapshot(String effectiveDate, int floorWin, int ceilingWin, Map<String, Entry> ratings) {
             this.effectiveDate = effectiveDate;
-            this.floorWin = floorWin;
-            this.ceilingWin = ceilingWin;
+            this.floorWin = Math.max(MIN_WIN_BOUNTY, floorWin);
+            this.ceilingWin = Math.min(MAX_WIN_BOUNTY, ceilingWin);
             this.ratings = Collections.unmodifiableMap(ratings);
             int min = Integer.MAX_VALUE;
             int max = Integer.MIN_VALUE;
@@ -71,7 +74,7 @@ public final class EraBountyCalibrator {
                 if (e.elo < min) min = e.elo;
                 if (e.elo > max) max = e.elo;
             }
-            // Clamp extreme 0-win outliers (e.g. Elo 608) to 950 so the rest of the field spreads cleanly
+            // Clamp extreme 0-win outliers (e.g. Elo 548) to 950 so the rest of the field spreads cleanly
             this.effMinElo = Math.max(950, min == Integer.MAX_VALUE ? 1000 : min);
             this.effMaxElo = Math.max(this.effMinElo + 250, max == Integer.MIN_VALUE ? 1800 : max);
         }
@@ -82,7 +85,8 @@ public final class EraBountyCalibrator {
             double t = (e.elo - effMinElo) / (double) (effMaxElo - effMinElo);
             if (t < 0.0) t = 0.0;
             if (t > 1.0) t = 1.0;
-            int win = roundTo10(floorWin + t * (ceilingWin - floorWin));
+            int win = roundTo5(floorWin + t * (ceilingWin - floorWin));
+            win = Math.max(MIN_WIN_BOUNTY, Math.min(MAX_WIN_BOUNTY, win));
             int draw = roundTo5(win * 0.43);
             int loss = roundTo5(win * 0.25);
             return new RewardTriple(win, draw, loss, e.elo, e.winRate);
@@ -106,7 +110,7 @@ public final class EraBountyCalibrator {
         List<EraSnapshot> list = new ArrayList<>();
 
         // 1999-02-04: Vol.1 Official Rule (N=4, 16 gpp, 96 games)
-        list.add(new EraSnapshot("1999-02-04", 140, 380, era(
+        list.add(new EraSnapshot("1999-02-04", 120, 220, era(
                 "ai_vol1_yugi", 1799, 83.3,
                 "ai_burn_mage", 1781, 81.3,
                 "ai_street_novice", 1278, 25.0,
@@ -114,7 +118,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-03-01: Booster 1 + Weekend Challenger (N=5, 16 gpp, 160 games)
-        list.add(new EraSnapshot("1999-03-01", 140, 400, era(
+        list.add(new EraSnapshot("1999-03-01", 120, 225, era(
                 "ai_burn_mage", 1840, 87.5,
                 "ai_vol1_yugi", 1790, 82.8,
                 "ai_weekend_challenger", 1328, 31.3,
@@ -123,7 +127,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-03-18: Starter Box + Kaiba No-Tribute Blue-Eyes Dark Age (N=6, 16 gpp, 240 games)
-        list.add(new EraSnapshot("1999-03-18", 140, 500, era(
+        list.add(new EraSnapshot("1999-03-18", 120, 240, era(
                 "ai_starter_kaiba", 1993, 95.0,
                 "ai_vol1_yugi", 1744, 76.3,
                 "ai_burn_mage", 1572, 60.0,
@@ -133,7 +137,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-03-27: Vol.2 (N=6, 16 gpp, 240 games)
-        list.add(new EraSnapshot("1999-03-27", 140, 500, era(
+        list.add(new EraSnapshot("1999-03-27", 120, 245, era(
                 "ai_starter_kaiba", 2164, 97.5,
                 "ai_vol1_yugi", 1813, 75.0,
                 "ai_burn_mage", 1715, 67.5,
@@ -143,7 +147,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-05-05: Expert Rule (Tribute Summon introduced) (N=6, 16 gpp, 240 games)
-        list.add(new EraSnapshot("1999-05-05", 140, 500, era(
+        list.add(new EraSnapshot("1999-05-05", 120, 245, era(
                 "ai_vol1_yugi", 1987, 91.3,
                 "ai_starter_kaiba", 1932, 87.5,
                 "ai_burn_mage", 1466, 51.3,
@@ -153,7 +157,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-05-25: Booster 2 + Equip Beat debut (N=7, 12 gpp, 252 games)
-        list.add(new EraSnapshot("1999-05-25", 140, 520, era(
+        list.add(new EraSnapshot("1999-05-25", 120, 255, era(
                 "ai_equip_beat", 1946, 88.9,
                 "ai_starter_kaiba", 1909, 86.1,
                 "ai_vol1_yugi", 1682, 66.7,
@@ -164,7 +168,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-05-27: Vol.3 + Flip Control debut (N=8, 12 gpp, 336 games)
-        list.add(new EraSnapshot("1999-05-27", 140, 540, era(
+        list.add(new EraSnapshot("1999-05-27", 120, 260, era(
                 "ai_flip_control", 2028, 90.5,
                 "ai_equip_beat", 1872, 78.6,
                 "ai_starter_kaiba", 1829, 75.0,
@@ -176,7 +180,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-07-08: DM2 + Crush Card Virus debut (pre-errata 3-turn draw check) (N=9, 12 gpp, 432 games)
-        list.add(new EraSnapshot("1999-07-08", 140, 540, era(
+        list.add(new EraSnapshot("1999-07-08", 120, 260, era(
                 "ai_flip_control", 2116, 96.9,
                 "ai_equip_beat", 1779, 76.0,
                 "ai_starter_kaiba", 1676, 66.7,
@@ -189,7 +193,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-07-22: Vol.4 Summoned Skull / MoF / Mask of Darkness (N=9, 12 gpp, 432 games)
-        list.add(new EraSnapshot("1999-07-22", 140, 580, era(
+        list.add(new EraSnapshot("1999-07-22", 120, 270, era(
                 "ai_flip_control", 2049, 93.8,
                 "ai_virus_control", 1789, 75.0,
                 "ai_vol1_yugi", 1766, 72.9,
@@ -202,7 +206,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-08-26: Tokyo Dome 1st Banlist + Good Stuff + PP1 Exodia (N=11, 10 gpp, 550 games)
-        list.add(new EraSnapshot("1999-08-26", 140, 660, era(
+        list.add(new EraSnapshot("1999-08-26", 120, 285, era(
                 "ai_tokyo_dome", 2028, 93.0,
                 "ai_starter_kaiba", 1849, 81.0,
                 "ai_exodia_master", 1704, 68.0,
@@ -217,7 +221,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-09-23: Vol.5 Change of Heart / Three Gods (N=11, 10 gpp, 550 games)
-        list.add(new EraSnapshot("1999-09-23", 140, 660, era(
+        list.add(new EraSnapshot("1999-09-23", 120, 285, era(
                 "ai_tokyo_dome", 1885, 87.0,
                 "ai_starter_kaiba", 1730, 73.0,
                 "ai_flip_control", 1711, 71.0,
@@ -232,7 +236,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-10-17: Booster 5 Morphing Jar / Needle Worm Mill (N=12, 10 gpp, 660 games)
-        list.add(new EraSnapshot("1999-10-17", 140, 680, era(
+        list.add(new EraSnapshot("1999-10-17", 120, 290, era(
                 "ai_tokyo_dome", 1889, 85.5,
                 "ai_flip_control", 1813, 79.1,
                 "ai_mill_morphing", 1745, 72.7,
@@ -248,7 +252,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-11-18: Vol.6 Pre-Errata Sangan/Witch + Solemn Judgment + Cannon Soldier (N=12, 10 gpp, 660 games)
-        list.add(new EraSnapshot("1999-11-18", 140, 720, era(
+        list.add(new EraSnapshot("1999-11-18", 120, 300, era(
                 "ai_exodia_master", 1889, 82.7,
                 "ai_tokyo_dome", 1889, 82.7,
                 "ai_starter_kaiba", 1755, 70.0,
@@ -264,7 +268,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-12-01: Booster 6 Penguin Soldier + Fusion/Cyber-Stein (N=13, 10 gpp, 780 games)
-        list.add(new EraSnapshot("1999-12-01", 140, 720, era(
+        list.add(new EraSnapshot("1999-12-01", 120, 300, era(
                 "ai_flip_control", 1782, 79.2,
                 "ai_exodia_master", 1757, 76.7,
                 "ai_tokyo_dome", 1717, 72.5,
@@ -281,7 +285,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-12-09: PS Promo Metalmorph Equip Beat upgrade (N=13, 10 gpp, 780 games)
-        list.add(new EraSnapshot("1999-12-09", 140, 720, era(
+        list.add(new EraSnapshot("1999-12-09", 120, 300, era(
                 "ai_tokyo_dome", 1695, 70.8,
                 "ai_exodia_master", 1695, 70.8,
                 "ai_flip_control", 1688, 70.0,
@@ -298,7 +302,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-12-16: EX Starter Set (Yugi/Kaiba EX + Last Will + Anti-Exodia Morphing Jar) (N=13, 10 gpp, 780 games)
-        list.add(new EraSnapshot("1999-12-16", 140, 740, era(
+        list.add(new EraSnapshot("1999-12-16", 120, 300, era(
                 "ai_starter_kaiba", 1706, 73.3,
                 "ai_vol1_yugi", 1685, 70.8,
                 "ai_tokyo_dome", 1678, 70.0,
@@ -315,7 +319,7 @@ public final class EraBountyCalibrator {
         )));
 
         // 1999-12-20: Sangan/Witch 1st Errata (field-to-GY only) (N=13, 10 gpp, 780 games)
-        list.add(new EraSnapshot("1999-12-20", 140, 740, era(
+        list.add(new EraSnapshot("1999-12-20", 120, 300, era(
                 "ai_flip_control", 1824, 85.0,
                 "ai_tokyo_dome", 1642, 65.8,
                 "ai_vol1_yugi", 1642, 65.8,
@@ -359,10 +363,6 @@ public final class EraBountyCalibrator {
             dates.add(snap.effectiveDate);
         }
         return dates;
-    }
-
-    private static int roundTo10(double value) {
-        return (int) (Math.round(value / 10.0) * 10L);
     }
 
     private static int roundTo5(double value) {
