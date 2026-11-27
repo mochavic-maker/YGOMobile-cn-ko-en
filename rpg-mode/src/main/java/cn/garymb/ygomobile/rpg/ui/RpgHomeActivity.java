@@ -3359,7 +3359,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         leagueCard.addView(leagueTitle);
         leagueCard.addView(makeSubtleText(String.format(Locale.US,
                 "现环境（%s）已解锁 %d 位 AI%s → 共 %d 名选手。\n"
-                        + "• 瑞士轮天梯（推荐）：按实时积分撮合强强对话，%d 轮×每组 %d 局（3先3后消除先后手偏差，共 %d 局），用 Bradley-Terry 全局最大似然模型解算 Elo 积分、误差 ±SE 与 S~D 评级，后期流派再多也极快且支持随时追加轮次！\n"
+                        + "• 瑞士轮天梯（推荐）：全局最小权完美匹配撮合对手，%d 轮×每组 %d 局（1先1后消除先后手偏差，共 %d 局），广覆盖交手+相近名次加赛，用 Bradley-Terry 全局最大似然模型解算 Elo、误差 ±SE 与动态 S~D 评级！\n"
                         + "• 全量循环赛：所有选手两两打满 %d 局（%d 组 / %d 局），同步产出胜场榜与 Elo 积分。",
                 profile.currentTimelineDate,
                 unlockedOpps.size(),
@@ -3651,9 +3651,10 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
         });
         if (res.isSwissMode() && res.timelineDate.equals(profile.currentTimelineDate)) {
-            int addGames = 2 * (res.standings.size() / 2) * RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR;
-            Button moreSwissBtn = makeActionButton("➕ 追加2轮 (+" + addGames + "局)", "#059669");
-            moreSwissBtn.setOnClickListener(v -> appendExtraSwissRounds(res, 2));
+            int addRounds = RoundRobinLeagueEngine.DEFAULT_SWISS_APPEND_ROUNDS;
+            int addGames = addRounds * (res.standings.size() / 2) * RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR;
+            Button moreSwissBtn = makeActionButton("➕ 追加" + addRounds + "轮 (+" + addGames + "局)", "#059669");
+            moreSwissBtn.setOnClickListener(v -> appendExtraSwissRounds(res, addRounds));
             card.addView(makeEqualWeightButtonRow(10, moreSwissBtn, copyBtn));
         } else {
             Button rerunBtn = makeActionButton("🔄 再赛一轮", "#059669");

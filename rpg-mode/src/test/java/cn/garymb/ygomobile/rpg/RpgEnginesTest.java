@@ -1174,14 +1174,37 @@ public class RpgEnginesTest {
 
     @Test
     public void swissLadderAndBradleyTerryEloScaleAndRespectOpponentStrength() {
-        // 1) Scaling verification: O(N log N) Swiss rounds vs O(N^2) Round-Robin
-        assertEquals(6, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(10));
-        assertEquals(6, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(14));
-        assertEquals(7, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(30));
+        // 1) Scaling verification: O(N log N) Swiss rounds at 2 games/pair (1 first + 1 second)
+        assertEquals(2, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR);
+        assertEquals(4, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_APPEND_ROUNDS);
+        assertEquals(18, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(10));
+        assertEquals(18, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(14));
+        assertEquals(21, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(30));
 
-        // 2) Full 1999-12-31 field (13 AIs + player = 14 contestants): Swiss 6 rounds * 7 pairs * 6 games = 252 games
-        //    (3 first + 3 second per pairing, 2x previous 3-game setting, zero first-turn bias)
-        assertEquals(6, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR);
+        // 1b) Global Minimum-Weight Matching beats top-down greedy (never strands tail pairs in forced rematches)
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant pA =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("pA", "A", "", false, null, null, "GOOD_STUFF");
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant pB =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("pB", "B", "", false, null, null, "GOOD_STUFF");
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant pC =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("pC", "C", "", false, null, null, "GOOD_STUFF");
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant pD =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("pD", "D", "", false, null, null, "GOOD_STUFF");
+        pA.eloRating = 1800; pB.eloRating = 1790; pC.eloRating = 1500; pD.eloRating = 1490;
+        java.util.Map<String, Integer> meetMap = new java.util.HashMap<>();
+        meetMap.put("pC|pD", 1); // C & D already met -> greedy pairs (A,B) forcing C vs D rematch!
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant[]> optPairs =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.pairRoundGloballyOptimal(
+                        java.util.Arrays.asList(pA, pB, pC, pD), meetMap);
+        assertEquals(2, optPairs.size());
+        for (cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant[] pair : optPairs) {
+            boolean isCD = ("pC".equals(pair[0].id) && "pD".equals(pair[1].id))
+                    || ("pD".equals(pair[0].id) && "pC".equals(pair[1].id));
+            assertFalse("Global min-weight matching MUST avoid forcing C vs D rematch when zero-rematch exists", isCD);
+        }
+
+        // 2) Full 1999-12-31 field (13 AIs + player = 14 contestants):
+        //    18 rounds * 7 pairs * 2 games = 252 games (same budget as old 6*6, but 100% full opponent coverage + 5 close-Elo tie-breaker rounds!)
         String date = "1999-12-31";
         OcgRuleSet rule = TimelineEngine.getActiveRuleSet(catalog, date);
         AiDeckGenerator.GeneratedAiDeck playerDeck =
@@ -1205,14 +1228,15 @@ public class RpgEnginesTest {
                             java.util.Collections.emptyList(), a.name, b.name, a.style, b.style, null);
                 };
 
+        int recRounds = cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(parts.size());
         cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.LeagueResult swiss =
                 cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.runSwissLadder(
-                        parts, rule, date, 6,
+                        parts, rule, date, recRounds,
                         cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR,
                         0, 0L, exec, null, null, new Random(77L));
 
         assertTrue(swiss.isSwissMode());
-        assertEquals(6, swiss.roundsPlayed);
+        assertEquals(18, swiss.roundsPlayed);
         assertEquals(252, swiss.completedGames);
         assertEquals("player_deck", swiss.standings.get(0).id);
         assertTrue("Top undefeated contestant must have Elo >= 1620 (S tier)",
@@ -1220,18 +1244,24 @@ public class RpgEnginesTest {
         assertEquals("S", swiss.standings.get(0).getTierLabel());
         assertTrue("Standings must be sorted by Elo descending",
                 swiss.standings.get(0).eloRating > swiss.standings.get(swiss.standings.size() - 1).eloRating);
+        // With 18 rounds of 2 games/pair + global min-weight matching on N=14, EVERY pair (including #8 vs #9!) MUST have met!
+        for (cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant p : swiss.standings) {
+            assertEquals("Every contestant in 14-player 18-round Swiss MUST face all 13 distinct opponents",
+                    13, p.headToHead.size());
+        }
         int midSeBefore = swiss.standings.get(7).eloStdError;
         assertTrue("Mid-field Elo standard error must be reasonable (>0 and <120)",
                 midSeBefore > 0 && midSeBefore < 120);
 
-        // 3) Append 2 more Swiss rounds incrementally -> accumulates from 252 -> 336 games and tightens SE
+        // 3) Append 4 more Swiss rounds incrementally -> accumulates from 252 -> 308 games
         cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.LeagueResult extended =
                 cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.runSwissLadder(
-                        new java.util.ArrayList<>(swiss.standings), rule, date, 2,
+                        new java.util.ArrayList<>(swiss.standings), rule, date,
+                        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_APPEND_ROUNDS,
                         cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR,
                         swiss.roundsPlayed, swiss.elapsedMs, exec, null, null, new Random(88L));
-        assertEquals(8, extended.roundsPlayed);
-        assertEquals(336, extended.completedGames);
+        assertEquals(22, extended.roundsPlayed);
+        assertEquals(308, extended.completedGames);
         assertEquals("player_deck", extended.standings.get(0).id);
         assertTrue("Appending rounds keeps positive Elo SE",
                 extended.standings.get(7).eloStdError > 0);

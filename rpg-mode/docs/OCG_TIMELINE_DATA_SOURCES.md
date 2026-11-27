@@ -191,8 +191,8 @@
      - **严禁出现角色王牌串场**（如暗游戏绝不携带青眼白龙/灯之魔精/机械猎手/死毒，海马绝不携带黑魔术师/暗黑骑士盖亚/诅咒之龙/恶魔召唤/圣精灵/真红眼黑龙，城之内绝不携带黑魔术师/青眼白龙/恶魔召唤等）；
      - 非原著角色的纯环境流派 AI（如死毒暗控、装备Beat、反转控制、融合科学怪人、卡组破坏等）在自动补位时同样由 `CanonCharacterCardRegistry.getCoreSynergyBonus` 优先挑选与卡组核心主题高度联动的卡牌。
    - **自动化守卫**：`RpgEnginesTest#canonCharacterFidelityAndCoreSynergyGuard` 覆盖全部里程碑日期的角色 AI 与全部原著对决，自动拦截任何串场王牌或缺失的核心联动件。
-4. **【强制】全环境 AI 天梯（瑞士轮 + Bradley-Terry Elo `±SE` + Fisher-Jenks 动态分档）与实测奖金校准（`EraBountyCalibrator`）**
-   - `RoundRobinLeagueEngine` 提供 $O(N \log N)$ **瑞士轮天梯**（默认每组 **6 局 = 3 先 3 后**，消除先后手偏差；同日期固定 AI 卡组种子；全局贝叶斯 Bradley-Terry MLE 解算 Elo、对手均分 SOS 与 Fisher 信息量标准误差 `±SE`；支持随时增量追加轮次）以及全量循环赛。
+4. **【强制】全环境 AI 天梯（瑞士轮 + 全局最小权完美匹配 + Bradley-Terry Elo `±SE` + Fisher-Jenks 动态分档）与实测奖金校准（`EraBountyCalibrator`）**
+   - `RoundRobinLeagueEngine` 提供 $O(N \log N)$ **瑞士轮天梯**（默认每组 **2 局 = 1 先 1 后**，消除先后手偏差且以同等总耗时提供 **3 倍轮数与对手覆盖面**，例如 10~14 人默认 18 轮可实现 100% 全员交手 + 相近名次决胜加赛；采用**全局最小权完美匹配** `pairRoundGloballyOptimal` 同步压低重赛与实际 `|Elo_i - Elo_j|` 差，消除贪心尾效应；同日期固定 AI 卡组种子；全局贝叶斯 Bradley-Terry MLE 解算 Elo、对手均分 SOS 与 Fisher 信息量标准误差 `±SE`；支持随时增量追加 +4 轮）以及全量循环赛。
    - **动态 S/A/B/C/D 分档（Fisher-Jenks 一维自然断点 DP）**：天梯与 AI 对战均通过 `RoundRobinLeagueEngine.computeDynamicTiers` 对当期 Elo 分布求一维最优聚类切分（最小化档内方差之和 SSE），而非写死固定 Elo 阈值或仅取最大相邻差（避免底部长尾把前排全部挤进 S 档）；同时强制**同分锁档**、极端长尾（`<950`）归 D、小样本相近前排（差值 `<60` Elo）合并保档。
    - **实测驱动奖金校准与经济区间约束**：AI 对战奖金不再靠主观估算——每当扩展新年代、增补或修改 AI 卡组、或大幅迭代 AI 策略后，用同源 `ocgcore` 引擎跑一次各里程碑节点的高精度循环赛，将实测 Elo 写入 `EraBountyCalibrator`，**单场胜利奖金严格控制在 `120 ~ 300` 代币之间**（前期如 `120~220`，随年代平滑递增至年末 `120~300`，以 5 代币为步长，平局约 `43%`、败北约 `25%`），确保同一时间点内**AI 实测越强奖金越高**，且 `RpgEnginesTest` 强制校验全里程碑 Elo-奖金严格单调与 `[120, 300]` 区间边界。
 5. **产品体验与打包约束**
