@@ -1693,10 +1693,18 @@ public class RpgHomeActivity extends AppCompatActivity {
         Collections.sort(opponents, (a, b) -> {
             int cmp = Integer.compare(a.getWinRewardTokens(curDate), b.getWinRewardTokens(curDate));
             if (cmp != 0) return cmp;
+            cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple ca =
+                    cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(a.id, curDate);
+            cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple cb =
+                    cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(b.id, curDate);
+            int ea = ca != null ? ca.benchmarkElo : 1500;
+            int eb = cb != null ? cb.benchmarkElo : 1500;
+            cmp = Integer.compare(ea, eb);
+            if (cmp != 0) return cmp;
             return a.unlockDate.compareTo(b.unlockDate);
         });
         layoutTabActions.addView(makeSubtleText("战绩：" + profile.wins + " 胜 " + profile.losses + " 负 " + profile.draws
-                + " 平 · 当前时间轴已解锁 " + opponents.size() + " 位对手（按当前年代卡组强度与奖金由低到高排列）"));
+                + " 平 · 当前时间轴已解锁 " + opponents.size() + " 位对手（按当前环境实测天梯 Elo 与奖金由低到高排列）"));
 
         for (final AiOpponent opp : opponents) {
             AiOpponent.EraDeckProfile activeDeck = opp.getActiveDeckProfile(profile.currentTimelineDate);
@@ -1734,7 +1742,12 @@ public class RpgHomeActivity extends AppCompatActivity {
             headerRow.addView(infoCol);
             box.addView(headerRow);
 
-            TextView rewardTv = makeSubtleText("奖励：胜 +" + opp.getWinRewardTokens(curDate)
+            cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple cal =
+                    cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(opp.id, curDate);
+            String benchPrefix = cal != null
+                    ? String.format(Locale.US, "环境实测：[%s级 · Elo %d] · ", cal.getTierLabel(), cal.benchmarkElo)
+                    : "";
+            TextView rewardTv = makeSubtleText(benchPrefix + "奖励：胜 +" + opp.getWinRewardTokens(curDate)
                     + " / 平 +" + opp.getDrawRewardTokens(curDate)
                     + " / 负 +" + opp.getLossRewardTokens(curDate) + " 代币");
             rewardTv.setPadding(0, dp(6), 0, 0);
@@ -1830,12 +1843,16 @@ public class RpgHomeActivity extends AppCompatActivity {
         for (AiOpponent.EraDeckProfile p : opp.deckEvolutions) {
             boolean isCur = active != null && active.effectiveDate.equals(p.effectiveDate);
             boolean unlocked = TimelineEngine.isReleasedOnOrBefore(p.effectiveDate, profile.currentTimelineDate);
-            int w = p.winRewardTokens > 0 ? p.winRewardTokens : opp.winRewardTokens;
-            int d = p.drawRewardTokens > 0 ? p.drawRewardTokens : opp.drawRewardTokens;
-            int l = p.lossRewardTokens > 0 ? p.lossRewardTokens : opp.lossRewardTokens;
+            int w = opp.getWinRewardTokens(p.effectiveDate);
+            int d = opp.getDrawRewardTokens(p.effectiveDate);
+            int l = opp.getLossRewardTokens(p.effectiveDate);
+            cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple cal =
+                    cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(opp.id, p.effectiveDate);
+            String eloInfo = cal != null ? ("[" + cal.getTierLabel() + "级 · Elo " + cal.benchmarkElo + "] ") : "";
             sb.append(isCur ? "▶ [当前使用] " : (unlocked ? "• [历史旧版] " : "🔒 [未来版本] "))
                     .append(p.effectiveDate).append(" ").append(p.deckName).append("\n")
-                    .append("  奖励：胜 +").append(w).append(" / 平 +").append(d).append(" / 负 +").append(l).append(" 代币\n")
+                    .append("  ").append(eloInfo).append("首发期奖励：胜 +").append(w)
+                    .append(" / 平 +").append(d).append(" / 负 +").append(l).append(" 代币\n")
                     .append("  ").append(p.description).append("\n\n");
         }
         new AlertDialog.Builder(this)

@@ -417,21 +417,51 @@ public class RpgEnginesTest {
         assertEquals("1999-10-17", millMorphing.getActiveDeckProfile("1999-11-01").effectiveDate);
         assertEquals("1999-12-16", millMorphing.getActiveDeckProfile("1999-12-31").effectiveDate);
 
-        // Verify rewards scale with ACTUAL era deck strength (not unlock date):
-        // On 1999-07-08, Kaiba's top-tier deck must pay more than early DM2 Virus Control,
-        // and Virus Control / Kaiba / Exodia must scale up as their decks evolve!
+        // Verify rewards are strictly calibrated to real empirical ocgcore Elo across ALL 17 1999 eras!
         AiOpponent virus = null;
+        AiOpponent flip = null;
+        AiOpponent shop = null;
         for (AiOpponent o : opps) {
             if ("ai_virus_control".equals(o.id)) virus = o;
+            if ("ai_flip_control".equals(o.id)) flip = o;
+            if ("ai_shop_regular".equals(o.id)) shop = o;
         }
         assertNotNull(virus);
-        assertTrue("On 1999-07-08, Kaiba must have higher win reward than early DM2 Virus Control",
-                kaiba.getWinRewardTokens("1999-07-08") > virus.getWinRewardTokens("1999-07-08"));
+        assertNotNull(flip);
+        assertNotNull(shop);
+
+        // Monotonicity proof across all 17 milestone dates: higher empirical Elo MUST yield >= win reward!
+        for (String milestone : cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.getCalibratedMilestoneDates()) {
+            List<AiOpponent> avail = TimelineEngine.getAvailableOpponents(opps, milestone);
+            for (int i = 0; i < avail.size(); i++) {
+                AiOpponent a = avail.get(i);
+                cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple ca =
+                        cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(a.id, milestone);
+                assertNotNull("Missing calibrated Elo for " + a.id + " @ " + milestone, ca);
+                for (int j = 0; j < avail.size(); j++) {
+                    AiOpponent b = avail.get(j);
+                    cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple cb =
+                            cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(b.id, milestone);
+                    assertNotNull(cb);
+                    if (ca.benchmarkElo > cb.benchmarkElo) {
+                        assertTrue("Reward must be monotonic with Elo at " + milestone + ": "
+                                        + a.id + "(" + ca.benchmarkElo + "->" + a.getWinRewardTokens(milestone) + ") vs "
+                                        + b.id + "(" + cb.benchmarkElo + "->" + b.getWinRewardTokens(milestone) + ")",
+                                a.getWinRewardTokens(milestone) >= b.getWinRewardTokens(milestone));
+                    }
+                }
+            }
+        }
+        assertTrue("Flip Control (Elo 2073) must outpay Virus Control on 1999-07-08",
+                flip.getWinRewardTokens("1999-07-08") > virus.getWinRewardTokens("1999-07-08"));
         assertTrue("Virus Control reward must increase as it upgrades to Mask of Darkness & Sangan/Witch",
                 virus.getWinRewardTokens("1999-11-18") > virus.getWinRewardTokens("1999-07-22")
                         && virus.getWinRewardTokens("1999-07-22") > virus.getWinRewardTokens("1999-07-08"));
-        assertTrue("Exodia reward must scale up sharply from PP1 hybrid (08-26) to Last Will dark age (12-16)",
-                exodia.getWinRewardTokens("1999-12-16") > exodia.getWinRewardTokens("1999-08-26"));
+        assertTrue("Exodia reward must peak in 1999-11-18 pre-errata dark age above 1999-08-26 PP1 hybrid",
+                exodia.getWinRewardTokens("1999-11-18") > exodia.getWinRewardTokens("1999-08-26"));
+        assertTrue("On 1999-12-16, Kaiba EX (Elo 1690) must outpay Exodia (Elo 1537) and Shop Regular (Elo 1097)",
+                kaiba.getWinRewardTokens("1999-12-16") > exodia.getWinRewardTokens("1999-12-16")
+                        && exodia.getWinRewardTokens("1999-12-16") > shop.getWinRewardTokens("1999-12-16"));
     }
 
     @Test
@@ -439,17 +469,19 @@ public class RpgEnginesTest {
         File tmpDir = Files.createTempDirectory("rpg_repo_test").toFile();
         RpgRepository repo = new RpgRepository(tmpDir);
         RpgProfile profile = repo.loadProfile();
+        int initialTokens = profile.tokens;
         AiOpponent opp = AiDeckGenerator.getDemoOpponents().get(0);
+        int expectedWin = opp.getWinRewardTokens(profile.currentTimelineDate);
 
         DuelRewardEngine.RewardSettlement win = DuelRewardEngine.settle(profile, opp, true, false);
-        assertEquals(150, win.tokensEarned);
-        assertEquals(1650, profile.tokens);
+        assertEquals(expectedWin, win.tokensEarned);
+        assertEquals(initialTokens + expectedWin, profile.tokens);
         assertEquals(1, profile.wins);
 
         profile.claimedEventIds.add("evt_1999_02_21_dm1_nationals");
         repo.saveProfile(profile);
         RpgProfile reloaded = repo.loadProfile();
-        assertEquals(1650, reloaded.tokens);
+        assertEquals(initialTokens + expectedWin, reloaded.tokens);
         assertTrue(reloaded.claimedEventIds.contains("evt_1999_02_21_dm1_nationals"));
     }
 

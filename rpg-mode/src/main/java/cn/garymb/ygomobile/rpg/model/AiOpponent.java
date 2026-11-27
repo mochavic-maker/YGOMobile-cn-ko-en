@@ -91,16 +91,25 @@ public class AiOpponent {
     }
 
     public int getWinRewardTokens(String currentDate) {
+        cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple cal =
+                cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(id, currentDate);
+        if (cal != null) return cal.win;
         EraDeckProfile active = getActiveDeckProfile(currentDate);
         return (active != null && active.winRewardTokens > 0) ? active.winRewardTokens : winRewardTokens;
     }
 
     public int getDrawRewardTokens(String currentDate) {
+        cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple cal =
+                cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(id, currentDate);
+        if (cal != null) return cal.draw;
         EraDeckProfile active = getActiveDeckProfile(currentDate);
         return (active != null && active.drawRewardTokens > 0) ? active.drawRewardTokens : drawRewardTokens;
     }
 
     public int getLossRewardTokens(String currentDate) {
+        cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple cal =
+                cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(id, currentDate);
+        if (cal != null) return cal.loss;
         EraDeckProfile active = getActiveDeckProfile(currentDate);
         return (active != null && active.lossRewardTokens > 0) ? active.lossRewardTokens : lossRewardTokens;
     }
