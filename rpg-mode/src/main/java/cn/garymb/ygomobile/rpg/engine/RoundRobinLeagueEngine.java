@@ -89,6 +89,8 @@ public final class RoundRobinLeagueEngine {
         public int eloStdError = 150;
         /** Average Elo rating of all opponents faced (weighted by games played). */
         public int avgOpponentElo = 1500;
+        /** Dynamically assigned tier (S/A/B/C/D) via Fisher-Jenks 1D Natural Breaks DP. */
+        public String tierLabel = "B";
 
         /** Map from opponent Participant.id -> int[]{wins, losses, draws} against that opponent. */
         public final Map<String, int[]> headToHead = new LinkedHashMap<>();
@@ -113,11 +115,7 @@ public final class RoundRobinLeagueEngine {
         }
 
         public String getTierLabel() {
-            if (eloRating >= 1620) return "S";
-            if (eloRating >= 1540) return "A";
-            if (eloRating >= 1460) return "B";
-            if (eloRating >= 1380) return "C";
-            return "D";
+            return tierLabel != null ? tierLabel : "B";
         }
 
         void recordGame(String oppId, boolean won, boolean isDraw, int turns) {
@@ -648,6 +646,179 @@ public final class RoundRobinLeagueEngine {
             }
             p.avgOpponentElo = sumGames > 0.0 ? (int) Math.round(sumElo / sumGames) : 1500;
         }
+
+        // Assign dynamic S/A/B/C/D tiers via Fisher-Jenks 1D Natural Breaks DP
+        assignDynamicTiers(participants);
+    }
+
+    /**
+     * Dynamically assigns S/A/B/C/D tiers to {@code participants} based on their current
+     * {@code eloRating} using exact Fisher-Jenks 1D Natural Breaks DP (globally optimal 1D K-Means).
+     */
+    public static void assignDynamicTiers(List<Participant> participants) {
+        if (participants == null || participants.isEmpty()) return;
+        int n = participants.size();
+        Integer[] order = new Integer[n];
+        for (int i = 0; i < n; i++) order[i] = i;
+        java.util.Arrays.sort(order, (a, b) -> Integer.compare(
+                participants.get(b).eloRating, participants.get(a).eloRating));
+        int[] sortedElos = new int[n];
+        for (int i = 0; i < n; i++) {
+            sortedElos[i] = participants.get(order[i]).eloRating;
+        }
+        String[] tiers = computeDynamicTiers(sortedElos);
+        for (int i = 0; i < n; i++) {
+            participants.get(order[i]).tierLabel = tiers[i];
+        }
+    }
+
+    /**
+     * Exact Fisher-Jenks 1D Natural Breaks Dynamic Programming tier classifier.
+     *
+     * <p>Compared to naive "top-4 largest adjacent gaps" splitting (which can waste 3 of its 4
+     * cuts on sparse weak decks at the bottom and cram 7+ competitive decks into a single tier),
+     * Fisher-Jenks minimizes total within-tier squared error globally in {@code O(K * M^2)} time:
+     * <ul>
+     *   <li>Clamps extreme 0-win Elo outliers at {@code 950} so one outlier never skews the field;</li>
+     *   <li>Locks exact equal Elos into atomic blocks so tied decks NEVER split across tiers;</li>
+     *   <li>On tiny early-era fields ({@code N < 6}), avoids forcing meaningless splits smaller
+     *       than {@code 60} Elo and places clusters proportionally onto {@code S..D}.</li>
+     * </ul>
+     *
+     * @param sortedElosDesc Elo ratings sorted descending ({@code sortedElosDesc[0] >= ...}).
+     * @return Array of {@code "S"}, {@code "A"}, {@code "B"}, {@code "C"}, or {@code "D"} matching each index.
+     */
+    public static String[] computeDynamicTiers(int[] sortedElosDesc) {
+        final String[] TIERS = {"S", "A", "B", "C", "D"};
+        if (sortedElosDesc == null || sortedElosDesc.length == 0) {
+            return new String[0];
+        }
+        int n = sortedElosDesc.length;
+        int[] vals = new int[n];
+        for (int i = 0; i < n; i++) {
+            vals[i] = Math.max(950, sortedElosDesc[i]);
+        }
+
+        // 1) Group identical clamped Elos into atomic blocks so ties never split across tiers
+        int[] blockVal = new int[n];
+        int[] blockStart = new int[n];
+        int[] blockCount = new int[n];
+        int m = 0;
+        for (int i = 0; i < n; i++) {
+            if (m > 0 && blockVal[m - 1] == vals[i]) {
+                blockCount[m - 1]++;
+            } else {
+                blockVal[m] = vals[i];
+                blockStart[m] = i;
+                blockCount[m] = 1;
+                m++;
+            }
+        }
+        String[] res = new String[n];
+        if (m <= 1) {
+            java.util.Arrays.fill(res, "S");
+            return res;
+        }
+
+        int maxK = Math.min(5, m);
+        int k;
+        if (n < 6) {
+            int meaningfulGaps = 0;
+            for (int i = 0; i < m - 1; i++) {
+                if (blockVal[i] - blockVal[i + 1] >= 60) meaningfulGaps++;
+            }
+            k = Math.max(1, Math.min(maxK, meaningfulGaps + 1));
+        } else {
+            k = maxK;
+        }
+
+        // 2) Precompute weighted within-cluster SSE for every block range [i..j]
+        double[][] sse = new double[m][m];
+        for (int i = 0; i < m; i++) {
+            double sum = 0.0;
+            double sumSq = 0.0;
+            int cnt = 0;
+            for (int j = i; j < m; j++) {
+                double v = blockVal[j];
+                int c = blockCount[j];
+                sum += v * c;
+                sumSq += v * v * c;
+                cnt += c;
+                double mean = sum / cnt;
+                sse[i][j] = Math.max(0.0, sumSq - cnt * mean * mean);
+            }
+        }
+
+        // 3) Exact Fisher-Jenks DP: dp[g][j] = min SSE partitioning first j blocks into g tiers
+        double[][] dp = new double[k + 1][m + 1];
+        int[][] back = new int[k + 1][m + 1];
+        for (int g = 0; g <= k; g++) {
+            java.util.Arrays.fill(dp[g], Double.POSITIVE_INFINITY);
+        }
+        dp[0][0] = 0.0;
+        for (int g = 1; g <= k; g++) {
+            for (int j = g; j <= m; j++) {
+                for (int i = g - 1; i < j; i++) {
+                    double cost = dp[g - 1][i] + sse[i][j - 1];
+                    if (cost < dp[g][j]) {
+                        dp[g][j] = cost;
+                        back[g][j] = i;
+                    }
+                }
+            }
+        }
+
+        // 4) Reconstruct cluster boundaries
+        int[] cStart = new int[k];
+        int[] cEnd = new int[k];
+        int cur = m;
+        for (int g = k; g >= 1; g--) {
+            int prev = back[g][cur];
+            cStart[g - 1] = prev;
+            cEnd[g - 1] = cur;
+            cur = prev;
+        }
+
+        // 5) Map clusters onto S/A/B/C/D
+        if (k == 5) {
+            for (int t = 0; t < 5; t++) {
+                for (int b = cStart[t]; b < cEnd[t]; b++) {
+                    for (int idx = blockStart[b]; idx < blockStart[b] + blockCount[b]; idx++) {
+                        res[idx] = TIERS[t];
+                    }
+                }
+            }
+        } else {
+            double topV = vals[0];
+            double botV = vals[n - 1];
+            double span = Math.max(1.0, topV - botV);
+            int prevTier = -1;
+            for (int ci = 0; ci < k; ci++) {
+                double sum = 0.0;
+                int cnt = 0;
+                for (int b = cStart[ci]; b < cEnd[ci]; b++) {
+                    sum += blockVal[b] * (double) blockCount[b];
+                    cnt += blockCount[b];
+                }
+                double mean = sum / Math.max(1, cnt);
+                int t;
+                if (ci == 0) {
+                    t = 0;
+                } else if (ci == k - 1 && span >= 200.0) {
+                    t = 4;
+                } else {
+                    t = (int) Math.round(((topV - mean) / span) * 4.0);
+                    t = Math.max(prevTier + 1, Math.min(4 - (k - 1 - ci), t));
+                }
+                prevTier = t;
+                for (int b = cStart[ci]; b < cEnd[ci]; b++) {
+                    for (int idx = blockStart[b]; idx < blockStart[b] + blockCount[b]; idx++) {
+                        res[idx] = TIERS[t];
+                    }
+                }
+            }
+        }
+        return res;
     }
 
     private static void sortStandings(List<Participant> list, final boolean primaryByElo) {

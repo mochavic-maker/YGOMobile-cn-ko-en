@@ -27,21 +27,19 @@ public final class EraBountyCalibrator {
         public final int loss;
         public final int benchmarkElo;
         public final double benchmarkWinRate;
+        public final String tierLabel;
 
-        public RewardTriple(int win, int draw, int loss, int benchmarkElo, double benchmarkWinRate) {
+        public RewardTriple(int win, int draw, int loss, int benchmarkElo, double benchmarkWinRate, String tierLabel) {
             this.win = win;
             this.draw = draw;
             this.loss = loss;
             this.benchmarkElo = benchmarkElo;
             this.benchmarkWinRate = benchmarkWinRate;
+            this.tierLabel = tierLabel != null ? tierLabel : "B";
         }
 
         public String getTierLabel() {
-            if (benchmarkElo >= 1620) return "S";
-            if (benchmarkElo >= 1540) return "A";
-            if (benchmarkElo >= 1460) return "B";
-            if (benchmarkElo >= 1380) return "C";
-            return "D";
+            return tierLabel;
         }
     }
 
@@ -60,6 +58,7 @@ public final class EraBountyCalibrator {
         final int floorWin;
         final int ceilingWin;
         final Map<String, Entry> ratings;
+        final Map<String, String> dynamicTiers;
         final int effMinElo;
         final int effMaxElo;
 
@@ -70,10 +69,21 @@ public final class EraBountyCalibrator {
             this.ratings = Collections.unmodifiableMap(ratings);
             int min = Integer.MAX_VALUE;
             int max = Integer.MIN_VALUE;
-            for (Entry e : ratings.values()) {
-                if (e.elo < min) min = e.elo;
-                if (e.elo > max) max = e.elo;
+            List<Map.Entry<String, Entry>> sorted = new ArrayList<>(ratings.entrySet());
+            Collections.sort(sorted, (a, b) -> Integer.compare(b.getValue().elo, a.getValue().elo));
+            int[] sortedElos = new int[sorted.size()];
+            for (int i = 0; i < sorted.size(); i++) {
+                int elo = sorted.get(i).getValue().elo;
+                sortedElos[i] = elo;
+                if (elo < min) min = elo;
+                if (elo > max) max = elo;
             }
+            String[] tiers = RoundRobinLeagueEngine.computeDynamicTiers(sortedElos);
+            Map<String, String> tierMap = new LinkedHashMap<>();
+            for (int i = 0; i < sorted.size(); i++) {
+                tierMap.put(sorted.get(i).getKey(), tiers[i]);
+            }
+            this.dynamicTiers = Collections.unmodifiableMap(tierMap);
             // Clamp extreme 0-win outliers (e.g. Elo 548) to 950 so the rest of the field spreads cleanly
             this.effMinElo = Math.max(950, min == Integer.MAX_VALUE ? 1000 : min);
             this.effMaxElo = Math.max(this.effMinElo + 250, max == Integer.MIN_VALUE ? 1800 : max);
@@ -89,7 +99,8 @@ public final class EraBountyCalibrator {
             win = Math.max(MIN_WIN_BOUNTY, Math.min(MAX_WIN_BOUNTY, win));
             int draw = roundTo5(win * 0.43);
             int loss = roundTo5(win * 0.25);
-            return new RewardTriple(win, draw, loss, e.elo, e.winRate);
+            String tier = dynamicTiers.getOrDefault(opponentId, "B");
+            return new RewardTriple(win, draw, loss, e.elo, e.winRate, tier);
         }
     }
 

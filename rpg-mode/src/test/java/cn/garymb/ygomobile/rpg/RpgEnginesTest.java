@@ -1382,4 +1382,35 @@ public class RpgEnginesTest {
             }
         }
     }
+
+    @Test
+    public void dynamicJenksTieringSeparatesNaturalClustersAndLocksTies() {
+        // 1) 1999-11-18 real field: Jenks Natural Breaks cleanly partitions S/A/B/C/D
+        //    instead of wasting 3 cuts on the sparse bottom decks like naive Top-4-Gaps.
+        int[] elos1118 = {1889, 1889, 1755, 1755, 1720, 1652, 1566, 1539, 1423, 1253, 1013, 548};
+        String[] tiers1118 = cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.computeDynamicTiers(elos1118);
+        assertEquals("S", tiers1118[0]);
+        assertEquals("Tied 1889 decks MUST share S tier", "S", tiers1118[1]);
+        assertEquals("A", tiers1118[2]);
+        assertEquals("Tied 1755 decks MUST share A tier", "A", tiers1118[3]);
+        assertEquals("A", tiers1118[5]); // 1652
+        assertEquals("B", tiers1118[6]); // 1566
+        assertEquals("B", tiers1118[8]); // 1423
+        assertEquals("C", tiers1118[9]); // 1253
+        assertEquals("D", tiers1118[10]); // 1013
+        assertEquals("D", tiers1118[11]); // 548
+
+        // 2) Small Vol.1 field (N=4): near-tied top 2 (1799 vs 1781, only 18 Elo apart) BOTH receive S!
+        int[] elos0204 = {1799, 1781, 1278, 1142};
+        String[] tiers0204 = cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.computeDynamicTiers(elos0204);
+        assertEquals("S", tiers0204[0]);
+        assertEquals("Near-tied 1781 in 4-deck field should stay S alongside 1799", "S", tiers0204[1]);
+        assertEquals("D", tiers0204[3]);
+
+        // 3) EraBountyCalibrator uses the exact same dynamic tiering
+        assertEquals("S", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_exodia_master", "1999-11-18").getTierLabel());
+        assertEquals("S", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_tokyo_dome", "1999-11-18").getTierLabel());
+        assertEquals("B", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_vol1_yugi", "1999-11-18").getTierLabel());
+        assertEquals("D", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_shop_regular", "1999-11-18").getTierLabel());
+    }
 }
