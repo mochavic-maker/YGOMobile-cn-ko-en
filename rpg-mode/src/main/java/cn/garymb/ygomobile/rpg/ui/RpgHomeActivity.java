@@ -1652,30 +1652,223 @@ public class RpgHomeActivity extends AppCompatActivity {
     }
 
     private void showSaveDeckDialog() {
-        final EditText input = new EditText(this);
-        RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
-        int nextIdx = (profile.savedDecks != null ? profile.savedDecks.size() : 0) + 1;
-        input.setHint("例如：青眼强攻 / 封印大法师（同名将覆盖）");
-        input.setText(activeSaved != null ? activeSaved.name : ("我的卡组 " + nextIdx));
-        input.setSelection(input.getText().length());
-        int pad = dp(16);
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(pad, dp(8), pad, 0);
-        container.addView(input);
+        final List<RpgProfile.SavedDeck> savedList = profile.savedDecks != null
+                ? profile.savedDecks : java.util.Collections.emptyList();
+        final RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
+        final int nextIdx = savedList.size() + 1;
 
-        new AlertDialog.Builder(this)
+        // First-time save when no saved decks exist yet: keep simple direct input
+        if (savedList.isEmpty()) {
+            final EditText input = new EditText(this);
+            input.setHint("例如：青眼强攻 / 封印大法师");
+            input.setText("我的卡组 " + nextIdx);
+            input.setSelection(input.getText().length());
+            LinearLayout container = new LinearLayout(this);
+            container.setOrientation(LinearLayout.VERTICAL);
+            container.setPadding(dp(16), dp(8), dp(16), 0);
+            container.addView(input);
+
+            new AlertDialog.Builder(this)
+                    .setTitle("💾 保存当前卡组（主 " + profile.activeDeckMain.size() + " / 额外 " + profile.activeDeckExtra.size() + "）")
+                    .setView(container)
+                    .setPositiveButton("保存", (dialog, which) -> {
+                        String name = input.getText().toString().trim();
+                        RpgProfile.SavedDeck saved = profile.saveCurrentDeck(name);
+                        saveProfileSafe();
+                        Toast.makeText(this, "已保存卡组「" + saved.name + "」", Toast.LENGTH_SHORT).show();
+                        refreshAll();
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+
+        // Multi-mode save dialog: pick an existing saved deck to overwrite (defaulting to last loaded/saved deck)
+        // OR save as a new deck with custom name.
+        final String[] selectedOverwriteId = new String[]{activeSaved != null ? activeSaved.id : null};
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setBackgroundColor(Color.parseColor("#0F172A"));
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(dp(14), dp(12), dp(14), dp(10));
+        scroll.addView(body);
+
+        TextView intro = makeSubtleText("选择要覆盖的已有卡组，或另存为新卡组"
+                + (activeSaved != null ? ("（已默认选中上次读取的「" + activeSaved.name + "」）") : "") + "：");
+        intro.setTextColor(Color.parseColor("#CBD5E1"));
+        body.addView(intro);
+
+        final List<android.widget.RadioButton> allRadios = new ArrayList<>();
+        final Map<String, android.widget.RadioButton> overwriteRadios = new java.util.LinkedHashMap<>();
+        final Map<String, LinearLayout> overwriteBoxes = new java.util.LinkedHashMap<>();
+        final android.widget.RadioButton rbNew = new android.widget.RadioButton(this);
+        final EditText inputNewName = new EditText(this);
+        final AlertDialog[] dlgRef = new AlertDialog[1];
+
+        final Runnable updateSelectionUi = () -> {
+            String curTarget = selectedOverwriteId[0];
+            for (Map.Entry<String, android.widget.RadioButton> e : overwriteRadios.entrySet()) {
+                boolean sel = e.getKey().equals(curTarget);
+                e.getValue().setChecked(sel);
+                LinearLayout box = overwriteBoxes.get(e.getKey());
+                if (box != null) {
+                    GradientDrawable bg = new GradientDrawable();
+                    bg.setColor(Color.parseColor(sel ? "#1E3A5F" : "#1E293B"));
+                    bg.setCornerRadius(dp(8));
+                    bg.setStroke(dp(sel ? 2 : 1), Color.parseColor(sel ? "#F59E0B" : "#334155"));
+                    box.setBackground(bg);
+                }
+            }
+            boolean isNewMode = (curTarget == null);
+            rbNew.setChecked(isNewMode);
+            inputNewName.setAlpha(isNewMode ? 1.0f : 0.55f);
+            if (!isNewMode) {
+                inputNewName.clearFocus();
+            }
+            if (dlgRef[0] != null) {
+                Button pos = dlgRef[0].getButton(AlertDialog.BUTTON_POSITIVE);
+                if (pos != null) {
+                    pos.setText(isNewMode ? "新建保存" : "覆盖保存");
+                }
+            }
+        };
+
+        // Section 1: Existing saved decks to overwrite
+        TextView secExist = makeTitleText("覆盖已有卡组（" + savedList.size() + " 套）");
+        secExist.setTextSize(13f);
+        secExist.setTextColor(Color.parseColor("#FDE68A"));
+        secExist.setPadding(0, dp(10), 0, dp(4));
+        body.addView(secExist);
+
+        for (final RpgProfile.SavedDeck sd : savedList) {
+            if (sd == null || sd.id == null) continue;
+            boolean isLastLoaded = sd.id.equals(profile.activeDeckId);
+            int mSize = sd.main != null ? sd.main.size() : 0;
+            int eSize = sd.extra != null ? sd.extra.size() : 0;
+
+            LinearLayout box = new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setPadding(dp(10), dp(8), dp(10), dp(8));
+            LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            blp.topMargin = dp(6);
+            box.setLayoutParams(blp);
+
+            android.widget.RadioButton rb = new android.widget.RadioButton(this);
+            rb.setText((isLastLoaded ? "⭐ [上次读取] " : "") + sd.name);
+            rb.setTextColor(Color.parseColor(isLastLoaded ? "#FDE68A" : "#F8FAFC"));
+            rb.setTextSize(13f);
+            rb.setOnClickListener(v -> {
+                selectedOverwriteId[0] = sd.id;
+                updateSelectionUi.run();
+            });
+            box.addView(rb);
+
+            TextView tvMeta = makeSubtleText("主 " + mSize + " / 额外 " + eSize
+                    + (sd.savedAtDate != null ? (" · 存自 " + sd.savedAtDate) : ""));
+            tvMeta.setPadding(dp(28), dp(1), 0, 0);
+            box.addView(tvMeta);
+
+            box.setOnClickListener(v -> {
+                selectedOverwriteId[0] = sd.id;
+                updateSelectionUi.run();
+            });
+
+            allRadios.add(rb);
+            overwriteRadios.put(sd.id, rb);
+            overwriteBoxes.put(sd.id, box);
+            body.addView(box);
+        }
+
+        // Section 2: Save as a brand-new deck
+        TextView secNew = makeTitleText("另存为新卡组");
+        secNew.setTextSize(13f);
+        secNew.setTextColor(Color.parseColor("#38BDF8"));
+        secNew.setPadding(0, dp(12), 0, dp(4));
+        body.addView(secNew);
+
+        LinearLayout newBox = new LinearLayout(this);
+        newBox.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable newBg = new GradientDrawable();
+        newBg.setColor(Color.parseColor("#1E293B"));
+        newBg.setCornerRadius(dp(8));
+        newBg.setStroke(dp(1), Color.parseColor("#334155"));
+        newBox.setBackground(newBg);
+        newBox.setPadding(dp(10), dp(8), dp(10), dp(10));
+
+        rbNew.setText("➕ 输入新名称另存为新卡组");
+        rbNew.setTextColor(Color.parseColor("#F8FAFC"));
+        rbNew.setTextSize(13f);
+        rbNew.setOnClickListener(v -> {
+            selectedOverwriteId[0] = null;
+            updateSelectionUi.run();
+            inputNewName.requestFocus();
+        });
+        allRadios.add(rbNew);
+        newBox.addView(rbNew);
+
+        inputNewName.setHint("例如：青眼强攻 / 封印大法师（同名将覆盖）");
+        inputNewName.setText("我的卡组 " + nextIdx);
+        inputNewName.setTextColor(Color.parseColor("#F8FAFC"));
+        inputNewName.setHintTextColor(Color.parseColor("#64748B"));
+        inputNewName.setTextSize(13.5f);
+        inputNewName.setSingleLine(true);
+        LinearLayout.LayoutParams inpLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        inpLp.setMargins(dp(24), dp(4), dp(4), 0);
+        inputNewName.setLayoutParams(inpLp);
+        final boolean[] readyForFocusSwitch = new boolean[]{false};
+        if (selectedOverwriteId[0] != null) {
+            body.setFocusableInTouchMode(true);
+            body.requestFocus();
+        }
+        inputNewName.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus && readyForFocusSwitch[0] && selectedOverwriteId[0] != null) {
+                selectedOverwriteId[0] = null;
+                updateSelectionUi.run();
+            }
+        });
+        inputNewName.setOnClickListener(v -> {
+            if (selectedOverwriteId[0] != null) {
+                selectedOverwriteId[0] = null;
+                updateSelectionUi.run();
+            }
+        });
+        newBox.addView(inputNewName);
+        body.addView(newBox);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("💾 保存当前卡组（主 " + profile.activeDeckMain.size() + " / 额外 " + profile.activeDeckExtra.size() + "）")
-                .setView(container)
-                .setPositiveButton("保存", (dialog, which) -> {
-                    String name = input.getText().toString().trim();
-                    RpgProfile.SavedDeck saved = profile.saveCurrentDeck(name);
-                    saveProfileSafe();
-                    Toast.makeText(this, "已保存卡组「" + saved.name + "」", Toast.LENGTH_SHORT).show();
-                    refreshAll();
+                .setView(scroll)
+                .setPositiveButton(selectedOverwriteId[0] != null ? "覆盖保存" : "新建保存", (d, which) -> {
+                    String targetId = selectedOverwriteId[0];
+                    if (targetId != null) {
+                        RpgProfile.SavedDeck target = profile.findSavedDeck(targetId);
+                        String targetName = target != null ? target.name : "已存卡组";
+                        if (profile.overwriteSavedDeck(targetId)) {
+                            saveProfileSafe();
+                            Toast.makeText(this, "已覆盖保存卡组「" + targetName + "」", Toast.LENGTH_SHORT).show();
+                            refreshAll();
+                        }
+                    } else {
+                        String name = inputNewName.getText().toString().trim();
+                        RpgProfile.SavedDeck saved = profile.saveCurrentDeck(name);
+                        saveProfileSafe();
+                        Toast.makeText(this, "已保存卡组「" + saved.name + "」", Toast.LENGTH_SHORT).show();
+                        refreshAll();
+                    }
                 })
                 .setNegativeButton("取消", null)
-                .show();
+                .create();
+        dlgRef[0] = dialog;
+        dialog.show();
+        if (selectedOverwriteId[0] != null) {
+            inputNewName.clearFocus();
+            body.requestFocus();
+        }
+        updateSelectionUi.run();
+        body.post(() -> readyForFocusSwitch[0] = true);
     }
 
     private void showLoadDeckDialog() {
