@@ -718,6 +718,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     /**
      * Opens a custom calendar dialog with `<` [Month ▼] [Year ▼] `>` dropdown controls,
      * a Monday-first 7-column calendar grid, light-green circular badges for dates with OCG events,
+     * special rose-pink `🎬` badges for dates with Canon Duels,
      * and strict click enforcement so ONLY event dates can be selected.
      */
     private void openDatePicker() {
@@ -726,6 +727,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             timelineEventDates = TimelineEngine.getTimelineEventDates(catalog, allOpponents);
         }
         final java.util.Set<String> eventDateSet = new java.util.HashSet<>(timelineEventDates);
+        final java.util.Set<String> canonDateSet = TimelineEngine.getCanonDuelDates(catalog);
 
         int minYear = 1999;
         int maxYear = 1999;
@@ -860,7 +862,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         };
         spYear.setAdapter(yearAdapter);
 
-        // Month dropdown labels dynamically mark months that contain OCG events
+        // Month dropdown labels dynamically mark months that contain OCG events & 🎬 Canon Duels
         final List<String> monthLabels = new ArrayList<>();
         for (int m = 1; m <= 12; m++) {
             monthLabels.add(m + "月 ▾");
@@ -883,13 +885,18 @@ public class RpgHomeActivity extends AppCompatActivity {
                 int m = position + 1;
                 String ymPrefix = String.format(Locale.US, "%04d-%02d-", curYearRef[0], m);
                 int evCount = 0;
+                int canonCount = 0;
                 for (String d : timelineEventDates) {
-                    if (d.startsWith(ymPrefix)) evCount++;
+                    if (d.startsWith(ymPrefix)) {
+                        evCount++;
+                        if (canonDateSet.contains(d)) canonCount++;
+                    }
                 }
                 boolean isSel = (m == curMonthRef[0]);
                 tv.setBackgroundColor(Color.parseColor(isSel ? "#1E3A5F" : "#1E293B"));
-                tv.setTextColor(Color.parseColor(evCount > 0 ? "#86EFAC" : "#94A3B8"));
-                tv.setText(m + "月" + (evCount > 0 ? ("  ●(" + evCount + ")") : "  (无事件)") + (isSel ? "  ✓" : ""));
+                tv.setTextColor(Color.parseColor(canonCount > 0 ? "#FBCFE8" : (evCount > 0 ? "#86EFAC" : "#94A3B8")));
+                String canonSuffix = canonCount > 0 ? " 🎬" : "";
+                tv.setText(m + "月" + (evCount > 0 ? ("  ●(" + evCount + ")" + canonSuffix) : "  (无事件)") + (isSel ? "  ✓" : ""));
                 tv.setTextSize(13f);
                 tv.setPadding(dp(14), dp(10), dp(14), dp(10));
                 return tv;
@@ -919,7 +926,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         root.addView(gridContainer);
 
         // ==================== LEGEND & MONTH EVENTS PREVIEW ====================
-        TextView tvLegend = makeSubtleText("🟢 浅绿圆：有 OCG 事件（可点击）   🟠 金框：当前时间点   ⚪ 灰字：无事件");
+        TextView tvLegend = makeSubtleText("🎬 粉框图标：含对决还原   🟢 浅绿圆：其他 OCG 事件   🟠 金框：当前日   ⚪ 灰字：无事件");
         tvLegend.setPadding(dp(2), dp(8), dp(2), dp(4));
         tvLegend.setTextSize(11f);
         tvLegend.setTextColor(Color.parseColor("#94A3B8"));
@@ -978,7 +985,7 @@ public class RpgHomeActivity extends AppCompatActivity {
 
             int totalCells = ((leading + daysInMonth + 6) / 7) * 7;
             int rows = totalCells / 7;
-            int cellSize = dp(34);
+            int cellSize = dp(36);
 
             List<String> monthEvents = new ArrayList<>();
 
@@ -997,66 +1004,117 @@ public class RpgHomeActivity extends AppCompatActivity {
                     cellBox.setLayoutParams(new LinearLayout.LayoutParams(
                             0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-                    TextView dayTv = new TextView(this);
-                    dayTv.setGravity(Gravity.CENTER);
-                    dayTv.setLayoutParams(new LinearLayout.LayoutParams(cellSize, cellSize));
-                    dayTv.setTextSize(13f);
-
                     if (dayNum < 1) {
                         // Overflow day from previous month
+                        TextView dayTv = new TextView(this);
+                        dayTv.setGravity(Gravity.CENTER);
+                        dayTv.setLayoutParams(new LinearLayout.LayoutParams(cellSize, cellSize));
+                        dayTv.setTextSize(13f);
                         dayTv.setText(String.valueOf(prevMonthDays + dayNum));
                         dayTv.setTextColor(Color.parseColor("#334155"));
                         cellBox.addView(dayTv);
                     } else if (dayNum > daysInMonth) {
                         // Overflow day from next month
+                        TextView dayTv = new TextView(this);
+                        dayTv.setGravity(Gravity.CENTER);
+                        dayTv.setLayoutParams(new LinearLayout.LayoutParams(cellSize, cellSize));
+                        dayTv.setTextSize(13f);
                         dayTv.setText(String.valueOf(dayNum - daysInMonth));
                         dayTv.setTextColor(Color.parseColor("#334155"));
                         cellBox.addView(dayTv);
                     } else {
                         final String dateStr = String.format(Locale.US, "%04d-%02d-%02d", year, month, dayNum);
                         boolean hasEvent = eventDateSet.contains(dateStr);
+                        boolean hasCanonDuel = canonDateSet.contains(dateStr);
                         boolean isCurrent = dateStr.equals(profile.currentTimelineDate);
 
-                        dayTv.setText(String.valueOf(dayNum));
-                        if (hasEvent) {
+                        if (hasEvent && hasCanonDuel) {
                             monthEvents.add(dateStr);
-                            GradientDrawable circle = new GradientDrawable();
-                            circle.setShape(GradientDrawable.OVAL);
+                            // Special rose-pink rounded badge with 🎬 icon for dates containing Canon Duels
+                            LinearLayout canonBadge = new LinearLayout(this);
+                            canonBadge.setOrientation(LinearLayout.VERTICAL);
+                            canonBadge.setGravity(Gravity.CENTER);
+                            canonBadge.setLayoutParams(new LinearLayout.LayoutParams(cellSize, cellSize));
+                            GradientDrawable badgeBg = new GradientDrawable();
+                            badgeBg.setShape(GradientDrawable.RECTANGLE);
+                            badgeBg.setCornerRadius(dp(10));
                             if (isCurrent) {
-                                // Current active date: bright light-green fill + amber gold ring
-                                circle.setColor(Color.parseColor("#86EFAC"));
-                                circle.setStroke(dp(2), Color.parseColor("#F59E0B"));
-                                dayTv.setTextColor(Color.parseColor("#052E16"));
+                                badgeBg.setColor(Color.parseColor("#FBCFE8"));
+                                badgeBg.setStroke(dp(2), Color.parseColor("#F59E0B"));
                             } else {
-                                // Event date: light-green circle
-                                circle.setColor(Color.parseColor("#BBF7D0"));
-                                circle.setStroke(dp(1), Color.parseColor("#22C55E"));
-                                dayTv.setTextColor(Color.parseColor("#052E16"));
+                                badgeBg.setColor(Color.parseColor("#FCE7F3"));
+                                badgeBg.setStroke(dp(2), Color.parseColor("#EC4899"));
                             }
-                            dayTv.setTypeface(null, android.graphics.Typeface.BOLD);
-                            dayTv.setBackground(circle);
+                            canonBadge.setBackground(badgeBg);
+
+                            TextView numTv = new TextView(this);
+                            numTv.setText(String.valueOf(dayNum));
+                            numTv.setTextSize(12f);
+                            numTv.setTypeface(null, android.graphics.Typeface.BOLD);
+                            numTv.setTextColor(Color.parseColor("#831843"));
+                            numTv.setIncludeFontPadding(false);
+                            numTv.setGravity(Gravity.CENTER);
+                            canonBadge.addView(numTv);
+
+                            TextView iconTv = new TextView(this);
+                            iconTv.setText("🎬");
+                            iconTv.setTextSize(9.5f);
+                            iconTv.setIncludeFontPadding(false);
+                            iconTv.setGravity(Gravity.CENTER);
+                            canonBadge.addView(iconTv);
+
+                            cellBox.addView(canonBadge);
                             cellBox.setClickable(true);
                             cellBox.setFocusable(true);
                             cellBox.setOnClickListener(v -> {
                                 dialog.dismiss();
                                 selectTimelineDate(dateStr);
                             });
-                        } else if (isCurrent) {
-                            // Legacy non-event saved date: faint amber outline only, non-clickable
-                            GradientDrawable ring = new GradientDrawable();
-                            ring.setShape(GradientDrawable.OVAL);
-                            ring.setColor(Color.TRANSPARENT);
-                            ring.setStroke(dp(1), Color.parseColor("#F59E0B"));
-                            dayTv.setBackground(ring);
-                            dayTv.setTextColor(Color.parseColor("#FDE68A"));
                         } else {
-                            // Non-event date: muted gray, strictly non-clickable
-                            dayTv.setTextColor(Color.parseColor("#64748B"));
+                            TextView dayTv = new TextView(this);
+                            dayTv.setGravity(Gravity.CENTER);
+                            dayTv.setLayoutParams(new LinearLayout.LayoutParams(cellSize, cellSize));
+                            dayTv.setTextSize(13f);
+                            dayTv.setText(String.valueOf(dayNum));
+                            if (hasEvent) {
+                                monthEvents.add(dateStr);
+                                GradientDrawable circle = new GradientDrawable();
+                                circle.setShape(GradientDrawable.OVAL);
+                                if (isCurrent) {
+                                    // Current active date: bright light-green fill + amber gold ring
+                                    circle.setColor(Color.parseColor("#86EFAC"));
+                                    circle.setStroke(dp(2), Color.parseColor("#F59E0B"));
+                                    dayTv.setTextColor(Color.parseColor("#052E16"));
+                                } else {
+                                    // Event date: light-green circle
+                                    circle.setColor(Color.parseColor("#BBF7D0"));
+                                    circle.setStroke(dp(1), Color.parseColor("#22C55E"));
+                                    dayTv.setTextColor(Color.parseColor("#052E16"));
+                                }
+                                dayTv.setTypeface(null, android.graphics.Typeface.BOLD);
+                                dayTv.setBackground(circle);
+                                cellBox.setClickable(true);
+                                cellBox.setFocusable(true);
+                                cellBox.setOnClickListener(v -> {
+                                    dialog.dismiss();
+                                    selectTimelineDate(dateStr);
+                                });
+                            } else if (isCurrent) {
+                                // Legacy non-event saved date: faint amber outline only, non-clickable
+                                GradientDrawable ring = new GradientDrawable();
+                                ring.setShape(GradientDrawable.OVAL);
+                                ring.setColor(Color.TRANSPARENT);
+                                ring.setStroke(dp(1), Color.parseColor("#F59E0B"));
+                                dayTv.setBackground(ring);
+                                dayTv.setTextColor(Color.parseColor("#FDE68A"));
+                            } else {
+                                // Non-event date: muted gray, strictly non-clickable
+                                dayTv.setTextColor(Color.parseColor("#64748B"));
+                            }
+                            cellBox.addView(dayTv);
                         }
 
-                        cellBox.addView(dayTv);
-
-                        // Subtle indicator dot under current date (like reference screenshot)
+                        // Subtle indicator dot under current date
                         View dot = new View(this);
                         LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(dp(4), dp(4));
                         dotLp.topMargin = dp(2);
@@ -1078,7 +1136,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
 
             if (monthEvents.isEmpty()) {
-                tvMonthSummary.setText(year + "年" + month + "月无 OCG 历史事件，请通过上方下拉菜单切换至带绿点 ● 的月份。");
+                tvMonthSummary.setText(year + "年" + month + "月无 OCG 历史事件，请通过上方下拉菜单切换至带绿点 ● 或 🎬 的月份。");
                 tvMonthSummary.setTextColor(Color.parseColor("#94A3B8"));
             } else {
                 StringBuilder sb = new StringBuilder();
@@ -1089,7 +1147,8 @@ public class RpgHomeActivity extends AppCompatActivity {
                     String raw = d.buildShortSummary();
                     String pfx = "📰 " + ed + "：";
                     String clean = raw.startsWith(pfx) ? raw.substring(pfx.length()) : raw;
-                    sb.append("\n• ").append(ed.substring(5)).append("：").append(clean);
+                    String bullet = canonDateSet.contains(ed) ? "\n🎬 " : "\n• ";
+                    sb.append(bullet).append(ed.substring(5)).append("：").append(clean);
                 }
                 tvMonthSummary.setText(sb.toString());
                 tvMonthSummary.setTextColor(Color.parseColor("#BBF7D0"));
@@ -2387,7 +2446,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     // ==================== TAB 8: CANON DUEL RECREATION ====================
     private void renderCanonDuelsTab() {
         List<OcgCanonDuel> allCanon = catalog.getCanonDuels();
-        List<OcgCanonDuel> unlocked = TimelineEngine.getAvailableCanonDuels(catalog, profile.currentTimelineDate);
+        List<OcgCanonDuel> todayDuels = TimelineEngine.getCanonDuelsOnDate(catalog, profile.currentTimelineDate);
 
         // Stack filter bar and summary note vertically inside a single container
         // (layoutTabActions is HORIZONTAL; adding a MATCH_PARENT view + TextView directly would
@@ -2397,72 +2456,101 @@ public class RpgHomeActivity extends AppCompatActivity {
         actionCol.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        android.widget.HorizontalScrollView filterScroll = new android.widget.HorizontalScrollView(this);
-        filterScroll.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        filterScroll.setHorizontalScrollBarEnabled(false);
-        LinearLayout filterRow = new LinearLayout(this);
-        filterRow.setOrientation(LinearLayout.HORIZONTAL);
-        filterRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        int totalUnlockedModes = unlocked.size() * 4;
-        int clearedUnlockedModes = 0;
-        for (OcgCanonDuel d : unlocked) {
-            clearedUnlockedModes += profile.getCanonDuelClearedCount(d.id);
+        int totalAllModes = allCanon.size() * 4;
+        int clearedAllModes = 0;
+        for (OcgCanonDuel d : allCanon) {
+            clearedAllModes += profile.getCanonDuelClearedCount(d.id);
+        }
+        int totalTodayModes = todayDuels.size() * 4;
+        int clearedTodayModes = 0;
+        for (OcgCanonDuel d : todayDuels) {
+            clearedTodayModes += profile.getCanonDuelClearedCount(d.id);
         }
 
-        String[][] filters = {
-                {"ALL", "全部 (" + unlocked.size() + ")"},
-                {"MANGA", "原作漫画"},
-                {"SCREEN", "动画/剧场版"},
-                {"UNCLEARED", "未全通关"}
-        };
-        for (final String[] f : filters) {
-            boolean active = f[0].equals(canonFilterMode);
-            Button btn = makeActionButton(f[1], active ? "#DB2777" : "#334155");
-            btn.setOnClickListener(v -> {
-                canonFilterMode = f[0];
-                renderCurrentTab();
-            });
-            filterRow.addView(btn);
-        }
-        filterScroll.addView(filterRow);
-        actionCol.addView(filterScroll);
+        if (!todayDuels.isEmpty()) {
+            android.widget.HorizontalScrollView filterScroll = new android.widget.HorizontalScrollView(this);
+            filterScroll.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            filterScroll.setHorizontalScrollBarEnabled(false);
+            LinearLayout filterRow = new LinearLayout(this);
+            filterRow.setOrientation(LinearLayout.HORIZONTAL);
+            filterRow.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView note = makeSubtleText("🎬 已解锁 " + unlocked.size() + " / " + allCanon.size()
-                + " 场原著对决 · 已挑战成功 " + clearedUnlockedModes + " / " + totalUnlockedModes + " 个模式"
-                + "（按原著日期升序 · 以核心卡首次 OCG 发售日解锁）");
-        note.setPadding(0, dp(6), 0, 0);
+            String[][] filters = {
+                    {"ALL", "当日全部 (" + todayDuels.size() + ")"},
+                    {"MANGA", "原作漫画"},
+                    {"SCREEN", "动画/剧场版"},
+                    {"UNCLEARED", "未全通关"}
+            };
+            for (final String[] f : filters) {
+                boolean active = f[0].equals(canonFilterMode);
+                Button btn = makeActionButton(f[1], active ? "#DB2777" : "#334155");
+                btn.setOnClickListener(v -> {
+                    canonFilterMode = f[0];
+                    renderCurrentTab();
+                });
+                filterRow.addView(btn);
+            }
+            filterScroll.addView(filterRow);
+            actionCol.addView(filterScroll);
+        }
+
+        TextView note = makeSubtleText("🎬 当日（" + profile.currentTimelineDate + "）对决还原：" + todayDuels.size()
+                + " 场（当日已通关 " + clearedTodayModes + "/" + totalTodayModes
+                + " · 累计 " + clearedAllModes + "/" + totalAllModes + " 模式 · 仅限当日环境卡池挑战）");
+        note.setPadding(0, todayDuels.isEmpty() ? 0 : dp(6), 0, 0);
         actionCol.addView(note);
         layoutTabActions.addView(actionCol);
 
-        // Sort ascending by original work date (originalDate asc, then timelineDate asc, then id asc)
+        // Filter today's exact-date duels (already sorted ascending by originalDate)
         List<OcgCanonDuel> filtered = new ArrayList<>();
-        for (OcgCanonDuel d : unlocked) {
+        for (OcgCanonDuel d : todayDuels) {
             if ("MANGA".equals(canonFilterMode) && !"MANGA".equals(d.mediaType)) continue;
             if ("SCREEN".equals(canonFilterMode) && "MANGA".equals(d.mediaType)) continue;
             if ("UNCLEARED".equals(canonFilterMode) && profile.getCanonDuelClearedCount(d.id) >= 4) continue;
             filtered.add(d);
         }
-        java.util.Collections.sort(filtered, (a, b) -> {
-            int c1 = (a.originalDate != null ? a.originalDate : "")
-                    .compareTo(b.originalDate != null ? b.originalDate : "");
-            if (c1 != 0) return c1;
-            int c2 = (a.timelineDate != null ? a.timelineDate : "")
-                    .compareTo(b.timelineDate != null ? b.timelineDate : "");
-            if (c2 != 0) return c2;
-            return (a.id != null ? a.id : "").compareTo(b.id != null ? b.id : "");
-        });
 
         if (filtered.isEmpty()) {
             LinearLayout empty = makeCardContainer();
-            empty.addView(makeTitleText(unlocked.isEmpty()
-                    ? "截至 " + profile.currentTimelineDate + " 暂无已解锁的原著对决"
-                    : "当前筛选条件下暂无符合条件的原著对决"));
-            empty.addView(makeSubtleText(
-                    "每场原著对决将在其核心卡牌首次于日本 OCG 发售之日解锁，确保当期卡池与强度一致。\n"
-                            + "推进时间轴至 1999-07-22（Vol.4）、1999-08-26（东京巨蛋）、1999-09-23（Vol.5）、"
-                            + "1999-11-18（Vol.6）、1999-12-01（Booster 6）、1999-12-18（PP2）即可逐步解锁 1999 年全部 14 场原著对决！"));
+            empty.addView(makeTitleText(todayDuels.isEmpty()
+                    ? "📅 " + profile.currentTimelineDate + " 当日暂无对决还原"
+                    : "当前筛选条件下暂无符合条件的当日对决还原"));
+            if (todayDuels.isEmpty()) {
+                empty.addView(makeSubtleText(
+                        "为保证只能使用当时环境的卡牌公平挑战且避免后期列表过长，对决还原仅在对应解锁日当天开放挑战。\n"
+                                + "点击顶部日历中带有 🎬 特殊粉框标记的日期，或直接点选下方对决还原日期前往："));
+
+                Button openCalBtn = makeActionButton("📅 打开日历（查找 🎬 对决还原日期）", "#DB2777");
+                LinearLayout.LayoutParams calLp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                calLp.topMargin = dp(8);
+                openCalBtn.setLayoutParams(calLp);
+                openCalBtn.setOnClickListener(v -> openDatePicker());
+                empty.addView(openCalBtn);
+
+                // Quick-jump 2-column grid of all dates that host Canon Duels
+                List<String> canonDates = new ArrayList<>(TimelineEngine.getCanonDuelDates(catalog));
+                for (int i = 0; i < canonDates.size(); i += 2) {
+                    String d1 = canonDates.get(i);
+                    Button b1 = makeCanonDateJumpButton(d1);
+                    if (i + 1 < canonDates.size()) {
+                        String d2 = canonDates.get(i + 1);
+                        Button b2 = makeCanonDateJumpButton(d2);
+                        empty.addView(makeEqualWeightButtonRow(6, b1, b2));
+                    } else {
+                        LinearLayout singleRow = new LinearLayout(this);
+                        singleRow.setOrientation(LinearLayout.HORIZONTAL);
+                        singleRow.setPadding(0, dp(6), 0, 0);
+                        b1.setLayoutParams(new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+                        singleRow.addView(b1);
+                        empty.addView(singleRow);
+                    }
+                }
+            } else {
+                empty.addView(makeSubtleText("切换上方筛选条件即可查看当日全部对决还原。"));
+            }
             layoutContent.addView(empty);
             return;
         }
@@ -2482,22 +2570,17 @@ public class RpgHomeActivity extends AppCompatActivity {
                     + (clearedOwnVsA ? 1 : 0) + (clearedOwnVsB ? 1 : 0);
 
             LinearLayout card = makeCardContainer();
-            boolean isExactDay = profile.currentTimelineDate.equals(duel.timelineDate);
-            if (isExactDay || duelClearedCount == 4) {
-                GradientDrawable bg = new GradientDrawable();
-                bg.setColor(Color.parseColor("#1E293B"));
-                bg.setCornerRadius(dp(10));
-                bg.setStroke(dp(2), Color.parseColor(duelClearedCount == 4 ? "#10B981" : "#EC4899"));
-                card.setBackground(bg);
-            }
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(Color.parseColor("#1E293B"));
+            bg.setCornerRadius(dp(10));
+            bg.setStroke(dp(2), Color.parseColor(duelClearedCount == 4 ? "#10B981" : "#EC4899"));
+            card.setBackground(bg);
 
             // Title & Media/Date/Clear header
-            String todayTag = isExactDay ? " 🔥 当日解锁" : "";
             String clearTag = duelClearedCount == 4 ? "  ✅ 全通关(4/4)"
                     : (duelClearedCount > 0 ? ("  🏅 " + duelClearedCount + "/4") : "");
-            TextView tvHead = makeTitleText("[" + duel.getMediaLabelCn() + "] " + duel.title + todayTag + clearTag);
-            tvHead.setTextColor(Color.parseColor(
-                    duelClearedCount == 4 ? "#6EE7B7" : (isExactDay ? "#FBCFE8" : "#F8FAFC")));
+            TextView tvHead = makeTitleText("[" + duel.getMediaLabelCn() + "] " + duel.title + clearTag);
+            tvHead.setTextColor(Color.parseColor(duelClearedCount == 4 ? "#6EE7B7" : "#FBCFE8"));
             card.addView(tvHead);
 
             String dateLine = duel.episodeLabel + " · 原作日期 " + duel.originalDate
@@ -2633,6 +2716,21 @@ public class RpgHomeActivity extends AppCompatActivity {
 
             layoutContent.addView(card);
         }
+    }
+
+    private Button makeCanonDateJumpButton(final String dateStr) {
+        List<OcgCanonDuel> dayDuels = TimelineEngine.getCanonDuelsOnDate(catalog, dateStr);
+        int totalModes = dayDuels.size() * 4;
+        int clearedModes = 0;
+        for (OcgCanonDuel d : dayDuels) {
+            clearedModes += profile.getCanonDuelClearedCount(d.id);
+        }
+        boolean allCleared = totalModes > 0 && clearedModes >= totalModes;
+        String label = "🎬 " + dateStr + " (" + dayDuels.size() + "场"
+                + (allCleared ? " ✅" : (" · " + clearedModes + "/" + totalModes)) + ")";
+        Button btn = makeActionButton(label, allCleared ? "#065F46" : "#334155");
+        btn.setOnClickListener(v -> selectTimelineDate(dateStr));
+        return btn;
     }
 
     private LinearLayout makeBadgeableButtonRow(int topPadDp,
@@ -2782,6 +2880,10 @@ public class RpgHomeActivity extends AppCompatActivity {
     private void launchCanonDuelWithOwnDeck(OcgCanonDuel duel,
                                             CanonDuelDeckBuilder.BuiltCanonDeck oppCanonDeck,
                                             String canonMode) {
+        if (duel != null && duel.timelineDate != null && !duel.timelineDate.equals(profile.currentTimelineDate)) {
+            Toast.makeText(this, "请先切换至 " + duel.timelineDate + " 当日环境再挑战该场对决还原", Toast.LENGTH_LONG).show();
+            return;
+        }
         DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
         if (!val.valid) {
             new AlertDialog.Builder(this)

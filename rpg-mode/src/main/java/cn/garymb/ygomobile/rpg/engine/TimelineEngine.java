@@ -76,6 +76,42 @@ public final class TimelineEngine {
         return available;
     }
 
+    /**
+     * Returns ONLY canon duels scheduled for the exact {@code currentDate} (sorted ascending by
+     * {@code originalDate}, then {@code id}), ensuring players challenge each canon duel strictly
+     * within that era's card pool and keeping the Canon Duels list clutter-free in later years.
+     */
+    public static List<OcgCanonDuel> getCanonDuelsOnDate(RpgCatalog catalog, String currentDate) {
+        List<OcgCanonDuel> matched = new ArrayList<>();
+        if (catalog == null || catalog.canonDuels == null || currentDate == null || currentDate.isEmpty()) {
+            return matched;
+        }
+        for (OcgCanonDuel d : catalog.canonDuels) {
+            if (d != null && currentDate.equals(d.timelineDate)) {
+                matched.add(d);
+            }
+        }
+        Collections.sort(matched, (a, b) -> {
+            int c1 = (a.originalDate != null ? a.originalDate : "")
+                    .compareTo(b.originalDate != null ? b.originalDate : "");
+            if (c1 != 0) return c1;
+            return (a.id != null ? a.id : "").compareTo(b.id != null ? b.id : "");
+        });
+        return matched;
+    }
+
+    /** Returns the sorted set of timeline dates that contain at least one canon duel. */
+    public static Set<String> getCanonDuelDates(RpgCatalog catalog) {
+        Set<String> dates = new TreeSet<>();
+        if (catalog == null || catalog.canonDuels == null) return dates;
+        for (OcgCanonDuel d : catalog.canonDuels) {
+            if (d != null && d.timelineDate != null && !d.timelineDate.isEmpty()) {
+                dates.add(d.timelineDate);
+            }
+        }
+        return dates;
+    }
+
     /** Returns the latest OCG rule set whose effectiveDate <= currentDate (strictly timeline-driven). */
     public static OcgRuleSet getActiveRuleSet(RpgCatalog catalog, String currentDate) {
         OcgRuleSet best = null;

@@ -156,9 +156,9 @@
         3. **第三优先（种族/属性主题一致）**，最后才回退至当期通用卡；
       - **严禁敌对/其他角色专属王牌串场**：补位池强制过滤其他原著人物的专属招牌卡（如暗游戏绝不补位《青眼白龙》《灯之魔精》《机械猎手》《死毒》，海马绝不补位《黑魔术师》《暗黑骑士 盖亚》《诅咒之龙》《恶魔召唤》《真红眼黑龙》，城之内/羽蛾/孔雀舞/渔太/龙崎/迷宫兄弟亦严禁混入其他角色的专属王牌；单局显式登记的 `canonCardIds` 仍 100% 忠实保留）。
       - 先补足怪兽、再做魔法/陷阱合理性判定与补位，保证种族/属性装备魔法能准确统计全卡组目标数，既不漏掉原著招牌装备、也不塞入废装备。
-3. **展示排序、日期事项与四模式通关记录**：
-   - 「🎬 对决还原」列表严格**按原著日期 `originalDate` 升序排列**（同日再按 `timelineDate`、`id` 升序）；
-   - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates` 与 `TimelineDigest.newCanonDuels`（日历浅绿圆点高亮 + 当期动态展示），到达该日期即解锁；
+3. **当日限定展示、日历 🎬 特殊标记与四模式通关记录**：
+   - 「🎬 对决还原」页**仅显示当前选定日期当日的对决还原**（`TimelineEngine.getCanonDuelsOnDate`，当日多场按原著日期 `originalDate` 升序排列），既避免后期列表冗长难查，也强制保证玩家自组挑战时**只能使用当时环境的卡池与规则/禁限表，无法携带未来卡**；当日无对决还原时提供一键打开日历与全对决日期快捷跳转按钮；
+   - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates`、`TimelineEngine.getCanonDuelDates` 与 `TimelineDigest.newCanonDuels`：**时间轴日历弹窗中含对决还原的日期采用专属粉框 + `🎬` 图标背景高亮**（月份下拉菜单同样附带 `🎬` 标识），与普通浅绿圆点 OCG 事件一眼区分；
    - 每场对决提供 4 种挑战模式（`ROLE_A` 扮演 A、`ROLE_B` 扮演 B、`OWN_VS_A` 自组挑战 A、`OWN_VS_B` 自组挑战 B）及与 AI 对战一致的分屏可视化查看卡组弹窗（带 `原著` 筛选与徽章）；玩家在任意模式下获胜后，通过 `RpgProfile.clearedCanonDuelModes` 持久化记录，并在对应挑战按钮右上角显示绿色 **`✔ 成功`** 标签。
 4. **角色头像复用与新角色补绘**：
    - 同一角色在不同集数的对决中复用同一头像 ID（如 `ai_vol1_yugi`、`ai_starter_kaiba`、`ai_weekend_challenger`、`char_pegasus` 等）；

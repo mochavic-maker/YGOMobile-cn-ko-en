@@ -959,6 +959,21 @@ public class RpgEnginesTest {
         assertEquals("All 14 core-card-gated duels should unlock by 1999-12-31",
                 14, TimelineEngine.getAvailableCanonDuels(catalog, "1999-12-31").size());
 
+        // Verify exact-date-only query (used by Canon Duels tab so players only battle in that era's card pool)
+        assertEquals(0, TimelineEngine.getCanonDuelsOnDate(catalog, "1999-02-04").size());
+        assertEquals(2, TimelineEngine.getCanonDuelsOnDate(catalog, "1999-07-22").size());
+        assertEquals("Later date without its own canon duel must NOT carry over earlier duels",
+                0, TimelineEngine.getCanonDuelsOnDate(catalog, "1999-07-23").size());
+        assertEquals(4, TimelineEngine.getCanonDuelsOnDate(catalog, "1999-11-18").size());
+        assertEquals(2, TimelineEngine.getCanonDuelsOnDate(catalog, "1999-12-18").size());
+        assertEquals("Year-end non-canon date must show 0 exact-day duels",
+                0, TimelineEngine.getCanonDuelsOnDate(catalog, "1999-12-31").size());
+        java.util.Set<String> canonDates = TimelineEngine.getCanonDuelDates(catalog);
+        assertEquals(6, canonDates.size());
+        for (String d : expectedUnlockDates) {
+            assertTrue("Calendar canon date set must include " + d, canonDates.contains(d));
+        }
+
         // Verify ascending order by originalDate in JSON, strict core-card OCG date matching,
         // zero unreleased/future card leakage, 40-card deck reconstruction, and bundled avatars
         String prevOrigDate = "";
