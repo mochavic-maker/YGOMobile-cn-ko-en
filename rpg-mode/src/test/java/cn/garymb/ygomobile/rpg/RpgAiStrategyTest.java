@@ -1,7 +1,9 @@
 package cn.garymb.ygomobile.rpg;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
@@ -951,6 +953,153 @@ public class RpgAiStrategyTest {
                 client.stop();
             }
         }
+    }
+
+    @Test
+    public void monsterRebornedOpponentBlueEyesIsNeverTributedForCurseOfDragon() {
+        final int CURSE_OF_DRAGON = 28279543; // Lv5, 2000/1500
+        final int CELTIC_GUARDIAN = 91152256; // Lv4, 1400/1200
+
+        // Case 1: 1999-05-27 Expert Rule — AI revives OPPONENT's Blue-Eyes (3000 ATK) from opponent's
+        // Graveyard via Monster Reborn. owner == 1, controller == 0, but control is PERMANENT.
+        // AI holds Curse of Dragon (2000 ATK) in hand. AI MUST NOT tribute Blue-Eyes for Curse of Dragon!
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-05-27");
+        state.myProtocolPlayer = 1; // local 0 = proto 1 (AI), local 1 = proto 0 (Opponent)
+        state.turnPlayer = 0;
+        state.turnCount = 4;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+
+        // Simulate MSG_MOVE: opponent's Blue-Eyes moves from opp LOC_GRAVE (proto 0) -> AI LOC_MZONE (proto 1)
+        ByteBuffer rebornMove = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
+        rebornMove.putInt(RpgAiCardKnowledge.BLUE_EYES)
+                .put((byte) 0).put((byte) RpgAiDuelState.LOC_GRAVE).put((byte) 0).put((byte) 0)
+                .put((byte) 1).put((byte) RpgAiDuelState.LOC_MZONE).put((byte) 2)
+                .put((byte) RpgAiDuelState.POS_FACEUP_ATTACK)
+                .putInt(0);
+        rebornMove.flip();
+        state.onMove(rebornMove);
+
+        assertNotNull("Revived Blue-Eyes should be on AI mzone[2]", state.mzone[0][2]);
+        assertEquals("Owner remains opponent (local 1)", 1, state.mzone[0][2].owner);
+        assertEquals("Catalog ATK should be populated even before MSG_UPDATE_DATA", 3000, state.mzone[0][2].atk);
+        assertFalse("Monster Reborn revival is permanent, NOT temporarily stolen",
+                state.mzone[0][2].isStolenFromOpponent());
+        assertFalse("hasStolenMonsterOnMyField must be false for Monster Reborn",
+                state.hasStolenMonsterOnMyField());
+
+        addHandCard(state, CURSE_OF_DRAGON);
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "GOOD_STUFF");
+        RpgAiStrategy.IdleCmdPrompt prompt = new RpgAiStrategy.IdleCmdPrompt();
+        prompt.summonable.add(new RpgAiStrategy.CmdEntry(
+                CURSE_OF_DRAGON, 1, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        prompt.canBattle = true;
+        prompt.canEnd = true;
+
+        int resp = strategy.chooseIdleCmd(prompt);
+        assertEquals("AI must NOT tribute Monster-Reborned Blue-Eyes for weaker Curse of Dragon; enter Battle Phase instead",
+                6, resp);
+
+        // Case 2: If AI controls BOTH Monster-Reborned Blue-Eyes (seq 2) AND Celtic Guardian (seq 1, 1400 ATK)
+        // and must choose 1 tribute, AI MUST sacrifice Celtic Guardian (index 1), NOT Blue-Eyes (index 0)!
+        placeMonster(state, 0, 1, CELTIC_GUARDIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 1400, 1200);
+        ByteBuffer tribBuf = ByteBuffer.allocate(5 + 2 * 8).order(ByteOrder.LITTLE_ENDIAN);
+        tribBuf.put((byte) 1).put((byte) 0).put((byte) 1).put((byte) 1).put((byte) 2);
+        tribBuf.putInt(RpgAiCardKnowledge.BLUE_EYES).put((byte) 1).put((byte) RpgAiDuelState.LOC_MZONE).put((byte) 2).put((byte) 1);
+        tribBuf.putInt(CELTIC_GUARDIAN).put((byte) 1).put((byte) RpgAiDuelState.LOC_MZONE).put((byte) 1).put((byte) 1);
+        tribBuf.flip();
+        byte[] tribResp = strategy.chooseSelectTribute(tribBuf);
+        assertEquals("Must pick 1 tribute", 1, tribResp[0] & 0xFF);
+        assertEquals("Must tribute Celtic Guardian (index 1), NOT Monster-Reborned Blue-Eyes (index 0)",
+                1, tribResp[1] & 0xFF);
+
+        // Case 3 (Positive control): Change of Heart moving opponent's monster from opp LOC_MZONE -> AI LOC_MZONE
+        // IS temporary control, so in Main 2 AI SHOULD tribute it for Curse of Dragon before it returns!
+        RpgAiDuelState cohState = new RpgAiDuelState(catalog, tributeRule, "1999-05-27");
+        cohState.myProtocolPlayer = 1;
+        cohState.turnPlayer = 0;
+        cohState.turnCount = 4;
+        cohState.phase = RpgAiDuelState.PHASE_MAIN2;
+        placeMonster(cohState, 1, 2, RpgAiCardKnowledge.BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
+
+        ByteBuffer cohMove = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
+        cohMove.putInt(RpgAiCardKnowledge.BLUE_EYES)
+                .put((byte) 0).put((byte) RpgAiDuelState.LOC_MZONE).put((byte) 2).put((byte) RpgAiDuelState.POS_FACEUP_ATTACK)
+                .put((byte) 1).put((byte) RpgAiDuelState.LOC_MZONE).put((byte) 2).put((byte) RpgAiDuelState.POS_FACEUP_ATTACK)
+                .putInt(0);
+        cohMove.flip();
+        cohState.onMove(cohMove);
+
+        assertTrue("Change of Heart MZONE->MZONE steal MUST be marked temporarily stolen",
+                cohState.mzone[0][2].isStolenFromOpponent());
+        addHandCard(cohState, CURSE_OF_DRAGON);
+        RpgAiStrategy cohStrategy = new RpgAiStrategy(cohState, null, "GOOD_STUFF");
+        RpgAiStrategy.IdleCmdPrompt m2Prompt = new RpgAiStrategy.IdleCmdPrompt();
+        m2Prompt.summonable.add(new RpgAiStrategy.CmdEntry(
+                CURSE_OF_DRAGON, 1, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        m2Prompt.canBattle = false;
+        m2Prompt.canEnd = true;
+
+        int cohResp = cohStrategy.chooseIdleCmd(m2Prompt);
+        assertEquals("In Main 2, AI should tribute temporarily stolen monster for Curse of Dragon (index 0 << 16)",
+                0, cohResp);
+    }
+
+    @Test
+    public void swordsOfRevealingLightActivatesWhenOpenBoardAfterTrapHoleAtFullLp() {
+        // Case 1: 1999-05-27 — LP 8000, open board on both sides after AI's Normal Summon was
+        // destroyed by Trap Hole, holding Swords of Revealing Light with no protective trap.
+        // AI MUST activate Swords of Revealing Light (opcode 5) instead of ending turn (7)!
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-05-27");
+        state.turnPlayer = 0;
+        state.turnCount = 2;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        state.normalSummonedThisTurn = true;
+        addHandCard(state, RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "GOOD_STUFF");
+        RpgAiStrategy.IdleCmdPrompt prompt = new RpgAiStrategy.IdleCmdPrompt();
+        prompt.activatable.add(new RpgAiStrategy.CmdEntry(
+                RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT, 1, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        prompt.canBattle = true;
+        prompt.canEnd = true;
+
+        int resp = strategy.chooseIdleCmd(prompt);
+        assertEquals("AI should activate Swords of Revealing Light when open & defenseless after Trap Hole",
+                5, resp);
+
+        // Case 2: If AI ALREADY controls a face-up Swords of Revealing Light, do NOT stack a 2nd copy!
+        RpgAiDuelState.CardSlot activeSwords = new RpgAiDuelState.CardSlot();
+        activeSwords.code = RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT;
+        activeSwords.controller = 0;
+        activeSwords.owner = 0;
+        activeSwords.location = RpgAiDuelState.LOC_SZONE;
+        activeSwords.sequence = 0;
+        activeSwords.position = RpgAiDuelState.POS_FACEUP_ATTACK;
+        activeSwords.type = RpgAiDuelState.TYPE_SPELL;
+        state.szone[0][0] = activeSwords;
+
+        int stackedResp = strategy.chooseIdleCmd(prompt);
+        assertEquals("AI must NOT waste a 2nd Swords while one is already face-up on field",
+                7, stackedResp);
+
+        // Case 3: If opponent board is empty and AI has a real protective trap (Trap Hole) ready to Set,
+        // AI should Set Trap Hole (opcode 4) and save Swords for later!
+        state.szone[0][0] = null;
+        RpgAiStrategy.IdleCmdPrompt withTrapPrompt = new RpgAiStrategy.IdleCmdPrompt();
+        withTrapPrompt.activatable.add(new RpgAiStrategy.CmdEntry(
+                RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT, 1, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        withTrapPrompt.ssetable.add(new RpgAiStrategy.CmdEntry(
+                RpgAiCardKnowledge.TRAP_HOLE, 1, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 0));
+        withTrapPrompt.canBattle = true;
+        withTrapPrompt.canEnd = true;
+
+        int withTrapResp = strategy.chooseIdleCmd(withTrapPrompt);
+        assertEquals("AI with Trap Hole ready on empty opponent board should Set Trap Hole and save Swords",
+                4, withTrapResp);
     }
 
     private static void sendPacket(OutputStream out, int proto, byte[] body) throws Exception {

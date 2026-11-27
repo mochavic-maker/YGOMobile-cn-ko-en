@@ -108,6 +108,8 @@ public class RpgAiDuelState {
         public int baseAtk;
         public int baseDef;
         public int status;
+        public boolean temporaryControl;
+        public boolean statsQueried;
 
         public boolean isFaceUp() {
             return (position & POS_FACEUP) != 0;
@@ -141,8 +143,14 @@ public class RpgAiDuelState {
             return (status & 0x01) != 0; // STATUS_DISABLED
         }
 
+        /**
+         * Returns true ONLY for monsters temporarily taken from opponent (e.g., Change of Heart /
+         * Brain Control) that return at End Phase. Monsters permanently revived from opponent's
+         * Graveyard via Monster Reborn keep {@code owner == 1} with {@code temporaryControl == false}
+         * and must NOT be treated as disposable tribute/suicide fodder.
+         */
         public boolean isStolenFromOpponent() {
-            return controller == 0 && owner == 1;
+            return controller == 0 && temporaryControl;
         }
 
         public int effectiveCombatValue() {
@@ -187,6 +195,7 @@ public class RpgAiDuelState {
             }
             if ((flag & QUERY_ATTACK) != 0 && buf.remaining() >= 4) {
                 atk = buf.getInt();
+                statsQueried = true;
             }
             if ((flag & QUERY_DEFENSE) != 0 && buf.remaining() >= 4) {
                 def = buf.getInt();
@@ -432,6 +441,13 @@ public class RpgAiDuelState {
         lastAttackerSeq = -1;
         lastDefenderLocalCtrl = -1;
         lastDefenderSeq = -1;
+        for (int p = 0; p < 2; p++) {
+            for (int i = 0; i < mzone[p].length; i++) {
+                if (mzone[p][i] != null) {
+                    mzone[p][i].temporaryControl = false;
+                }
+            }
+        }
     }
 
     public void enrichFromCatalog(CardSlot slot) {
@@ -450,10 +466,10 @@ public class RpgAiDuelState {
         if (slot.baseDef == 0 && card.def > 0) {
             slot.baseDef = card.def;
         }
-        if (slot.atk == 0 && card.atk > 0 && slot.location != LOC_MZONE) {
+        if (!slot.statsQueried && slot.atk == 0 && card.atk > 0) {
             slot.atk = card.atk;
         }
-        if (slot.def == 0 && card.def > 0 && slot.location != LOC_MZONE) {
+        if (!slot.statsQueried && slot.def == 0 && card.def > 0) {
             slot.def = card.def;
         }
         if (slot.attribute == 0 && card.attribute != null) {
@@ -889,6 +905,16 @@ public class RpgAiDuelState {
         moved.location = newLoc;
         moved.sequence = newSeq;
         moved.position = newPos;
+        if (oldCtrl == 1 && oldLoc == LOC_MZONE && newCtrl == 0 && newLoc == LOC_MZONE) {
+            // Temporary control steal (Change of Heart / Brain Control) from opponent's MZONE.
+            // Permanent revivals from opponent's GY (Monster Reborn) come from LOC_GRAVE, not LOC_MZONE.
+            moved.temporaryControl = true;
+        } else if (newLoc != LOC_MZONE || newCtrl != 0) {
+            moved.temporaryControl = false;
+        }
+        if (newLoc != LOC_MZONE) {
+            moved.statsQueried = false;
+        }
         if (oldLoc == LOC_DECK) deckCount[oldCtrl] = Math.max(0, deckCount[oldCtrl] - 1);
         if (newLoc == LOC_DECK) deckCount[newCtrl]++;
         enrichFromCatalog(moved);
@@ -989,7 +1015,9 @@ public class RpgAiDuelState {
         lastActivatingCode = code;
         if (cc == 0) {
             if (code == RpgAiCardKnowledge.LAST_WILL) lastWillActivatedThisTurn = true;
-            if (code == RpgAiCardKnowledge.CHANGE_OF_HEART) changeOfHeartUsedThisTurn = true;
+            if (code == RpgAiCardKnowledge.CHANGE_OF_HEART || code == RpgAiCardKnowledge.BRAIN_CONTROL) {
+                changeOfHeartUsedThisTurn = true;
+            }
         }
         CardSlot src = getCard(pcc, pcl, pcs);
         if (src != null && code != 0) {

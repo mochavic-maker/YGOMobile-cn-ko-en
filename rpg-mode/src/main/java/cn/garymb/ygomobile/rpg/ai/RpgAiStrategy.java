@@ -926,8 +926,15 @@ public class RpgAiStrategy {
         // Check if tribute summon is actually profitable!
         if (tributes > 0) {
             int tributeCost = estimateTributeFodderValue(tributes);
-            // If we stole opponent's monster via Change of Heart, tributing it is AMAZING (+900)!
-            int stolenBonus = hasStolen ? 900 : 0;
+            int maxNonStolenTributeAtk = estimateMaxNonStolenTributeAtk(tributes);
+            // Never sacrifice a permanent (non-temporarily-stolen) monster that is already stronger
+            // or equal in ATK than the Tribute monster we are trying to summon!
+            if (maxNonStolenTributeAtk >= atk) {
+                return -800;
+            }
+            // Temporarily stolen monsters (Change of Heart / Brain Control) are already valued at 0
+            // in tributeCost; add a modest bonus for removing opponent's stolen monster permanently.
+            int stolenBonus = hasStolen ? 350 : 0;
             // Don't tribute a stronger monster (or 2 good monsters) for a weaker one!
             if (atk + stolenBonus <= tributeCost + 100) {
                 return -800;
@@ -1238,14 +1245,21 @@ public class RpgAiStrategy {
                 }
             }
         }
-        // Swords of Revealing Light: activate when opponent has threats/face-downs or in defensive decks
+        // Swords of Revealing Light: activate when opponent has threats/face-downs, in stall decks,
+        // or whenever we are about to pass on an open board with no real protective trap (e.g., after
+        // our Normal Summon got hit by Trap Hole or on a bricked hand). Never stack a 2nd copy while
+        // one is already active on our field!
         CmdEntry swords = findActivatable(p, RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT);
-        if (swords != null) {
+        if (swords != null
+                && !state.hasFaceUpCardOnField(0, RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT)) {
+            boolean myBoardEmpty = state.getMonsters(0).isEmpty();
             boolean oppHasMonsters = !state.getMonsters(1).isEmpty();
             boolean behind = state.getStrongestThreatValue(1) >= state.getStrongestAtk(0);
             boolean needStall = isExodiaStyle() || isBurnStyle() || isMillStyle() || state.lp[0] <= 3000;
+            boolean openAndDefenseless = myBoardEmpty && !hasProtectiveTrapReady(p);
             if ((oppHasMonsters && (behind || hasFaceDownMonster(1) || needStall))
-                    || (needStall && state.getMonsters(0).isEmpty())) {
+                    || (needStall && myBoardEmpty)
+                    || openAndDefenseless) {
                 return activateIdle(swords);
             }
         }
@@ -1330,6 +1344,42 @@ public class RpgAiStrategy {
             if (isTrap) return true;
         }
         return false;
+    }
+
+    /**
+     * Returns true when AI already controls (or can Set from hand this turn) a real attack- or
+     * summon-stopping trap that protects an open board, assuming Royal Decree is not active.
+     */
+    private boolean hasProtectiveTrapReady(IdleCmdPrompt p) {
+        if (state.hasFaceUpCardOnField(0, RpgAiCardKnowledge.ROYAL_DECREE)
+                || state.hasFaceUpCardOnField(1, RpgAiCardKnowledge.ROYAL_DECREE)) {
+            return false;
+        }
+        for (RpgAiDuelState.CardSlot s : state.getSpellTraps(0)) {
+            if (s != null && isProtectiveTrap(s.code)) {
+                return true;
+            }
+        }
+        if (state.getFreeMainSzoneCount(0) > 0) {
+            for (CmdEntry e : p.ssetable) {
+                if (isProtectiveTrap(e.code)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isProtectiveTrap(int code) {
+        return code == RpgAiCardKnowledge.TRAP_HOLE
+                || code == RpgAiCardKnowledge.MIRROR_FORCE
+                || code == RpgAiCardKnowledge.WABOKU
+                || code == RpgAiCardKnowledge.NEGATE_ATTACK
+                || code == RpgAiCardKnowledge.MIRROR_WALL
+                || code == RpgAiCardKnowledge.KUNAI_WITH_CHAIN
+                || code == RpgAiCardKnowledge.SHADOW_SPELL
+                || code == RpgAiCardKnowledge.SPELLBINDING_CIRCLE
+                || code == RpgAiCardKnowledge.MAGICAL_HATS;
     }
 
     private int countFaceDownBackrow(int localPlayer) {
@@ -2313,12 +2363,14 @@ public class RpgAiStrategy {
     /** Higher score = MORE willing to sacrifice/tribute. */
     private int scoreTributeSacrificePriority(SelectCardItem item) {
         RpgAiDuelState.CardSlot slot = state.getCard(item.localCtrl, item.location, item.sequence);
-        // Always tribute stolen opponent monsters first!
+        // Always tribute temporarily stolen opponent monsters (Change of Heart / Brain Control) first!
         if (slot != null && slot.isStolenFromOpponent()) return 100000;
         // Sangan / Witch trigger search when sent from field to GY!
         if (RpgAiCardKnowledge.isSearcherMonster(item.code)) return 80000;
         // Already-flipped Magician of Faith / Man-Eater Bug / weak monsters
-        int atk = slot != null ? slot.atk : state.getCardBaseAtk(item.code);
+        int atk = (slot != null && (slot.atk > 0 || slot.statsQueried))
+                ? slot.atk
+                : state.getCardBaseAtk(item.code);
         return 10000 - atk;
     }
 
@@ -2639,11 +2691,13 @@ public class RpgAiStrategy {
         List<Integer> vals = new ArrayList<>();
         for (RpgAiDuelState.CardSlot m : state.getMonsters(0)) {
             if (m.isStolenFromOpponent()) {
-                vals.add(0); // stolen monster is free fodder!
+                vals.add(0); // temporarily stolen monster (Change of Heart / Brain Control) is free fodder!
             } else if (RpgAiCardKnowledge.isSearcherMonster(m.code)) {
                 vals.add(200); // tributing Sangan/Witch triggers search!
             } else {
-                vals.add(m.isFaceUp() ? Math.max(m.atk, m.def / 2) : 600);
+                int mAtk = (m.atk > 0 || m.statsQueried) ? m.atk : state.getCardBaseAtk(m.code);
+                int mDef = (m.def > 0 || m.statsQueried) ? m.def : state.getCardBaseDef(m.code);
+                vals.add(m.isFaceUp() ? Math.max(mAtk, mDef / 2) : 600);
             }
         }
         Collections.sort(vals);
@@ -2652,6 +2706,32 @@ public class RpgAiStrategy {
             sum += vals.get(i);
         }
         return sum;
+    }
+
+    /**
+     * Returns the highest ATK among the cheapest {@code tributesNeeded} permanent (non-temporarily-stolen,
+     * non-searcher) monsters that would have to be sacrificed for a Tribute Summon.
+     */
+    private int estimateMaxNonStolenTributeAtk(int tributesNeeded) {
+        List<int[]> candidates = new ArrayList<>();
+        for (RpgAiDuelState.CardSlot m : state.getMonsters(0)) {
+            if (m.isStolenFromOpponent()) {
+                candidates.add(new int[]{0, 0});
+            } else if (RpgAiCardKnowledge.isSearcherMonster(m.code)) {
+                candidates.add(new int[]{200, 0});
+            } else {
+                int mAtk = (m.atk > 0 || m.statsQueried) ? m.atk : state.getCardBaseAtk(m.code);
+                int mDef = (m.def > 0 || m.statsQueried) ? m.def : state.getCardBaseDef(m.code);
+                int cost = m.isFaceUp() ? Math.max(mAtk, mDef / 2) : 600;
+                candidates.add(new int[]{cost, m.isFaceUp() ? mAtk : 0});
+            }
+        }
+        Collections.sort(candidates, (a, b) -> Integer.compare(a[0], b[0]));
+        int maxAtk = 0;
+        for (int i = 0; i < Math.min(tributesNeeded, candidates.size()); i++) {
+            maxAtk = Math.max(maxAtk, candidates.get(i)[1]);
+        }
+        return maxAtk;
     }
 
     private int getBestHandEquipBonusFor(int monsterCode) {
