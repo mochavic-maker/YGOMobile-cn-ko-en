@@ -421,14 +421,17 @@ public class RpgEnginesTest {
         AiOpponent virus = null;
         AiOpponent flip = null;
         AiOpponent shop = null;
+        AiOpponent yugi = null;
         for (AiOpponent o : opps) {
             if ("ai_virus_control".equals(o.id)) virus = o;
             if ("ai_flip_control".equals(o.id)) flip = o;
             if ("ai_shop_regular".equals(o.id)) shop = o;
+            if ("ai_vol1_yugi".equals(o.id)) yugi = o;
         }
         assertNotNull(virus);
         assertNotNull(flip);
         assertNotNull(shop);
+        assertNotNull(yugi);
 
         // Monotonicity proof across all 17 milestone dates: higher empirical Elo MUST yield >= win reward!
         for (String milestone : cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.getCalibratedMilestoneDates()) {
@@ -462,8 +465,8 @@ public class RpgEnginesTest {
                         && virus.getWinRewardTokens("1999-07-22") > virus.getWinRewardTokens("1999-07-08"));
         assertTrue("Exodia reward must peak in 1999-11-18 pre-errata dark age above 1999-08-26 PP1 hybrid",
                 exodia.getWinRewardTokens("1999-11-18") > exodia.getWinRewardTokens("1999-08-26"));
-        assertTrue("On 1999-12-16, Kaiba EX (Elo 1690) must outpay Exodia (Elo 1537) and Shop Regular (Elo 1097)",
-                kaiba.getWinRewardTokens("1999-12-16") > exodia.getWinRewardTokens("1999-12-16")
+        assertTrue("On 1999-12-16, Yugi EX (Elo 1722) must outpay Exodia (Elo 1579) and Shop Regular (Elo 1043)",
+                yugi.getWinRewardTokens("1999-12-16") > exodia.getWinRewardTokens("1999-12-16")
                         && exodia.getWinRewardTokens("1999-12-16") > shop.getWinRewardTokens("1999-12-16"));
     }
 
@@ -1347,8 +1350,10 @@ public class RpgEnginesTest {
                         assertTrue(opp.id + " @ " + date + " has Cocoon of Evolution without Petit Moth",
                                 uniq.contains(58192742));
                     }
-                    if ((id == 24094653 || id == 26902560 || id == 69015963 || id == 84133008)
-                            && !"FUSION_COMBO".equals(style)) {
+                    if ((id == 24094653 || id == 26902560) && deck.extra.isEmpty()) {
+                        org.junit.Assert.fail(opp.id + " @ " + date + " leaked Fusion Spell " + c.nameCn + " with empty Extra Deck");
+                    }
+                    if ((id == 69015963 || id == 84133008) && !"FUSION_COMBO".equals(style)) {
                         org.junit.Assert.fail(opp.id + " @ " + date + " leaked Fusion-only card " + c.nameCn + " into non-Fusion deck");
                     }
                     String eqReq = AiDeckGenerator.getEquipTargetRequirement(id);
@@ -1384,6 +1389,68 @@ public class RpgEnginesTest {
     }
 
     @Test
+    public void canonCharacterFidelityAndCoreSynergyGuard() {
+        String[] dates = {
+                "1999-02-04", "1999-03-01", "1999-03-18", "1999-03-27",
+                "1999-05-05", "1999-05-25", "1999-05-27", "1999-07-05",
+                "1999-07-08", "1999-07-22", "1999-08-26", "1999-09-23",
+                "1999-10-17", "1999-11-18", "1999-12-01", "1999-12-09",
+                "1999-12-16", "1999-12-18"
+        };
+        List<AiOpponent> opponents = AiDeckGenerator.getDemoOpponents();
+
+        // 1) Character-themed AI opponents MUST NEVER contain rival exclusive signature aces across any era
+        for (String date : dates) {
+            for (AiOpponent opp : opponents) {
+                if (date.compareTo(opp.unlockDate) < 0) continue;
+                String charId = cn.garymb.ygomobile.rpg.engine.CanonCharacterCardRegistry.resolveCharacterId(opp.id);
+                if (charId == null) continue;
+                AiDeckGenerator.GeneratedAiDeck deck = AiDeckGenerator.generateDeck(catalog, opp, date, new Random(42L));
+                assertEquals(opp.id + " @ " + date + " must have 40 cards", 40, deck.main.size());
+                for (int id : deck.main) {
+                    RpgCard c = catalog.findCard(id);
+                    String cardLabel = c != null ? c.nameCn : String.valueOf(id);
+                    assertFalse(opp.id + " (" + charId + ") @ " + date
+                                    + " must NOT include rival signature card " + cardLabel + " (" + id + ")",
+                            cn.garymb.ygomobile.rpg.engine.CanonCharacterCardRegistry.isForbiddenRivalAce(charId, id));
+                }
+            }
+        }
+
+        // 2) All 14 Canon Duels (28 decks): padding MUST NEVER introduce rival signature aces
+        //    AND must actively support key core-card combos (e.g., Petit Moth for Weevil, Labyrinth Tank mats for Paradox)
+        for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel duel : catalog.canonDuels) {
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide side
+                    : new cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide[]{duel.sideA, duel.sideB}) {
+                cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.BuiltCanonDeck built =
+                        cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.buildDeck(catalog, duel, side, null);
+                assertEquals(duel.id + "/" + side.characterName + " must have 40 cards", 40, built.main.size());
+                for (int id : built.main) {
+                    if (built.canonCardIds.contains(id)) continue; // explicit canonCardIds are always preserved 100%
+                    RpgCard c = catalog.findCardOrCanon(id);
+                    String cardLabel = c != null ? c.nameCn : String.valueOf(id);
+                    assertFalse("Canon duel " + duel.id + "/" + side.characterId
+                                    + " must NOT pad rival signature card " + cardLabel + " (" + id + ")",
+                            cn.garymb.ygomobile.rpg.engine.CanonCharacterCardRegistry.isForbiddenRivalAce(side.characterId, id));
+                }
+                // Key core-card synergy checks:
+                if ("canon_1998_02_10_manga_yugi_weevil".equals(duel.id) && "weevil".equals(side.characterId)) {
+                    assertTrue("Weevil Cocoon deck should pad Petit Moth (58192742) to make Cocoon playable!",
+                            built.main.contains(58192742));
+                }
+                if ("canon_1998_03_10_manga_yugi_mako".equals(duel.id) && "mako".equals(side.characterId)) {
+                    assertTrue("Mako Ocean deck should include Umi (22702055) and Water support",
+                            built.main.contains(22702055) && (built.main.contains(77027445) || built.main.contains(2370081)));
+                }
+                if ("canon_1998_04_28_manga_joey_rex".equals(duel.id) && "rex".equals(side.characterId)) {
+                    assertTrue("Rex Dinosaur deck should prioritize Wasteland (23424603) and Raise Body Heat (51267887)",
+                            built.main.contains(23424603) && built.main.contains(51267887));
+                }
+            }
+        }
+    }
+
+    @Test
     public void dynamicJenksTieringSeparatesNaturalClustersAndLocksTies() {
         // 1) 1999-11-18 real field: Jenks Natural Breaks cleanly partitions S/A/B/C/D
         //    instead of wasting 3 cuts on the sparse bottom decks like naive Top-4-Gaps.
@@ -1410,7 +1477,8 @@ public class RpgEnginesTest {
         // 3) EraBountyCalibrator uses the exact same dynamic tiering
         assertEquals("S", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_exodia_master", "1999-11-18").getTierLabel());
         assertEquals("S", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_tokyo_dome", "1999-11-18").getTierLabel());
-        assertEquals("B", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_vol1_yugi", "1999-11-18").getTierLabel());
+        assertEquals("B", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_equip_beat", "1999-11-18").getTierLabel());
+        assertEquals("C", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_weekend_challenger", "1999-11-18").getTierLabel());
         assertEquals("D", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_shop_regular", "1999-11-18").getTierLabel());
     }
 }

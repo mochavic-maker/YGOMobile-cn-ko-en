@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
@@ -104,12 +105,12 @@ public final class AiDeckGenerator {
                                         recipe(76184692, 3, 90357090, 3, 40374923, 3, 9159938, 3, 15401633, 3, 90963488, 3, 46009906, 2, 61854111, 2, 38199696, 3),
                                         null, "CASUAL_MID", 180, 85, 55),
                                 new AiOpponent.EraDeckProfile("1999-03-27", "【Vol.2 奇趣下级混编】", "1999.03 休闲升级",
-                                        "换装炭烧战士(1500)、荒野盗龙(1500)、混沌男巫、奇迹鸟、大炮鸟，稳健推进但绝不超模。",
-                                        recipe(54541900, 3, 1784619, 3, 41544074, 3, 59036972, 3, 72842870, 3, 31339260, 3, 70681994, 3, 61854111, 2, 38199696, 2),
+                                        "换装荒野盗龙(1500)、大炮鸟、魔人泰拉、恍惚的人鱼、镜子幻象鸟、烟之王配暗能量，稳健推进但绝不超模。",
+                                        recipe(1784619, 3, 72842870, 3, 63308047, 3, 75376965, 3, 10859908, 3, 2863439, 3, 84686841, 3, 4614116, 2, 38199696, 2),
                                         null, "CASUAL_MID", 190, 90, 60),
                                 new AiOpponent.EraDeckProfile("1999-05-27", "【Vol.3 中游凡骨休闲组】", "1999.05 休闲过渡",
-                                        "天空猎手(1550)、珍鱼(1500)、死亡撒旦(1400)配『守备』封禁，适合中前期刷代币攒卡。",
-                                        recipe(10202894, 3, 80516007, 3, 36304921, 3, 71407486, 3, 32452818, 3, 98818516, 3, 63102017, 2, 66788016, 2),
+                                        "天空猎手(1550)、死亡撒旦(1400)、炎之魔神、下级龙配『守备』封禁，适合中前期刷代币攒卡。",
+                                        recipe(10202894, 3, 55444629, 3, 36304921, 3, 71407486, 3, 32452818, 3, 98818516, 3, 63102017, 2, 66788016, 2),
                                         null, "CASUAL_MID", 200, 95, 60),
                                 new AiOpponent.EraDeckProfile("1999-09-23", "【Vol.5 校园中坚混打】", "1999.09 中游娱乐",
                                         "苍白兽、兵主部、响女、铠武者僵尸搭配 1 祭品粗暴帝王，体验纯正校园桌游对决。",
@@ -125,24 +126,24 @@ public final class AiDeckGenerator {
                         "Lv.2 · 战士/龙/赌博中游流",
                         "1999-03-01",
                         2, 220, 100, 65,
-                        "定位介于新手与环境霸主之间的中坚对手：主打战士/真红眼/时间魔术师情怀轴，不堆砌顶级禁限神卡。",
+                        "定位介于新手与环境霸主之间的中坚对手：主打城之内原著战士/炎之剑士/真红眼/时间魔术师情怀轴，不混用游戏与海马专属王牌。",
                         Arrays.asList(
-                                new AiOpponent.EraDeckProfile("1999-03-01", "【Booster 1 街头战士＆兽族】", "1999.03 中游起步",
-                                        "独眼巨人、银牙狼、石像怪、电气小子与基础装备＋单张地割，作为挑战暗游戏前的练兵。",
-                                        recipe(76184692, 3, 90357090, 3, 15303296, 3, 27324313, 3, 88643173, 3, 756652, 3, 61854111, 2, 46009906, 2, 66788016, 1, 38199696, 2),
+                                new AiOpponent.EraDeckProfile("1999-03-01", "【Booster 1 街头战士＆雏龙】", "1999.03 中游起步",
+                                        "格斗战士阿提米特、女夜魔战士、多隆、紫炎影武者、魔头邪龙与传说之剑，作为挑战暗游戏前的练兵。",
+                                        recipe(55550921, 3, 78556320, 3, 756652, 3, 15401633, 3, 64511793, 3, 2957055, 3, 76704943, 3, 90357090, 3, 61854111, 3, 46009906, 2, 66788016, 1, 38199696, 2),
                                         null, "MID_TIER_THEME", 220, 100, 65),
-                                new AiOpponent.EraDeckProfile("1999-03-27", "【Vol.2 精灵剑士＆火焰战士】", "1999.03 店赛中坚",
-                                        "精灵剑士(1400)、炭烧战士(1500)、荒野盗龙(1500)、大炮鸟，搭配传说之剑与地割稳扎稳打。",
-                                        recipe(91152256, 3, 54541900, 3, 1784619, 3, 70681994, 3, 72842870, 3, 37421579, 3, 61854111, 2, 66788016, 2, 38199696, 2),
-                                        null, "MID_TIER_THEME", 240, 110, 70),
-                                new AiOpponent.EraDeckProfile("1999-05-27", "【Vol.3 真红眼＆岩石巨兵热血轴】", "1999.05 情怀中游",
-                                        "真红眼黑龙(2400)搭配花狼、暗杀者、岩石巨兵与天空猎手，攻势爽快但留足反制窗口。",
-                                        recipe(74677422, 2, 95952802, 2, 48365709, 2, 13039848, 2, 10202894, 3, 80516007, 3, 91152256, 3, 66788016, 2, 72302403, 1),
-                                        null, "MID_TIER_THEME", 260, 115, 75),
-                                new AiOpponent.EraDeckProfile("1999-08-26", "【巨蛋后 巨斧＆时间魔术师赌博流】", "1999.08~12 热血赌博",
-                                        "巨斧袭击者(1700)、真红眼黑龙、时间魔术师、邪恶蠕虫兽与宝贝龙(11.18起)，充满戏剧性的中坚对手！",
-                                        recipe(48305365, 3, 74677422, 2, 71625222, 2, 88819587, 2, 6285791, 3, 91152256, 3, 77998771, 2, 66788016, 2, 4206964, 1, 72302403, 1),
-                                        null, "MID_TIER_THEME", 280, 125, 80)
+                                new AiOpponent.EraDeckProfile("1999-03-27", "【Vol.2 炎之剑士＆正树战士轴】", "1999.03 店赛中坚",
+                                        "传说的剑豪正树＋火焰操纵者正规融合「炎之剑士」！搭配格斗战士阿提米特、女夜魔战士、草原与传说之剑。",
+                                        recipe(44287299, 3, 34460851, 3, 55550921, 3, 78556320, 3, 756652, 3, 1784619, 3, 72842870, 3, 2957055, 3, 24094653, 2, 61854111, 3, 86318356, 2, 66788016, 2, 38199696, 2),
+                                        recipe(45231177, 2), "MID_TIER_THEME", 240, 110, 70),
+                                new AiOpponent.EraDeckProfile("1999-05-27", "【Vol.3 真红眼＆热血战士轴】", "1999.05 情怀中游",
+                                        "真红眼黑龙(2400)率领炎之剑士素材正树＆火焰操纵者、暗杀者、女夜魔骑士与下级龙，攻势爽快且原著味十足。",
+                                        recipe(74677422, 2, 48365709, 2, 55291359, 2, 44287299, 3, 34460851, 2, 55444629, 3, 10202894, 3, 1784619, 3, 1435851, 2, 61854111, 2, 24094653, 2, 86318356, 2, 66788016, 2, 72302403, 1),
+                                        recipe(45231177, 2), "MID_TIER_THEME", 260, 115, 75),
+                                new AiOpponent.EraDeckProfile("1999-08-26", "【巨蛋后 真红眼·巨斧＆时间魔术师赌博流】", "1999.08~12 热血赌博",
+                                        "巨斧袭击者(1700)、真红眼黑龙、魔物狩人、铠蜥蜴、老虎斧战士、时间魔术师＋宝贝龙(融合千年龙)与附锁链的回力镖！",
+                                        recipe(48305365, 3, 74677422, 2, 71625222, 2, 88819587, 2, 1184620, 3, 15480588, 3, 49791927, 3, 14977074, 2, 44287299, 2, 34460851, 2, 37390589, 3, 17814387, 2, 24094653, 2, 61854111, 2, 66788016, 2, 72302403, 1),
+                                        recipe(41462083, 2, 45231177, 2), "MID_TIER_THEME", 280, 125, 80)
                         )
                 ),
 
@@ -153,27 +154,27 @@ public final class AiDeckGenerator {
                         "Lv.3 · 主角卡组编年史",
                         "1999-02-04",
                         3, 380, 160, 95,
-                        "完整经历初代暗游戏卡组演变：免祭品黑魔术师 → 护封剑死苏 → 专家规则反转 → 恶魔召唤 → EX决斗王。",
+                        "严格还原初代暗游戏原著与 EX 游戏卡组编年史：黑魔术师/盖亚 → 诅咒之龙/圣精灵/护封剑 → 岩石巨兵/食人虫 → 恶魔召唤 → EX 魔法剑士尼奥＆幻影壁！",
                         Arrays.asList(
                                 new AiOpponent.EraDeckProfile("1999-02-04", "【免祭品最上级 · 黑魔术师＆盖亚】", "1999.02 公式规则",
-                                        "利用初代公式规则无祭品特性直接拍出黑魔术师(2500)与暗黑骑士盖亚(2300)，配满编黑洞/落穴/地割。",
-                                        recipe(46986414, 3, 6368038, 3, 76184692, 3, 53129443, 3, 4206964, 3, 66788016, 3, 91595718, 2, 61854111, 2),
+                                        "利用初代公式规则直拍黑魔术师(2500)与暗黑骑士盖亚(2300)，搭配猛犸的墓场、银牙狼、恶魔海狸、黑魔族的幕帘与秘术之书。",
+                                        recipe(46986414, 3, 6368038, 3, 40374923, 3, 90357090, 3, 75889523, 2, 22026707, 3, 90963488, 3, 15507080, 3, 15401633, 3, 53129443, 3, 4206964, 3, 66788016, 3, 91595718, 3, 61854111, 2),
                                         null, "NO_TRIBUTE_BEAT", 380, 160, 95),
                                 new AiOpponent.EraDeckProfile("1999-03-27", "【Vol.2 护封剑·死者苏生轴】", "1999.03 Vol.2强化",
-                                        "加入诅咒之龙、圣精灵(2000守)、光之护封剑与死者苏生，巩固攻防。",
-                                        recipe(46986414, 3, 6368038, 3, 28279543, 3, 15025844, 3, 85639257, 3, 83764718, 3, 72302403, 3, 53129443, 3, 4206964, 3, 66788016, 3),
+                                        "加入诅咒之龙、圣精灵(2000守)、精灵剑士、光之护封剑、死者苏生与场地「暗」，纯正主角王牌阵！",
+                                        recipe(46986414, 3, 6368038, 3, 28279543, 3, 15025844, 3, 91152256, 3, 40374923, 3, 90357090, 2, 63308047, 3, 83764718, 3, 72302403, 3, 53129443, 3, 4206964, 3, 66788016, 3, 59197169, 2),
                                         null, "NO_TRIBUTE_BEAT", 420, 180, 105),
                                 new AiOpponent.EraDeckProfile("1999-05-27", "【专家规则 · 岩石巨兵＆食人虫】", "1999.05 专家规则转型",
-                                        "切换为 1 祭品+强力下级/反转构筑：岩石巨兵、食人虫、哈尼哈尼、精灵剑士、强欲之壶与诅咒之龙。",
-                                        recipe(28279543, 2, 46986414, 1, 91939608, 3, 91152256, 3, 13039848, 3, 54652250, 3, 7089711, 2, 55144522, 3, 83764718, 3, 72302403, 3, 4206964, 3, 66788016, 3),
+                                        "切换为 1 祭品+强力下级/反转构筑：诅咒之龙、黑魔术师、岩石巨兵、圣精灵、精灵剑士、路易斯、神圣人偶、食人虫与哈尼哈尼。",
+                                        recipe(28279543, 2, 46986414, 1, 91939608, 3, 91152256, 3, 13039848, 3, 15025844, 3, 32452818, 2, 54652250, 3, 7089711, 2, 55144522, 3, 83764718, 3, 72302403, 3, 53129443, 3, 4206964, 3, 66788016, 3),
                                         null, "LOWER_BEAT", 400, 170, 100),
-                                new AiOpponent.EraDeckProfile("1999-07-22", "【Vol.4 恶魔召唤＆圣魔术师】", "1999.07 上级革命",
-                                        "换装 1 祭品 2500 打点王者「恶魔召唤」与「圣魔术师」，保留经典黑魔术师王牌。",
-                                        recipe(70781052, 3, 46986414, 1, 31560081, 3, 54652250, 3, 13039848, 3, 91939608, 3, 55144522, 3, 83764718, 3, 12580477, 3, 72302403, 2, 4206964, 3),
+                                new AiOpponent.EraDeckProfile("1999-07-22", "【Vol.4 恶魔召唤＆守城翼龙】", "1999.07 上级革命",
+                                        "换装 1 祭品 2500 打点主角王牌「恶魔召唤」与守城的翼龙、古代精灵、圣魔术师，绝不混用海马专属怪兽。",
+                                        recipe(70781052, 3, 46986414, 1, 87796900, 3, 93221206, 3, 91939608, 3, 91152256, 2, 13039848, 3, 31560081, 3, 54652250, 3, 55144522, 3, 83764718, 3, 12580477, 2, 53129443, 2, 72302403, 2, 66788016, 2, 4206964, 2),
                                         null, "GOOD_STUFF", 500, 215, 125),
-                                new AiOpponent.EraDeckProfile("1999-12-16", "【EX 决斗王 · 三眼/幻影壁/黑魔】", "1999.12 世纪末",
-                                        "融合 EX 新卡幻影壁、和睦的使者与三眼怪、天使的施舍、心变，构筑 1999 年底决斗王卡组。",
-                                        recipe(70781052, 3, 46986414, 1, 69140098, 3, 13945283, 3, 26202165, 3, 78010363, 2, 31560081, 3, 55144522, 3, 79571449, 3, 4031928, 3, 83764718, 3, 12607053, 2, 12580477, 1, 53129443, 1, 4206964, 1),
+                                new AiOpponent.EraDeckProfile("1999-12-16", "【EX 决斗王 · 魔法剑士尼奥/幻影壁/黑魔】", "1999.12 EX游戏盒",
+                                        "全面采用 EX 游戏盒王牌：恶魔召唤、黑魔术师、魔法剑士尼奥(1700)、食人宝石箱、邪剑男爵、幻影壁、和睦的使者与三眼/魔女。",
+                                        recipe(70781052, 3, 46986414, 1, 50930991, 3, 13723605, 2, 86325596, 2, 13945283, 3, 26202165, 3, 78010363, 2, 31560081, 3, 55144522, 3, 79571449, 3, 4031928, 3, 83764718, 3, 12607053, 2, 72302403, 1, 12580477, 1, 53129443, 1, 4206964, 1),
                                         null, "GOOD_STUFF", 620, 260, 155)
                         )
                 ),
@@ -213,23 +214,23 @@ public final class AiDeckGenerator {
                         "Lv.3 · 青眼与高打点压制",
                         "1999-03-18",
                         3, 480, 205, 120,
-                        "3~4月再现 yugioh-history「生け贄無し最上級」暗黑期（免祭品3青眼+3雷击），5月后自动转型高打点压制流！",
+                        "严格还原海马濑人原著与 EX 海马卡组：免祭品 3 青眼雷击 → 机械巨兵/魔加农过渡 → 灯之魔精/机械猎手/粗暴帝王 → EX 龙之支配者·呼龙笛青眼＆死毒！",
                         Arrays.asList(
                                 new AiOpponent.EraDeckProfile("1999-03-18", "【生け贄無し最上級 · 青眼雷击】", "1999.03~04 暗黑期顶配",
-                                        "完全复刻 yugioh-history《生け贄無し最上級》：公式规则免祭品直拍 3 青眼白龙＋3 黑魔＋3 盖亚＋3 雷击＋3 黑洞！",
-                                        recipe(89631139, 3, 46986414, 3, 6368038, 3, 28279543, 3, 85639257, 3, 1784619, 3, 12580477, 3, 83764718, 3, 66788016, 3, 72302403, 3, 53129443, 3, 4206964, 3, 83887306, 1),
+                                        "以海马专属 3 青眼白龙、独眼巨人、石像怪搭配 Starter Box 龙/恶魔战力与 3 雷击＋3 黑洞，绝不混用暗游戏王牌！",
+                                        recipe(89631139, 3, 76184692, 3, 15303296, 3, 84686841, 3, 2863439, 3, 85639257, 3, 2957055, 3, 76704943, 2, 22910685, 2, 12580477, 3, 53129443, 3, 66788016, 3, 4206964, 3, 83764718, 3, 4614116, 2, 83887306, 2),
                                         null, "NO_TRIBUTE_BEAT", 480, 205, 120),
-                                new AiOpponent.EraDeckProfile("1999-05-05", "【专家规则 · 青眼下级过渡】", "1999.05 祭品制适应",
-                                        "5月5日专家规则取消免祭品，海马立刻缩减青眼至 2 张，改以高守壁垒与高攻下级垫场＋死者苏生出青眼。",
-                                        recipe(89631139, 2, 28279543, 2, 91939608, 3, 41762634, 3, 1784619, 3, 85639257, 3, 15025844, 3, 12580477, 3, 83764718, 3, 72302403, 3, 66788016, 3, 53129443, 3, 4206964, 3),
+                                new AiOpponent.EraDeckProfile("1999-05-05", "【专家规则 · 青眼与高打点过渡】", "1999.05 祭品制适应",
+                                        "5月5日专家规则开启后缩减青眼至 2 张，以机械巨兵、魔加农、狂战士、破坏的石人、独眼巨人、石像怪与『守备』封禁压制！",
+                                        recipe(89631139, 2, 72299832, 2, 98795934, 2, 47060154, 3, 73481154, 3, 76184692, 3, 15303296, 3, 85639257, 3, 80770678, 3, 1784619, 3, 12580477, 3, 83764718, 3, 63102017, 2, 66788016, 3, 53129443, 2, 4206964, 3),
                                         null, "LOWER_BEAT", 480, 205, 120),
-                                new AiOpponent.EraDeckProfile("1999-08-26", "【海马高打点 · 弃墓苏生青眼】", "1999.08 巨蛋高速强攻",
-                                        "双生精灵(1900)、机械猎手(1850)、灯之魔精(1800) 全面提速，配合天使的施舍弃青眼＋死者苏生速出 3000 打点！",
-                                        recipe(89631139, 2, 70781052, 2, 69140098, 3, 7359741, 3, 97590747, 3, 55144522, 3, 79571449, 3, 83764718, 3, 18144506, 2, 66788016, 3, 72302403, 2, 12580477, 1, 53129443, 1, 4206964, 1),
+                                new AiOpponent.EraDeckProfile("1999-08-26", "【海马高打点 · 魔精/猎手/粗暴帝王】", "1999.08 巨蛋高速强攻",
+                                        "灯之魔精(1800)、机械猎手(1850)、粗暴帝王(1800)、邪恶蠕虫兽、狂战士与『守备』封禁全面提速，天使的施舍弃青眼＋死苏速出 3000 打点！",
+                                        recipe(89631139, 2, 26378150, 2, 97590747, 3, 7359741, 3, 6285791, 2, 47060154, 3, 73481154, 2, 69140098, 3, 55144522, 3, 79571449, 3, 83764718, 3, 63102017, 2, 18144506, 2, 66788016, 3, 72302403, 1, 12580477, 1, 53129443, 1, 4206964, 1),
                                         null, "GOOD_STUFF", 600, 250, 150),
-                                new AiOpponent.EraDeckProfile("1999-12-16", "【EX 海马社长 · 死毒压制】", "1999.12 EX完全体",
-                                        "集结灯之魔精、机械猎手、双生精灵、青眼白龙与 1999 原版死之卡组破坏病毒，兼顾打点与手牌压制。",
-                                        recipe(89631139, 2, 70781052, 2, 69140098, 3, 7359741, 3, 97590747, 3, 26202165, 3, 57728570, 2, 55144522, 3, 79571449, 3, 4031928, 3, 83764718, 3, 18144506, 2, 12580477, 1, 53129443, 1, 4206964, 1),
+                                new AiOpponent.EraDeckProfile("1999-12-16", "【EX 海马社长 · 呼龙笛青眼＆死毒】", "1999.12 EX海马盒",
+                                        "集结 EX 海马全员：青眼白龙、审判者、灯之魔精、机械猎手、牛头人、强化石像怪、龙之支配者＋呼龙笛与 1999 原版死之卡组破坏病毒！",
+                                        recipe(89631139, 2, 30113682, 2, 97590747, 3, 7359741, 3, 5053103, 3, 24611934, 2, 17985575, 2, 43973174, 2, 26202165, 3, 28933734, 2, 15303296, 1, 57728570, 2, 55144522, 3, 79571449, 3, 4031928, 2, 83764718, 2, 12580477, 1, 53129443, 1, 4206964, 1),
                                         recipe(23995346, 1), "GOOD_STUFF", 660, 275, 165)
                         )
                 ),
@@ -444,6 +445,9 @@ public final class AiDeckGenerator {
             }
         }
 
+        final String charId = CanonCharacterCardRegistry.resolveCharacterId(opponent.id);
+        final Set<Integer> charCanonPool = CanonCharacterCardRegistry.getCharacterCanonPool(charId, catalog);
+
         // 1b) Structural safeguard: any AI deck containing Crush Card Virus (57728570) MUST have enough
         //     DARK monsters with ATK <= 1000 (excluding Exodia pieces) to actually activate it!
         if (countOf(main, 57728570) > 0 && main.size() < 40) {
@@ -455,14 +459,18 @@ public final class AiDeckGenerator {
             if (darkVirusTributes < 6) {
                 List<RpgCard> virusPool = new ArrayList<>();
                 for (RpgCard c : released) {
-                    if (isDarkVirusTributeMonster(c) && banlist.getMaxCopies(c.id) > 0) {
+                    if (isDarkVirusTributeMonster(c)
+                            && banlist.getMaxCopies(c.id) > 0
+                            && !CanonCharacterCardRegistry.isForbiddenRivalAce(charId, c.id)) {
                         virusPool.add(c);
                     }
                 }
                 Collections.sort(virusPool, new Comparator<RpgCard>() {
                     @Override
                     public int compare(RpgCard a, RpgCard b) {
-                        return Integer.compare(scoreDarkVirusTribute(b), scoreDarkVirusTribute(a));
+                        int sa = scoreDarkVirusTribute(a) + (charCanonPool.contains(a.id) ? 600 : 0);
+                        int sb = scoreDarkVirusTribute(b) + (charCanonPool.contains(b.id) ? 600 : 0);
+                        return Integer.compare(sb, sa);
                     }
                 });
                 for (RpgCard c : virusPool) {
@@ -478,14 +486,16 @@ public final class AiDeckGenerator {
             }
         }
 
-        // 2) Fill remaining slots up to 40 using archetype-aware scoring (strictly <= currentDate & banlist)
+        // 2) Fill remaining slots up to 40 using character-fidelity + core-synergy + archetype scoring
         if (main.size() < 40) {
+            final List<Integer> coreSnapshot = new ArrayList<>(main);
             boolean isNonTopTier = "NOVICE_NR".equals(style)
                     || "CASUAL_MID".equals(style)
                     || "MID_TIER_THEME".equals(style);
             List<RpgCard> fillPool = new ArrayList<>();
             for (RpgCard c : released) {
                 if (banlist.getMaxCopies(c.id) <= 0) continue;
+                if (CanonCharacterCardRegistry.isForbiddenRivalAce(charId, c.id)) continue;
                 if (isUnsafeFillerCard(c, main, extra, catalog, style)) continue;
                 if (isNonTopTier && isTopTierStaple(c.id)) continue;
                 if (("NOVICE_NR".equals(style) || "CASUAL_MID".equals(style))
@@ -495,7 +505,8 @@ public final class AiDeckGenerator {
             }
             if (fillPool.isEmpty()) {
                 for (RpgCard c : released) {
-                    if (!isUnsafeFillerCard(c, main, extra, catalog, style)
+                    if (!CanonCharacterCardRegistry.isForbiddenRivalAce(charId, c.id)
+                            && !isUnsafeFillerCard(c, main, extra, catalog, style)
                             && banlist.getMaxCopies(c.id) > 0) {
                         fillPool.add(c);
                     }
@@ -505,13 +516,31 @@ public final class AiDeckGenerator {
             Collections.sort(fillPool, new Comparator<RpgCard>() {
                 @Override
                 public int compare(RpgCard a, RpgCard b) {
-                    return Integer.compare(scoreForStyle(b, style, ruleSet), scoreForStyle(a, style, ruleSet));
+                    int sa = scoreForStyle(a, style, ruleSet, charId, charCanonPool, coreSnapshot, extra, catalog);
+                    int sb = scoreForStyle(b, style, ruleSet, charId, charCanonPool, coreSnapshot, extra, catalog);
+                    if (sb != sa) return Integer.compare(sb, sa);
+                    return Integer.compare(a.id, b.id);
                 }
             });
 
-            if (random != null && fillPool.size() > 8) {
-                int window = Math.min(12, fillPool.size());
-                Collections.shuffle(fillPool.subList(0, window), random);
+            if (random != null && fillPool.size() > 6) {
+                if (charId != null) {
+                    // For canon-character AIs, only shuffle within the leading character-authentic/top band
+                    // so character-canon cards never get displaced by unrelated generic cards.
+                    int topScore = scoreForStyle(fillPool.get(0), style, ruleSet, charId, charCanonPool, coreSnapshot, extra, catalog);
+                    int bandEnd = 1;
+                    while (bandEnd < Math.min(8, fillPool.size())) {
+                        int sc = scoreForStyle(fillPool.get(bandEnd), style, ruleSet, charId, charCanonPool, coreSnapshot, extra, catalog);
+                        if (topScore - sc > 450) break;
+                        bandEnd++;
+                    }
+                    if (bandEnd > 2) {
+                        Collections.shuffle(fillPool.subList(0, bandEnd), random);
+                    }
+                } else {
+                    int window = Math.min(12, fillPool.size());
+                    Collections.shuffle(fillPool.subList(0, window), random);
+                }
             }
 
             int prefCopies = ("NOVICE_NR".equals(style) || "CASUAL_MID".equals(style)) ? 2 : 3;
@@ -610,10 +639,14 @@ public final class AiDeckGenerator {
         if (isExodiaPieceId(id) && !"EXODIA_DRAW".equals(style)) return true;
 
         // Never pad Fusion spells / fusion searchers / Cyber-Stein / fusion substitutes into non-Fusion decks
-        boolean allowFusionFiller = "FUSION_COMBO".equals(style) && curExtra != null && !curExtra.isEmpty();
-        if (!allowFusionFiller && (id == 24094653 // 融合
+        boolean hasExtra = curExtra != null && !curExtra.isEmpty();
+        boolean allowFusionComboFiller = "FUSION_COMBO".equals(style) && hasExtra;
+        if (!hasExtra && (id == 24094653 // 融合
                 || id == 26902560 // 融合贤者
-                || id == 69015963 // 恶魔科学怪人
+        )) {
+            return true;
+        }
+        if (!allowFusionComboFiller && (id == 69015963 // 恶魔科学怪人
                 || id == 84133008 // 眼球怪
                 || id == 53493204 // 心眼之女神
                 || id == 30451366 // 幻想绵羊
@@ -741,65 +774,76 @@ public final class AiDeckGenerator {
                 || cardId == 7359741; // 机械猎手
     }
 
-    private static int scoreForStyle(RpgCard c, String style, OcgRuleSet rule) {
+    private static int scoreForStyle(RpgCard c, String style, OcgRuleSet rule,
+                                     String charId, Set<Integer> charCanonPool,
+                                     List<Integer> coreMain, List<Integer> coreExtra,
+                                     RpgCatalog catalog) {
+        int characterAndSynergyBonus = 0;
+        if (charId != null && charCanonPool != null && charCanonPool.contains(c.id)) {
+            characterAndSynergyBonus += 1400;
+        }
+        characterAndSynergyBonus += CanonCharacterCardRegistry.getCoreSynergyBonus(c, coreMain, coreExtra, catalog);
+
         int base = DeckValidator.scoreCard(c);
         if ("NO_TRIBUTE_BEAT".equals(style)) {
-            return c.isMonster() ? (c.atk * 2 + c.def / 2) : base;
+            int raw = c.isMonster() ? (c.atk * 2 + c.def / 2) : base;
+            return raw + characterAndSynergyBonus;
         }
         if ("NOVICE_NR".equals(style)) {
             int pen = (rule != null && rule.tributeSummonEnabled && c.level >= 5) ? 900 : 0;
-            return c.isMonster() ? (Math.max(c.atk, c.def) - pen) : 1100;
+            int raw = c.isMonster() ? (Math.max(c.atk, c.def) - pen) : 1100;
+            return raw + characterAndSynergyBonus;
         }
         if ("CASUAL_MID".equals(style)) {
-            if (!c.isMonster()) return 950;
+            if (!c.isMonster()) return 950 + characterAndSynergyBonus;
             int stat = Math.max(c.atk, c.def);
             // Prefer mid-low 900~1450 monsters instead of top beaters
             int distPenalty = Math.abs(stat - 1250);
             int highLevelPen = (c.level >= 5) ? 600 : 0;
-            return 1600 - distPenalty - highLevelPen;
+            return 1600 - distPenalty - highLevelPen + characterAndSynergyBonus;
         }
         if ("MID_TIER_THEME".equals(style)) {
-            if (!c.isMonster()) return 1150;
+            if (!c.isMonster()) return 1150 + characterAndSynergyBonus;
             int stat = Math.max(c.atk, c.def);
             int distPenalty = Math.abs(stat - 1500);
             int highLevelPen = (rule != null && rule.tributeSummonEnabled && c.level >= 7) ? 700 : 0;
-            return 1900 - distPenalty - highLevelPen;
+            return 1900 - distPenalty - highLevelPen + characterAndSynergyBonus;
         }
         if ("EQUIP_LIGHT_EARTH".equals(style)) {
             int bonus = ("LIGHT".equalsIgnoreCase(c.attribute) || "EARTH".equalsIgnoreCase(c.attribute)) ? 600 : 0;
             int pen = (c.level >= 5) ? 500 : 0;
-            return base + bonus - pen;
+            return base + bonus - pen + characterAndSynergyBonus;
         }
         if ("DARK_VIRUS".equals(style)) {
             if (isExodiaPieceId(c.id)) return -5000;
             if (isDarkVirusTributeMonster(c)) {
-                return 2200 + scoreDarkVirusTribute(c);
+                return 2200 + scoreDarkVirusTribute(c) + characterAndSynergyBonus;
             }
             int bonus = "DARK".equalsIgnoreCase(c.attribute) ? 450 : 0;
             int pen = (rule != null && rule.tributeSummonEnabled) ? (c.level >= 7 ? 700 : (c.level >= 5 ? 250 : 0)) : 0;
-            return base + bonus - pen;
+            return base + bonus - pen + characterAndSynergyBonus;
         }
         if ("BURN_WALL".equals(style)) {
             int bonus = c.isMonster() ? (c.def >= 1500 ? 600 : -200) : 500;
-            return base + bonus;
+            return base + bonus + characterAndSynergyBonus;
         }
         if ("FLIP_CONTROL".equals(style)) {
             int bonus = (c.descCn != null && c.descCn.contains("反转")) ? 900 : (c.def >= 1800 ? 400 : 0);
-            return base + bonus;
+            return base + bonus + characterAndSynergyBonus;
         }
         if ("MILL_MORPHING".equals(style)) {
-            if (c.id == 81843628 || c.id == 33508719) return base + 1200;
+            if (c.id == 81843628 || c.id == 33508719) return base + 1200 + characterAndSynergyBonus;
             int bonus = (c.descCn != null && c.descCn.contains("反转")) ? 800
                     : (c.isMonster() ? (c.def >= 1800 ? 600 : -200) : 450);
-            return base + bonus;
+            return base + bonus + characterAndSynergyBonus;
         }
         if ("EXODIA_DRAW".equals(style)) {
             int bonus = c.isMonster() ? (c.def >= 1500 ? 500 : -300) : 600;
-            return base + bonus;
+            return base + bonus + characterAndSynergyBonus;
         }
         // LOWER_BEAT / GOOD_STUFF / FUSION_COMBO
         int pen = (rule != null && rule.tributeSummonEnabled) ? (c.level >= 7 ? 700 : (c.level >= 5 ? 250 : 0)) : 0;
-        return base - pen;
+        return base - pen + characterAndSynergyBonus;
     }
 
     private static int countOf(List<Integer> list, int target) {

@@ -126,6 +126,12 @@ public final class CanonDuelDeckBuilder {
         }
 
         // 2. Pad remaining slots up to 40 from OCG cards released on or before poolDate
+        //    Priority order: (a) character's own canon cards in this era, (b) cards strongly
+        //    synergistic with the duel's core cards, (c) race/attribute theme matches, (d) era staples.
+        //    Rival characters' exclusive signature aces are strictly excluded from padding.
+        final List<Integer> coreMain = new ArrayList<>(main);
+        final String charId = side.characterId;
+        final Set<Integer> charCanonPool = CanonCharacterCardRegistry.getCharacterCanonPool(charId, catalog);
         List<RpgCard> pool = TimelineEngine.getReleasedCards(catalog, poolDate);
         OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, poolDate);
         OcgRuleSet ruleSet = TimelineEngine.getActiveRuleSet(catalog, poolDate);
@@ -144,37 +150,8 @@ public final class CanonDuelDeckBuilder {
             }
         }
 
-        // Separate available Main Deck candidates into spells/traps vs monsters
         final String style = side.fillStyle != null ? side.fillStyle : "GOOD_STUFF";
-        List<RpgCard> spellTraps = new ArrayList<>();
-        List<RpgCard> monsters = new ArrayList<>();
-        for (RpgCard c : pool) {
-            if (c == null || c.isExtraDeckCard()) continue;
-            if (RpgAiCardKnowledge.EXODIA_PIECES.contains(c.id)) continue; // never pad random Exodia pieces
-            if (AiDeckGenerator.isUnsafeFillerCard(c, main, extra, catalog, style)) continue;
-            int maxLegal = banlist.getMaxCopies(c.id);
-            if (maxLegal <= 0) continue;
-            if (c.isMonster()) {
-                monsters.add(c);
-            } else {
-                spellTraps.add(c);
-            }
-        }
-
-        // Sort candidates deterministically by theme affinity + era strength
         final boolean hasExtraFusions = !extra.isEmpty();
-        Collections.sort(spellTraps, (a, b) -> {
-            int sa = scoreSpellTrap(a, style, prefRaces, prefAttrs, hasExtraFusions);
-            int sb = scoreSpellTrap(b, style, prefRaces, prefAttrs, hasExtraFusions);
-            if (sb != sa) return Integer.compare(sb, sa);
-            return Integer.compare(a.id, b.id);
-        });
-        Collections.sort(monsters, (a, b) -> {
-            int sa = scoreMonster(a, style, prefRaces, prefAttrs, tributeEnabled);
-            int sb = scoreMonster(b, style, prefRaces, prefAttrs, tributeEnabled);
-            if (sb != sa) return Integer.compare(sb, sa);
-            return Integer.compare(a.id, b.id);
-        });
 
         // Compute current monster vs spell/trap counts in canon core
         int curMonsters = 0;
@@ -189,11 +166,12 @@ public final class CanonDuelDeckBuilder {
                 : ("BURN_WALL".equals(style) ? 16 : 14);
         int targetMonsters = TARGET_MAIN_SIZE - targetSpellsTraps;
 
-        // First guarantee Polymerization support if Extra Deck has fusions and deck lacks it
+        // Guarantee Polymerization support if Extra Deck has fusions and deck lacks it
         if (hasExtraFusions && copies.getOrDefault(RpgAiCardKnowledge.POLYMERIZATION, 0) < 2) {
-            tryAddFromPool(RpgAiCardKnowledge.POLYMERIZATION, 2, poolDate, catalog, banlist, main, copies);
+            int added = tryAddFromPool(RpgAiCardKnowledge.POLYMERIZATION, 2, poolDate, catalog, banlist, main, copies);
+            curSpellsTraps += added;
         }
-        // For Exodia decks, prioritize draw/search staples from the current pool
+        // For Exodia decks, prioritize draw/search helpers from the current pool (respecting rival exclusion)
         if ("EXODIA_DRAW".equals(style)) {
             int[] exodiaHelpers = {
                     RpgAiCardKnowledge.POT_OF_GREED, RpgAiCardKnowledge.GRACEFUL_CHARITY,
@@ -203,14 +181,68 @@ public final class CanonDuelDeckBuilder {
             };
             for (int hid : exodiaHelpers) {
                 if (main.size() >= TARGET_MAIN_SIZE) break;
-                tryAddFromPool(hid, 2, poolDate, catalog, banlist, main, copies);
+                if (CanonCharacterCardRegistry.isForbiddenRivalAce(charId, hid)) continue;
+                int added = tryAddFromPool(hid, 2, poolDate, catalog, banlist, main, copies);
+                if (added > 0) {
+                    RpgCard hc = catalog.findCardOrCanon(hid);
+                    if (hc != null && hc.isMonster()) curMonsters += added;
+                    else curSpellsTraps += added;
+                }
             }
         }
 
+        // Step A: Collect & score monster candidates first (excluding rival aces & unsafe Nomi/Ritual bricks)
+        List<RpgCard> monsters = new ArrayList<>();
+        for (RpgCard c : pool) {
+            if (c == null || !c.isMonster() || c.isExtraDeckCard()) continue;
+            if (RpgAiCardKnowledge.EXODIA_PIECES.contains(c.id)) continue;
+            if (CanonCharacterCardRegistry.isForbiddenRivalAce(charId, c.id)) continue;
+            if (AiDeckGenerator.isUnsafeFillerCard(c, main, extra, catalog, style)) continue;
+            if (banlist.getMaxCopies(c.id) <= 0) continue;
+            monsters.add(c);
+        }
+        Collections.sort(monsters, (a, b) -> {
+            int sa = scoreMonster(a, style, prefRaces, prefAttrs, tributeEnabled, charCanonPool, coreMain, extra, catalog);
+            int sb = scoreMonster(b, style, prefRaces, prefAttrs, tributeEnabled, charCanonPool, coreMain, extra, catalog);
+            if (sb != sa) return Integer.compare(sb, sa);
+            return Integer.compare(a.id, b.id);
+        });
+
+        // Fill monsters up to targetMonsters (max 2 copies of filler monsters for anime character variety)
+        for (RpgCard m : monsters) {
+            if (main.size() >= TARGET_MAIN_SIZE || curMonsters >= targetMonsters) break;
+            if (AiDeckGenerator.isUnsafeFillerCard(m, main, extra, catalog, style)) continue;
+            int legalCap = Math.min(banlist.getMaxCopies(m.id), 2);
+            int cur = copies.getOrDefault(m.id, 0);
+            int add = Math.min(legalCap - cur, Math.min(targetMonsters - curMonsters, TARGET_MAIN_SIZE - main.size()));
+            for (int i = 0; i < add; i++) {
+                main.add(m.id);
+                copies.put(m.id, copies.getOrDefault(m.id, 0) + 1);
+                curMonsters++;
+            }
+        }
+
+        // Step B: Collect & score spell/trap candidates AFTER monsters are populated so equip-target
+        //         rationality checks accurately see the character's full monster lineup.
+        List<RpgCard> spellTraps = new ArrayList<>();
+        for (RpgCard c : pool) {
+            if (c == null || c.isMonster() || c.isExtraDeckCard()) continue;
+            if (CanonCharacterCardRegistry.isForbiddenRivalAce(charId, c.id)) continue;
+            if (AiDeckGenerator.isUnsafeFillerCard(c, main, extra, catalog, style)) continue;
+            if (banlist.getMaxCopies(c.id) <= 0) continue;
+            spellTraps.add(c);
+        }
+        Collections.sort(spellTraps, (a, b) -> {
+            int sa = scoreSpellTrap(a, style, prefRaces, prefAttrs, hasExtraFusions, charCanonPool, main, extra, catalog);
+            int sb = scoreSpellTrap(b, style, prefRaces, prefAttrs, hasExtraFusions, charCanonPool, main, extra, catalog);
+            if (sb != sa) return Integer.compare(sb, sa);
+            return Integer.compare(a.id, b.id);
+        });
+
         // Fill spells/traps up to targetSpellsTraps (max 2 copies of filler spells/traps for variety)
         for (RpgCard st : spellTraps) {
-            if (main.size() >= TARGET_MAIN_SIZE) break;
-            if (curSpellsTraps >= targetSpellsTraps) break;
+            if (main.size() >= TARGET_MAIN_SIZE || curSpellsTraps >= targetSpellsTraps) break;
+            if (AiDeckGenerator.isUnsafeFillerCard(st, main, extra, catalog, style)) continue;
             int legalCap = Math.min(banlist.getMaxCopies(st.id), 2);
             int cur = copies.getOrDefault(st.id, 0);
             int add = Math.min(legalCap - cur, Math.min(targetSpellsTraps - curSpellsTraps, TARGET_MAIN_SIZE - main.size()));
@@ -221,23 +253,39 @@ public final class CanonDuelDeckBuilder {
             }
         }
 
-        // Fill monsters up to TARGET_MAIN_SIZE (max 2 copies of filler monsters for anime character flavor)
-        for (RpgCard m : monsters) {
-            if (main.size() >= TARGET_MAIN_SIZE) break;
-            int legalCap = Math.min(banlist.getMaxCopies(m.id), 2);
-            int cur = copies.getOrDefault(m.id, 0);
-            int add = Math.min(legalCap - cur, TARGET_MAIN_SIZE - main.size());
-            for (int i = 0; i < add; i++) {
-                main.add(m.id);
-                copies.put(m.id, copies.getOrDefault(m.id, 0) + 1);
-                curMonsters++;
-            }
-        }
-
-        // Fallback pass: allow up to legal max (3 copies) if early card pool (e.g. Vol.1) still needs slots
+        // Top up any remaining slots (if either bucket fell short) with monsters then spells/traps (cap 2)
         if (main.size() < TARGET_MAIN_SIZE) {
             for (RpgCard m : monsters) {
                 if (main.size() >= TARGET_MAIN_SIZE) break;
+                if (AiDeckGenerator.isUnsafeFillerCard(m, main, extra, catalog, style)) continue;
+                int legalCap = Math.min(banlist.getMaxCopies(m.id), 2);
+                int cur = copies.getOrDefault(m.id, 0);
+                while (cur < legalCap && main.size() < TARGET_MAIN_SIZE) {
+                    main.add(m.id);
+                    cur++;
+                    copies.put(m.id, cur);
+                }
+            }
+        }
+        if (main.size() < TARGET_MAIN_SIZE) {
+            for (RpgCard st : spellTraps) {
+                if (main.size() >= TARGET_MAIN_SIZE) break;
+                if (AiDeckGenerator.isUnsafeFillerCard(st, main, extra, catalog, style)) continue;
+                int legalCap = Math.min(banlist.getMaxCopies(st.id), 2);
+                int cur = copies.getOrDefault(st.id, 0);
+                while (cur < legalCap && main.size() < TARGET_MAIN_SIZE) {
+                    main.add(st.id);
+                    cur++;
+                    copies.put(st.id, cur);
+                }
+            }
+        }
+
+        // Fallback pass: allow up to legal max (3 copies) if an early card pool still needs slots
+        if (main.size() < TARGET_MAIN_SIZE) {
+            for (RpgCard m : monsters) {
+                if (main.size() >= TARGET_MAIN_SIZE) break;
+                if (AiDeckGenerator.isUnsafeFillerCard(m, main, extra, catalog, style)) continue;
                 int legalCap = banlist.getMaxCopies(m.id);
                 int cur = copies.getOrDefault(m.id, 0);
                 while (cur < legalCap && main.size() < TARGET_MAIN_SIZE) {
@@ -248,6 +296,7 @@ public final class CanonDuelDeckBuilder {
             }
             for (RpgCard st : spellTraps) {
                 if (main.size() >= TARGET_MAIN_SIZE) break;
+                if (AiDeckGenerator.isUnsafeFillerCard(st, main, extra, catalog, style)) continue;
                 int legalCap = banlist.getMaxCopies(st.id);
                 int cur = copies.getOrDefault(st.id, 0);
                 while (cur < legalCap && main.size() < TARGET_MAIN_SIZE) {
@@ -273,23 +322,37 @@ public final class CanonDuelDeckBuilder {
                 poolDate);
     }
 
-    private static void tryAddFromPool(int cardId, int desiredTotal, String poolDate,
-                                       RpgCatalog catalog, OcgBanlist banlist,
-                                       List<Integer> main, Map<Integer, Integer> copies) {
-        if (!TimelineEngine.isCardReleased(catalog, cardId, poolDate)) return;
+    private static int tryAddFromPool(int cardId, int desiredTotal, String poolDate,
+                                      RpgCatalog catalog, OcgBanlist banlist,
+                                      List<Integer> main, Map<Integer, Integer> copies) {
+        if (!TimelineEngine.isCardReleased(catalog, cardId, poolDate)) return 0;
         int cap = Math.min(desiredTotal, banlist.getMaxCopies(cardId));
         int cur = copies.getOrDefault(cardId, 0);
+        int added = 0;
         while (cur < cap && main.size() < TARGET_MAIN_SIZE) {
             main.add(cardId);
             cur++;
+            added++;
             copies.put(cardId, cur);
         }
+        return added;
     }
 
     private static int scoreMonster(RpgCard c, String style,
                                     Set<String> prefRaces, Set<String> prefAttrs,
-                                    boolean tributeEnabled) {
+                                    boolean tributeEnabled,
+                                    Set<Integer> charCanonPool,
+                                    List<Integer> coreMain, List<Integer> coreExtra,
+                                    RpgCatalog catalog) {
         int score = 0;
+        // 1) Highest priority: cards authentically used by this character in the original work
+        if (charCanonPool != null && charCanonPool.contains(c.id)) {
+            score += 1600;
+        }
+        // 2) Direct mechanical / thematic synergy with this duel's canon core cards
+        score += CanonCharacterCardRegistry.getCoreSynergyBonus(c, coreMain, coreExtra, catalog);
+
+        // 3) Theme race & attribute affinity
         String race = c.race != null ? c.race.toLowerCase() : "";
         String attr = c.attribute != null ? c.attribute.toLowerCase() : "";
         if (prefRaces.contains(race)) score += 900;
@@ -322,49 +385,59 @@ public final class CanonDuelDeckBuilder {
 
     private static int scoreSpellTrap(RpgCard c, String style,
                                       Set<String> prefRaces, Set<String> prefAttrs,
-                                      boolean hasExtraFusions) {
+                                      boolean hasExtraFusions,
+                                      Set<Integer> charCanonPool,
+                                      List<Integer> curMain, List<Integer> coreExtra,
+                                      RpgCatalog catalog) {
         int id = c.id;
         int score = 100;
-        // Universal era staples
-        if (id == RpgAiCardKnowledge.POT_OF_GREED) score += 950;
-        else if (id == RpgAiCardKnowledge.GRACEFUL_CHARITY) score += 900;
-        else if (id == RpgAiCardKnowledge.MONSTER_REBORN) score += 880;
-        else if (id == RpgAiCardKnowledge.RAIGEKI) score += 870;
-        else if (id == RpgAiCardKnowledge.DARK_HOLE) score += 850;
-        else if (id == RpgAiCardKnowledge.CHANGE_OF_HEART) score += 840;
-        else if (id == RpgAiCardKnowledge.HARPIES_FEATHER_DUSTER) score += 820;
-        else if (id == RpgAiCardKnowledge.MIRROR_FORCE) score += 820;
-        else if (id == RpgAiCardKnowledge.TRAP_HOLE) score += 800;
-        else if (id == RpgAiCardKnowledge.FISSURE) score += 790;
-        else if (id == RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT) score += 760;
-        else if (id == RpgAiCardKnowledge.KUNAI_WITH_CHAIN) score += 730;
-        else if (id == RpgAiCardKnowledge.WABOKU) score += 700;
-        else if (id == RpgAiCardKnowledge.HEAVY_STORM) score += 690;
-        else if (id == RpgAiCardKnowledge.SOLEMN_JUDGMENT) score += 660;
-        else if (id == RpgAiCardKnowledge.TRIBUTE_TO_THE_DOOMED) score += 650;
-        else if (id == RpgAiCardKnowledge.REINFORCEMENTS) score += 620;
-        else if (id == RpgAiCardKnowledge.DE_SPELL || id == RpgAiCardKnowledge.REMOVE_TRAP) score += 450;
+        // 1) Highest priority: spells/traps authentically used by this character in the original work
+        if (charCanonPool != null && charCanonPool.contains(id)) {
+            score += 1600;
+        }
+        // 2) Direct mechanical / thematic synergy with this duel's canon core & monster lineup
+        score += CanonCharacterCardRegistry.getCoreSynergyBonus(c, curMain, coreExtra, catalog);
+
+        // 3) Universal era staples (moderate weight so character-canon & core-synergy cards come first)
+        if (id == RpgAiCardKnowledge.POT_OF_GREED) score += 750;
+        else if (id == RpgAiCardKnowledge.GRACEFUL_CHARITY) score += 720;
+        else if (id == RpgAiCardKnowledge.MONSTER_REBORN) score += 720;
+        else if (id == RpgAiCardKnowledge.RAIGEKI) score += 700;
+        else if (id == RpgAiCardKnowledge.DARK_HOLE) score += 700;
+        else if (id == RpgAiCardKnowledge.CHANGE_OF_HEART) score += 680;
+        else if (id == RpgAiCardKnowledge.HARPIES_FEATHER_DUSTER) score += 660;
+        else if (id == RpgAiCardKnowledge.MIRROR_FORCE) score += 680;
+        else if (id == RpgAiCardKnowledge.TRAP_HOLE) score += 660;
+        else if (id == RpgAiCardKnowledge.FISSURE) score += 650;
+        else if (id == RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT) score += 640;
+        else if (id == RpgAiCardKnowledge.KUNAI_WITH_CHAIN) score += 620;
+        else if (id == RpgAiCardKnowledge.WABOKU) score += 600;
+        else if (id == RpgAiCardKnowledge.HEAVY_STORM) score += 560;
+        else if (id == RpgAiCardKnowledge.SOLEMN_JUDGMENT) score += 560;
+        else if (id == RpgAiCardKnowledge.TRIBUTE_TO_THE_DOOMED) score += 560;
+        else if (id == RpgAiCardKnowledge.REINFORCEMENTS) score += 540;
+        else if (id == RpgAiCardKnowledge.DE_SPELL || id == RpgAiCardKnowledge.REMOVE_TRAP) score += 420;
 
         if (hasExtraFusions && (id == RpgAiCardKnowledge.POLYMERIZATION || id == RpgAiCardKnowledge.FUSION_SAGE)) {
             score += 850;
         }
         // Theme-matched equips & field spells
-        if (id == RpgAiCardKnowledge.DARK_ENERGY && prefRaces.contains("fiend")) score += 600;
-        if (id == RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS && prefRaces.contains("spellcaster")) score += 600;
-        if (id == RpgAiCardKnowledge.LEGENDARY_SWORD && prefRaces.contains("warrior")) score += 600;
-        if (id == RpgAiCardKnowledge.DRAGON_TREASURE && prefRaces.contains("dragon")) score += 600;
-        if (id == RpgAiCardKnowledge.FOLLOW_WIND && prefRaces.contains("winged beast")) score += 600;
-        if (id == RpgAiCardKnowledge.LASER_CANNON_ARMOR && prefRaces.contains("insect")) score += 600;
-        if (id == RpgAiCardKnowledge.INSECT_ARMOR_WITH_LASER_CANNON && prefRaces.contains("insect")) score += 650;
-        if (id == RpgAiCardKnowledge.RAISE_BODY_HEAT && prefRaces.contains("dinosaur")) score += 600;
-        if (id == RpgAiCardKnowledge.VIOLET_CRYSTAL && prefRaces.contains("zombie")) score += 600;
-        if (id == RpgAiCardKnowledge.MACHINE_CONVERSION_FACTORY && prefRaces.contains("machine")) score += 600;
-        if (id == RpgAiCardKnowledge.POWER_OF_KAISHIN && prefRaces.contains("aqua")) score += 600;
-        if (id == RpgAiCardKnowledge.SWORD_OF_DARK_DESTRUCTION && prefAttrs.contains("dark")) score += 520;
-        if (id == RpgAiCardKnowledge.ELFS_LIGHT && prefAttrs.contains("light")) score += 520;
-        if (id == RpgAiCardKnowledge.INVIGORATION && prefAttrs.contains("earth")) score += 520;
-        if (id == RpgAiCardKnowledge.GUST_FAN && prefAttrs.contains("wind")) score += 520;
-        if (id == RpgAiCardKnowledge.STEEL_SHELL && prefAttrs.contains("water")) score += 520;
+        if (id == RpgAiCardKnowledge.DARK_ENERGY && prefRaces.contains("fiend")) score += 650;
+        if (id == RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS && prefRaces.contains("spellcaster")) score += 650;
+        if (id == RpgAiCardKnowledge.LEGENDARY_SWORD && prefRaces.contains("warrior")) score += 650;
+        if (id == RpgAiCardKnowledge.DRAGON_TREASURE && prefRaces.contains("dragon")) score += 650;
+        if (id == RpgAiCardKnowledge.FOLLOW_WIND && prefRaces.contains("winged beast")) score += 650;
+        if (id == RpgAiCardKnowledge.LASER_CANNON_ARMOR && prefRaces.contains("insect")) score += 650;
+        if (id == RpgAiCardKnowledge.INSECT_ARMOR_WITH_LASER_CANNON && prefRaces.contains("insect")) score += 700;
+        if (id == RpgAiCardKnowledge.RAISE_BODY_HEAT && prefRaces.contains("dinosaur")) score += 650;
+        if (id == RpgAiCardKnowledge.VIOLET_CRYSTAL && prefRaces.contains("zombie")) score += 650;
+        if (id == RpgAiCardKnowledge.MACHINE_CONVERSION_FACTORY && prefRaces.contains("machine")) score += 650;
+        if (id == RpgAiCardKnowledge.POWER_OF_KAISHIN && prefRaces.contains("aqua")) score += 650;
+        if (id == RpgAiCardKnowledge.SWORD_OF_DARK_DESTRUCTION && prefAttrs.contains("dark")) score += 540;
+        if (id == RpgAiCardKnowledge.ELFS_LIGHT && prefAttrs.contains("light")) score += 540;
+        if (id == RpgAiCardKnowledge.INVIGORATION && prefAttrs.contains("earth")) score += 540;
+        if (id == RpgAiCardKnowledge.GUST_FAN && prefAttrs.contains("wind")) score += 540;
+        if (id == RpgAiCardKnowledge.STEEL_SHELL && prefAttrs.contains("water")) score += 540;
         if (id == RpgAiCardKnowledge.BLACK_PENDANT) score += 560;
 
         // Avoid weak LP-only cards unless early Vol.1 pool has nothing else

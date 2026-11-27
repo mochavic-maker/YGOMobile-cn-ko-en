@@ -149,7 +149,13 @@
    - 从 Fandom Wiki / Yugipedia 对应集数/话数页面检索双方使用过的全部卡片，核对 `mobile/assets/data/cards.cdb` 密码（凡在 OCG 中属于融合/同调/超量/连接怪兽的卡必须放入 `canonExtraIds`，不可放入主卡组 `canonCardIds`）；
    - **尽量完整保留原著用卡（禁止剔除非核心未来卡）**：原著单局中提及的卡牌数量本来就不多，因此在通过 `coreCardIds` 确定合理的 `timelineDate` 后，**不要剔除该对决中出现的非核心未来卡**（允许保留少量晚于 `timelineDate` 甚至跨年的非核心原著用卡，以最大程度忠实还原原著对决风味）；
    - 对于晚于当前时间轴上限的非核心原著用卡，将其中/日/英文元信息收录进 `ocg_canon_duels.json` 的 `canonCardCatalog`（通过 `RpgCatalog.findCardOrCanon` 仅用于还原卡组展示与 AI 识别，**严禁泄漏进商店/合成/玩家组卡池**；卡图在联网时由 `RpgIntegration.loadCardImageBytes` 自动从萌卡图床拉取并缓存）；
-   - 不足 40 张的**补位卡**由 `CanonDuelDeckBuilder` 严格从该对决新的 `timelineDate` 对应的当期 OCG 实卡池中按角色种族/属性/流派挑选补足至 40 张。
+    - **补位卡原著还原与核心联动优先原则（`CanonCharacterCardRegistry` + `CanonDuelDeckBuilder`）**：
+      - 不足 40 张的**补位卡**严格从该对决 `timelineDate` 对应的当期 OCG 实卡池中挑选，并按严格优先级排序：
+        1. **第一优先（角色原著用卡）**：优先挑选当期 OCG 卡池内**该人物在原著漫画/动画/EX 角色预组中真实用过的卡牌**（由 [`CanonCharacterCardRegistry`](../src/main/java/cn/garymb/ygomobile/rpg/engine/CanonCharacterCardRegistry.java) 统一维护并动态汇总该角色跨集数原著卡池）；
+        2. **第二优先（核心卡高度联动）**：优先挑选与该局 `canonCardIds` / `canonExtraIds` 核心卡高度联动的配套卡（例如：羽蛾带《进化之茧》必优先补《飞蛾宝宝》《森》与昆虫装备；额外含融合怪必优先补《融合》及缺失的正规融合素材如迷宫兄弟的《加农炮兵》《高科技狼》、城之内的《传说的剑豪 正树》《火焰操纵者》；渔太补《海》与水属性鱼/水/海龙族及《波塞冬之力》；龙崎补《荒野》与《体温上升》；孔雀舞补《万华镜》《电子紧身衣》《随风翼》与风属性鸟兽族）；
+        3. **第三优先（种族/属性主题一致）**，最后才回退至当期通用卡；
+      - **严禁敌对/其他角色专属王牌串场**：补位池强制过滤其他原著人物的专属招牌卡（如暗游戏绝不补位《青眼白龙》《灯之魔精》《机械猎手》《死毒》，海马绝不补位《黑魔术师》《暗黑骑士 盖亚》《诅咒之龙》《恶魔召唤》《真红眼黑龙》，城之内/羽蛾/孔雀舞/渔太/龙崎/迷宫兄弟亦严禁混入其他角色的专属王牌；单局显式登记的 `canonCardIds` 仍 100% 忠实保留）。
+      - 先补足怪兽、再做魔法/陷阱合理性判定与补位，保证种族/属性装备魔法能准确统计全卡组目标数，既不漏掉原著招牌装备、也不塞入废装备。
 3. **展示排序、日期事项与四模式通关记录**：
    - 「🎬 对决还原」列表严格**按原著日期 `originalDate` 升序排列**（同日再按 `timelineDate`、`id` 升序）；
    - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates` 与 `TimelineDigest.newCanonDuels`（日历浅绿圆点高亮 + 当期动态展示），到达该日期即解锁；
@@ -162,9 +168,9 @@
 
 ---
 
-## 10. 历史原版 Lua 效果还原、AI 卡组合理性守卫与天梯实测奖金校准（强制规范）
+## 10. 历史原版 Lua 效果还原、AI 卡组合理性与角色还原守卫、天梯动态分档与奖金校准（强制规范）
 
-基于 1999 第 1 期实机测试与 8,000+ 局真实 `ocgcore` 对局复盘，以下 4 条规范在未来扩展至第 2 期（2000 年）及后续环境时**同样强制适用**：
+基于 1999 第 1 期实机测试与 8,000+ 局真实 `ocgcore` 对局复盘，以下 5 条规范在未来扩展至第 2 期（2000 年）及后续环境时**同样强制适用**：
 
 1. **【强制】历史原版效果（Pre-Errata）每局独立 Lua 预加载（`RpgHistoricalLuaBuilder.java`）**
    - **原理**：`ocgcore` 的 `interpreter::load_card_script(code)` 在 `_G["c<code>"]` 已定义时会直接复用该表而跳过加载 `scripts.zip` 中的现代改版脚本。只要在 `newCard` / 卡组装载**之前**预加载 `rpg_rule_override.lua`（覆盖 `ServerDuelBase`、`ServerDuel` 悔棋重建与 `RpgOcgHeadlessDuelRunner`），即可在 RPG 单局 `lua_State` 内精确还原历史原版卡效，**零污染 `expansions/script/` 与普通 YGOMobile 对战**。
@@ -174,15 +180,22 @@
    - `AiDeckGenerator` 与 `CanonDuelDeckBuilder` 的自动补位池**严禁**出现以下不合理单卡：
      - **特殊召唤限定怪（Nomi 怪）与仪式怪**：如《究极完全态大飞蛾》《大飞蛾》《飞蛾幼虫》《鹰身女郎三姐妹》《门之守护神》《钢铁恶魔兽灵》《真红眼黑钢龙》及一切含「不能通常召唤」文本的新卡；
      - **无配套怪兽的仪式魔法**；
-     - **非融合卡组中的融合依赖卡**：无额外融合怪且非 `FUSION_COMBO` 时禁止补入《融合》《融合贤者》《恶魔科学怪人》《眼球怪》与融合素材代用怪；
+     - **非融合卡组中的融合依赖卡**：无额外融合怪时禁止补入《融合》《融合贤者》，非 `FUSION_COMBO` 时禁止补入《恶魔科学怪人》《眼球怪》与融合素材代用怪；
      - **缺少指定联动对象的单卡**：如无《鹰身女郎》时的《万华镜》《电子紧身衣》、无《飞蛾宝宝》时的《进化之茧》、无《龙之支配者》时的《呼龙笛》以及窄针对废牌（《白洞》《避雷针》等）；
      - **非艾克佐迪亚卡组的部件泄漏**、**暗属性 ≤1000 祭品不足 6 张时的《死之卡组破坏病毒》**；
      - **卡组内合规目标 < 4 张的种族/属性限定装备魔法**。
    - **自动化守卫**：`RpgEnginesTest#allAiAndCanonDecksHaveZeroUnsummonableNomiOrDeadDependencyFillers` 对全部里程碑日期的所有 AI 与原著对决补位卡做全量扫描，任何违规都会在单测直接失败。
-3. **【强制】全环境 AI 天梯（瑞士轮 + Bradley-Terry Elo `±SE`）与实测奖金校准（`EraBountyCalibrator`）**
+3. **【强制】原著人物 AI 与对决还原的「角色原著还原度＆主题联动」守卫（`CanonCharacterCardRegistry`）**
+   - 凡对应漫画/动画原著人物的 AI 对手（如 `ai_vol1_yugi` 初代暗游戏、`ai_starter_kaiba` 社长·海马濑人、`ai_weekend_challenger` 热血城之内风，以及未来新增的贝卡斯、马利克、盗贼基斯、孔雀舞等）与全部「🎬 对决还原」卡组：
+     - 核心配方（`coreMain`/`coreExtra`）与自动补位池**必须优先选用当期 OCG 卡池内该角色原著用过的卡牌或与主题/核心卡高度联动的配套卡**；
+     - **严禁出现角色王牌串场**（如暗游戏绝不携带青眼白龙/灯之魔精/机械猎手/死毒，海马绝不携带黑魔术师/暗黑骑士盖亚/诅咒之龙/恶魔召唤/圣精灵/真红眼黑龙，城之内绝不携带黑魔术师/青眼白龙/恶魔召唤等）；
+     - 非原著角色的纯环境流派 AI（如死毒暗控、装备Beat、反转控制、融合科学怪人、卡组破坏等）在自动补位时同样由 `CanonCharacterCardRegistry.getCoreSynergyBonus` 优先挑选与卡组核心主题高度联动的卡牌。
+   - **自动化守卫**：`RpgEnginesTest#canonCharacterFidelityAndCoreSynergyGuard` 覆盖全部里程碑日期的角色 AI 与全部原著对决，自动拦截任何串场王牌或缺失的核心联动件。
+4. **【强制】全环境 AI 天梯（瑞士轮 + Bradley-Terry Elo `±SE` + Fisher-Jenks 动态分档）与实测奖金校准（`EraBountyCalibrator`）**
    - `RoundRobinLeagueEngine` 提供 $O(N \log N)$ **瑞士轮天梯**（默认每组 **6 局 = 3 先 3 后**，消除先后手偏差；同日期固定 AI 卡组种子；全局贝叶斯 Bradley-Terry MLE 解算 Elo、对手均分 SOS 与 Fisher 信息量标准误差 `±SE`；支持随时增量追加轮次）以及全量循环赛。
-   - **实测驱动奖金校准与经济区间约束**：AI 对战奖金不再靠主观估算——每当扩展新年代、增补 AI 卡组或大幅迭代 AI 策略后，用同源 `ocgcore` 引擎跑一次各里程碑节点的高精度循环赛，将实测 Elo 写入 `EraBountyCalibrator`，**单场胜利奖金严格控制在 `120 ~ 300` 代币之间**（前期如 `120~220`，随年代平滑递增至年末 `120~300`，以 5 代币为步长，平局约 `43%`、败北约 `25%`），确保同一时间点内**AI 实测越强奖金越高**，且 `RpgEnginesTest` 强制校验全里程碑 Elo-奖金严格单调与 `[120, 300]` 区间边界。
-4. **产品体验与打包约束**
+   - **动态 S/A/B/C/D 分档（Fisher-Jenks 一维自然断点 DP）**：天梯与 AI 对战均通过 `RoundRobinLeagueEngine.computeDynamicTiers` 对当期 Elo 分布求一维最优聚类切分（最小化档内方差之和 SSE），而非写死固定 Elo 阈值或仅取最大相邻差（避免底部长尾把前排全部挤进 S 档）；同时强制**同分锁档**、极端长尾（`<950`）归 D、小样本相近前排（差值 `<60` Elo）合并保档。
+   - **实测驱动奖金校准与经济区间约束**：AI 对战奖金不再靠主观估算——每当扩展新年代、增补或修改 AI 卡组、或大幅迭代 AI 策略后，用同源 `ocgcore` 引擎跑一次各里程碑节点的高精度循环赛，将实测 Elo 写入 `EraBountyCalibrator`，**单场胜利奖金严格控制在 `120 ~ 300` 代币之间**（前期如 `120~220`，随年代平滑递增至年末 `120~300`，以 5 代币为步长，平局约 `43%`、败北约 `25%`），确保同一时间点内**AI 实测越强奖金越高**，且 `RpgEnginesTest` 强制校验全里程碑 Elo-奖金严格单调与 `[120, 300]` 区间边界。
+5. **产品体验与打包约束**
    - 组卡页不提供劣质「智能一键组卡」，坚持玩家自主构筑 + 卡组管理/导入导出 + 严格时间轴/拥有数/禁限表校验。
    - RPG 独立共存包名固定为 `cn.garymb.ygomobile.CN.rpg`，并持续沿用同一 Release 签名（SHA-256 `81:CC:69:4D:93:A2:47:98:A5:89:BF:D1:40:F0:9F:0C:EB:18:2E:47:FD:4A:93:9B:BE:32:86:59:14:29:C9:7C`），保证每次更新可直接覆盖安装且存档无损。
 
@@ -193,24 +206,26 @@
 无论是扩展新年份（2000+），还是在既有年代新增/修改一套 AI 卡组，均按以下 **8 步闭环流程** 执行，缺一不可：
 
 1. **步骤 1 · 环境史考据与流派定位**
-   - 查阅 `yugioh-history.com` 对应时期环境年表，明确该 AI 对手的定位（入门/休闲/中坚/主流竞技/特色自闭等）、首次解锁日期 `unlockDate` 及随发售节点演变的多套 `EraDeckProfile`。
-2. **步骤 2 · 制定核心卡组配方与头像生成**
-   - 在 `AiDeckGenerator.java` 中编写各阶段的 `coreMain` / `coreExtra` 与 `fillStyle`，确保每张卡满足 `发售日 <= effectiveDate`、严守当期 OCG 禁限表且配齐核心联动件（例如带 `死毒` 必配 ≥6 张暗属性 ≤1000 祭品、带装备必配充足合规目标怪、带融合必配额外怪与融合手段）。
+   - 查阅 `yugioh-history.com` 对应时期环境年表，明确该 AI 对手的定位（入门/休闲/中坚/主流竞技/特色自闭/原著角色等）、首次解锁日期 `unlockDate` 及随发售节点演变的多套 `EraDeckProfile`。
+2. **步骤 2 · 制定核心卡组配方、角色还原登记与头像生成**
+   - 在 `AiDeckGenerator.java` 中编写各阶段的 `coreMain` / `coreExtra` 与 `fillStyle`，确保每张卡满足 `发售日 <= effectiveDate`、严守当期 OCG 禁限表、核心配方中不含融合怪误写进 `coreMain`，且配齐核心联动件（例如带 `死毒` 必配 ≥6 张暗属性 ≤1000 祭品、带装备必配充足合规目标怪、带融合必配额外怪与融合手段）。
+   - **若该 AI 为漫画/动画原著人物**：必须在 [`CanonCharacterCardRegistry.java`](../src/main/java/cn/garymb/ygomobile/rpg/engine/CanonCharacterCardRegistry.java) 中映射其 `characterId`、维护其当期原著卡池与专属王牌表，核心配方与自动补位**均优先挑选当期环境内原著用过的卡牌或与主题高度联动的卡牌，严禁混入其他角色的专属王牌**（如游戏用青眼白龙、海马用黑魔导）。
    - 为新增 AI 对手生成 1:1 游戏王动画风格头像并保存至 `rpg-mode/src/main/assets/rpg/avatars/<opponent_id>.webp`（`256×256` WebP）。
 3. **步骤 3 · 登记单卡知识与制定专属 AI 策略**
    - 在 `RpgAiCardKnowledge.java` 中补齐新卡角色、装备兼容表、检索/苏生/回收/康牌优先级；
    - 在 `RpgAiStrategy.java` 中注册新 `fillStyle`（`SUPPORTED_STYLES`、`getStyleDisplayName`、`inferStyleFromDeck`），实现先后手偏好、主阶出牌序、资源保留（如单表侧怪优先地割保雷击、单后场优先魔除/陷除保羽毛扫、不炸自己优势盘面）、盖牌/献祭/连锁/弃牌逻辑，并在 `RpgAiStrategyTest.java` 补充战术单测。
 4. **步骤 4 · 核查历史原版效果（Pre-Errata Lua）**
    - 对照 `yugioh-wiki.net` 勘误总表与 `mobile/assets/data/scripts.zip`，确认该卡组用到的关键卡在当前时间线是否尚未被现代 Errata 削弱；若 `scripts.zip` 为现代改版，在 `RpgHistoricalLuaBuilder.java` 补充按日期生效的原版 Lua 覆盖并写单测。
-5. **步骤 5 · 全年代卡组合理性与「零废牌」检查**
-   - 检查新卡组是否引入新的特召限定 Nomi 怪、仪式魔法、融合依赖卡、指定卡名联动卡或种族/属性装备魔法，同步更新 `AiDeckGenerator.isUnsafeFillerCard` 守卫规则；
-   - 运行 `RpgEnginesTest#allAiAndCanonDecksHaveZeroUnsummonableNomiOrDeadDependencyFillers`，确认全部里程碑日期下生成出的 40 张实装卡组（核心+补位）**零不可召唤怪、零死卡、零禁限表/时间轴越界**。
+5. **步骤 5 · 全年代卡组合理性、「零废牌」与「角色还原度」检查**
+   - 检查新卡组是否引入新的特召限定 Nomi 怪、仪式魔法、融合依赖卡、指定卡名联动卡或种族/属性装备魔法，同步更新 `AiDeckGenerator.isUnsafeFillerCard` 与 `CanonCharacterCardRegistry`；
+   - 运行 `RpgEnginesTest#allAiAndCanonDecksHaveZeroUnsummonableNomiOrDeadDependencyFillers` 与 `RpgEnginesTest#canonCharacterFidelityAndCoreSynergyGuard`，确认全部里程碑日期下生成出的 40 张实装卡组（核心+补位）**零不可召唤怪、零死卡、零角色王牌串场、零禁限表/时间轴越界**。
 6. **步骤 6 · 跑真实 `ocgcore` 全环境天梯基准**
-   - 使用与 App 同源的 `ocgcore` + `RpgAiStrategy` + `RpgHistoricalLuaBuilder`（主机侧或 App 内瑞士轮/全量循环赛），在受影响的每个里程碑日期跑均衡先后手对局（建议每对 10~16 局，压低误差 `±SE`），产出每位 AI 的实测 Bradley-Terry Elo 与胜率。
+   - 使用与 App 同源的 `ocgcore` + `RpgAiStrategy` + `RpgHistoricalLuaBuilder`（主机侧或 App 内瑞士轮/全量循环赛），在受影响的每个里程碑日期跑均衡先后手对局（建议每对 10~16 局，压低误差 `±SE`），产出每位 AI 的实测 Bradley-Terry Elo、胜率与 Fisher-Jenks 动态 S/A/B/C/D 分档。
 7. **步骤 7 · 按实测 Elo 校准奖金（`120 ~ 300` 代币区间）**
-   - 将最新实测 Elo 快照写入 `EraBountyCalibrator.java`，按年代阶梯（如 `120~220` 递进至 `120~300`，单场胜场奖金严格限定在 **`120 ~ 300`** 代币内，步长 5，平局 43%，败北 25%）自动映射并保证同时间点内 **Elo 越高奖金越高**。
+   - 将最新实测 Elo 快照写入 `EraBountyCalibrator.java`，按年代阶梯（如 `120~220` 递进至 `120~300`，单场胜场奖金严格限定在 **`120 ~ 300`** 代币内，步长 5，平局 43%，败北 25%）自动映射，通过 Fisher-Jenks 自动给出当期动态档位，并保证同时间点内 **Elo 越高奖金越高**。
 8. **步骤 8 · 全量自动化守卫验收与打包发布**
-   - 运行 `./gradlew :rpg-mode:testDebugUnitTest :mobile:assembleCnRelease`，确认全部战术单测、零废牌审计、17 年代 Elo-奖金单调与 `[120, 300]` 边界校验、头像守卫 100% 通过，核验 Release 签名 SHA-256 无误后推送并更新安装包。
+   - 运行 `./gradlew :rpg-mode:testDebugUnitTest :mobile:assembleCnRelease`，确认全部战术单测、零废牌审计、角色还原守卫、17 年代 Elo-奖金单调与 `[120, 300]` 边界校验、动态分档与头像守卫 100% 通过，核验 Release 签名 SHA-256 无误后推送并更新安装包。
+
 
 
 
