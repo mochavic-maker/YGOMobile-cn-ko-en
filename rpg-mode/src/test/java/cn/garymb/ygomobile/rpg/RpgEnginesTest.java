@@ -416,6 +416,22 @@ public class RpgEnginesTest {
         // Mill Morphing auto-switches from Booster 5 Deck Destruction (10-17) -> EX Anti-Exodia Morphing Jar (12-16)
         assertEquals("1999-10-17", millMorphing.getActiveDeckProfile("1999-11-01").effectiveDate);
         assertEquals("1999-12-16", millMorphing.getActiveDeckProfile("1999-12-31").effectiveDate);
+
+        // Verify rewards scale with ACTUAL era deck strength (not unlock date):
+        // On 1999-07-08, Kaiba's top-tier deck must pay more than early DM2 Virus Control,
+        // and Virus Control / Kaiba / Exodia must scale up as their decks evolve!
+        AiOpponent virus = null;
+        for (AiOpponent o : opps) {
+            if ("ai_virus_control".equals(o.id)) virus = o;
+        }
+        assertNotNull(virus);
+        assertTrue("On 1999-07-08, Kaiba must have higher win reward than early DM2 Virus Control",
+                kaiba.getWinRewardTokens("1999-07-08") > virus.getWinRewardTokens("1999-07-08"));
+        assertTrue("Virus Control reward must increase as it upgrades to Mask of Darkness & Sangan/Witch",
+                virus.getWinRewardTokens("1999-11-18") > virus.getWinRewardTokens("1999-07-22")
+                        && virus.getWinRewardTokens("1999-07-22") > virus.getWinRewardTokens("1999-07-08"));
+        assertTrue("Exodia reward must scale up sharply from PP1 hybrid (08-26) to Last Will dark age (12-16)",
+                exodia.getWinRewardTokens("1999-12-16") > exodia.getWinRewardTokens("1999-08-26"));
     }
 
     @Test

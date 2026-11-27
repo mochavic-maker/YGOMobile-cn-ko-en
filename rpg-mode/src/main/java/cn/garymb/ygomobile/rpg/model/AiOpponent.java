@@ -29,9 +29,18 @@ public class AiOpponent {
         public final Map<Integer, Integer> coreMain;
         public final Map<Integer, Integer> coreExtra;
         public final String fillStyle;
+        public final int winRewardTokens;
+        public final int drawRewardTokens;
+        public final int lossRewardTokens;
 
         public EraDeckProfile(String effectiveDate, String deckName, String eraTag, String description,
                               Map<Integer, Integer> coreMain, Map<Integer, Integer> coreExtra, String fillStyle) {
+            this(effectiveDate, deckName, eraTag, description, coreMain, coreExtra, fillStyle, -1, -1, -1);
+        }
+
+        public EraDeckProfile(String effectiveDate, String deckName, String eraTag, String description,
+                              Map<Integer, Integer> coreMain, Map<Integer, Integer> coreExtra, String fillStyle,
+                              int winRewardTokens, int drawRewardTokens, int lossRewardTokens) {
             this.effectiveDate = effectiveDate;
             this.deckName = deckName;
             this.eraTag = eraTag;
@@ -43,6 +52,9 @@ public class AiOpponent {
                     ? Collections.unmodifiableMap(new LinkedHashMap<>(coreExtra))
                     : Collections.emptyMap();
             this.fillStyle = fillStyle != null ? fillStyle : "GOOD_STUFF";
+            this.winRewardTokens = winRewardTokens;
+            this.drawRewardTokens = drawRewardTokens;
+            this.lossRewardTokens = lossRewardTokens;
         }
     }
 
@@ -76,5 +88,20 @@ public class AiOpponent {
             }
         }
         return best != null ? best : deckEvolutions.get(0);
+    }
+
+    public int getWinRewardTokens(String currentDate) {
+        EraDeckProfile active = getActiveDeckProfile(currentDate);
+        return (active != null && active.winRewardTokens > 0) ? active.winRewardTokens : winRewardTokens;
+    }
+
+    public int getDrawRewardTokens(String currentDate) {
+        EraDeckProfile active = getActiveDeckProfile(currentDate);
+        return (active != null && active.drawRewardTokens > 0) ? active.drawRewardTokens : drawRewardTokens;
+    }
+
+    public int getLossRewardTokens(String currentDate) {
+        EraDeckProfile active = getActiveDeckProfile(currentDate);
+        return (active != null && active.lossRewardTokens > 0) ? active.lossRewardTokens : lossRewardTokens;
     }
 }

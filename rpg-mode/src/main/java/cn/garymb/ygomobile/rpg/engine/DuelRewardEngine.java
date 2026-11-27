@@ -23,18 +23,19 @@ public final class DuelRewardEngine {
 
     public static RewardSettlement settle(RpgProfile profile, AiOpponent opponent,
                                           boolean playerWon, boolean isDraw) {
+        String date = profile != null ? profile.currentTimelineDate : null;
         int earned;
         String label;
         if (isDraw) {
-            earned = opponent.drawRewardTokens;
+            earned = opponent.getDrawRewardTokens(date);
             profile.draws++;
             label = "平局";
         } else if (playerWon) {
-            earned = opponent.winRewardTokens;
+            earned = opponent.getWinRewardTokens(date);
             profile.wins++;
             label = "胜利";
         } else {
-            earned = opponent.lossRewardTokens;
+            earned = opponent.getLossRewardTokens(date);
             profile.losses++;
             label = "败北（参与奖励）";
         }
