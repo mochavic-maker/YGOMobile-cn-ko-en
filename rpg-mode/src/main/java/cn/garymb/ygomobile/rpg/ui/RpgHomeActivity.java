@@ -1,6 +1,8 @@
 package cn.garymb.ygomobile.rpg.ui;
 
 import android.app.DatePickerDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -14,6 +16,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,6 +38,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import cn.garymb.ygomobile.rpg.R;
 import cn.garymb.ygomobile.rpg.bridge.RpgDuelHostBridge;
@@ -51,6 +55,7 @@ import cn.garymb.ygomobile.rpg.engine.DeckValidator;
 import cn.garymb.ygomobile.rpg.engine.DuelRewardEngine;
 import cn.garymb.ygomobile.rpg.engine.EventClaimEngine;
 import cn.garymb.ygomobile.rpg.engine.PackOpeningEngine;
+import cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine;
 import cn.garymb.ygomobile.rpg.engine.TimelineEngine;
 import cn.garymb.ygomobile.rpg.engine.TournamentEngine;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
@@ -134,6 +139,7 @@ public class RpgHomeActivity extends AppCompatActivity {
     private String showdownKeyA = "current";
     private String showdownKeyB = null;
     private RpgAiAutoDuelModels.BatchResult lastShowdownReport = null;
+    private RoundRobinLeagueEngine.LeagueResult lastLeagueResult = null;
     private TimelineEngine.TimelineDigest currentTimelineDigest = null;
 
     @Override
@@ -3216,6 +3222,285 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
             layoutContent.addView(resCard);
         }
+
+        // ===== Full-Environment Round-Robin AI League (All unlocked AIs + Player's current deck, 5 games/pair) =====
+        List<AiOpponent> unlockedOpps = TimelineEngine.getAvailableOpponents(
+                AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
+        DeckValidator.ValidationResult playerDeckVal = DeckValidator.validatePlayerDeck(profile, catalog);
+        int playerSlotCount = playerDeckVal.valid ? 1 : 0;
+        int contestantCount = unlockedOpps.size() + playerSlotCount;
+        int pairCount = contestantCount * (contestantCount - 1) / 2;
+        int totalGames = pairCount * RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR;
+
+        LinearLayout leagueCard = makeCardContainer();
+        TextView leagueTitle = makeTitleText("🏆 全环境循环赛 · 天梯实力榜（每对快战 "
+                + RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR + " 局）");
+        leagueTitle.setTextColor(Color.parseColor("#FBBF24"));
+        leagueCard.addView(leagueTitle);
+        leagueCard.addView(makeSubtleText(String.format(Locale.US,
+                "现环境（%s）已解锁 %d 位 AI%s → 共 %d 名选手，两两逐对进行 %d 局真实 ocgcore 快战（合计 %d 组 / %d 局），按胜场数排序展示排名与胜率。",
+                profile.currentTimelineDate,
+                unlockedOpps.size(),
+                playerDeckVal.valid ? " + 我的当前卡组" : "（当前自组卡组未通过校验，可先组卡或仅 AI 参赛）",
+                contestantCount,
+                RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR,
+                pairCount,
+                totalGames)));
+
+        Button startLeagueBtn = makeActionButton(
+                "🏆 开始全环境循环赛（每对 " + RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR + " 局）",
+                "#D97706");
+        startLeagueBtn.setOnClickListener(v -> startRoundRobinLeagueFlow());
+        leagueCard.addView(makeEqualWeightButtonRow(8, startLeagueBtn));
+        layoutContent.addView(leagueCard);
+
+        if (lastLeagueResult != null && !lastLeagueResult.standings.isEmpty()) {
+            renderLeagueStandingsCard(lastLeagueResult);
+        }
+    }
+
+    private void startRoundRobinLeagueFlow() {
+        final RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未注册 YGOMobile 决斗引擎桥接器", Toast.LENGTH_LONG).show();
+            return;
+        }
+        DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
+        if (val.valid) {
+            runRoundRobinLeague(true);
+        } else {
+            new AlertDialog.Builder(this)
+                    .setTitle("当前 RPG 卡组未通过校验")
+                    .setMessage(TextUtils.join("\n", val.errors)
+                            + "\n\n是否先去组卡，或仅运行现环境所有 AI 之间的循环赛？")
+                    .setPositiveButton("仅 AI 参赛", (d, w) -> runRoundRobinLeague(false))
+                    .setNeutralButton("去组卡", (d, w) -> selectTabById(TAB_DECK))
+                    .setNegativeButton("取消", null)
+                    .show();
+        }
+    }
+
+    private void runRoundRobinLeague(final boolean includePlayer) {
+        final RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未注册 YGOMobile 决斗引擎桥接器", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final String curDate = profile.currentTimelineDate;
+        final OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, curDate);
+        RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
+        String playerDeckLabel = activeSaved != null ? activeSaved.name : "当前编辑卡组";
+
+        final List<RoundRobinLeagueEngine.Participant> participants =
+                RoundRobinLeagueEngine.buildParticipants(
+                        catalog, curDate, activeRule,
+                        includePlayer, playerDeckLabel,
+                        profile.activeDeckMain, profile.activeDeckExtra,
+                        new Random());
+
+        if (participants.size() < 2) {
+            Toast.makeText(this, "参赛选手不足 2 名，无法开启循环赛", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final int gamesPerPair = RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR;
+        final int totalPairs = participants.size() * (participants.size() - 1) / 2;
+        final int totalGames = totalPairs * gamesPerPair;
+        final AtomicBoolean cancelFlag = new AtomicBoolean(false);
+        final long startMs = System.currentTimeMillis();
+
+        LinearLayout dlgBody = new LinearLayout(this);
+        dlgBody.setOrientation(LinearLayout.VERTICAL);
+        dlgBody.setPadding(dp(20), dp(14), dp(20), dp(10));
+
+        final ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(totalGames);
+        progressBar.setProgress(0);
+        dlgBody.addView(progressBar);
+
+        final TextView tvStatus = makeSubtleText(String.format(Locale.US,
+                "准备就绪：%d 名选手 · %d 组对阵 · 共 %d 局\n正在启动真实 ocgcore 引擎…",
+                participants.size(), totalPairs, totalGames));
+        tvStatus.setTextColor(Color.parseColor("#E2E8F0"));
+        tvStatus.setPadding(0, dp(10), 0, 0);
+        dlgBody.addView(tvStatus);
+
+        final AlertDialog progDlg = new AlertDialog.Builder(this)
+                .setTitle("🏆 全环境 AI 循环赛进行中")
+                .setView(dlgBody)
+                .setCancelable(false)
+                .setNegativeButton("取消", (d, w) -> cancelFlag.set(true))
+                .show();
+
+        new Thread(() -> {
+            final RoundRobinLeagueEngine.LeagueResult result = RoundRobinLeagueEngine.runRoundRobin(
+                    catalog,
+                    bridge,
+                    participants,
+                    activeRule,
+                    curDate,
+                    gamesPerPair,
+                    (doneGames, totGames, donePairs, totPairs, label) -> {
+                        final long sec = (System.currentTimeMillis() - startMs) / 1000L;
+                        runOnUiThread(() -> {
+                            progressBar.setProgress(doneGames);
+                            int pct = totGames > 0 ? (doneGames * 100 / totGames) : 0;
+                            tvStatus.setText(String.format(Locale.US,
+                                    "进度：%d / %d 局（%d%%）· 第 %d / %d 组 · 已耗时 %ds\n当前对阵：%s",
+                                    doneGames, totGames, pct,
+                                    Math.min(donePairs + 1, totPairs), totPairs, sec, label));
+                        });
+                    },
+                    cancelFlag,
+                    new Random());
+
+            runOnUiThread(() -> {
+                if (progDlg.isShowing()) progDlg.dismiss();
+                if (result.completedGames > 0) {
+                    lastLeagueResult = result;
+                    String msg = result.cancelled
+                            ? ("循环赛已取消（已完成 " + result.completedGames + "/" + result.totalGames + " 局，展示当前排名）")
+                            : String.format(Locale.US, "全环境循环赛完成！共 %d 局（耗时 %.1fs）",
+                            result.completedGames, result.elapsedMs / 1000.0);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    renderCurrentTab();
+                } else {
+                    Toast.makeText(this, "循环赛已取消", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }, "RpgRoundRobinLeague").start();
+    }
+
+    private void renderLeagueStandingsCard(final RoundRobinLeagueEngine.LeagueResult res) {
+        LinearLayout card = makeCardContainer();
+        TextView title = makeTitleText(String.format(Locale.US,
+                "🏅 全环境循环赛排行榜（%s · %d名选手 · %d/%d局 · %.1fs）%s",
+                res.timelineDate,
+                res.standings.size(),
+                res.completedGames,
+                res.totalGames,
+                res.elapsedMs / 1000.0,
+                res.cancelled ? " [已取消]" : ""));
+        title.setTextColor(Color.parseColor("#38BDF8"));
+        card.addView(title);
+        card.addView(makeSubtleText("按总胜场数降序排名（点任意选手可查看对阵明细 · 不计入战绩/代币）"));
+
+        Map<String, RoundRobinLeagueEngine.Participant> byId = new HashMap<>();
+        for (RoundRobinLeagueEngine.Participant p : res.standings) {
+            byId.put(p.id, p);
+        }
+
+        for (int i = 0; i < res.standings.size(); i++) {
+            final int rank = i + 1;
+            final RoundRobinLeagueEngine.Participant p = res.standings.get(i);
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            GradientDrawable rowBg = new GradientDrawable();
+            rowBg.setColor(Color.parseColor(p.isPlayer ? "#1E3A5F" : "#0F172A"));
+            rowBg.setCornerRadius(dp(8));
+            rowBg.setStroke(dp(p.isPlayer ? 2 : 1),
+                    Color.parseColor(p.isPlayer ? "#F59E0B" : "#334155"));
+            row.setBackground(rowBg);
+            row.setPadding(dp(10), dp(8), dp(10), dp(8));
+            LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            rlp.topMargin = dp(6);
+            row.setLayoutParams(rlp);
+
+            String rankBadge;
+            if (rank == 1) rankBadge = "🥇 #1";
+            else if (rank == 2) rankBadge = "🥈 #2";
+            else if (rank == 3) rankBadge = "🥉 #3";
+            else rankBadge = "#" + rank;
+
+            TextView tvRank = new TextView(this);
+            tvRank.setText(rankBadge);
+            tvRank.setTextSize(13f);
+            tvRank.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvRank.setTextColor(Color.parseColor(rank <= 3 ? "#FBBF24" : "#94A3B8"));
+            tvRank.setMinWidth(dp(48));
+            row.addView(tvRank);
+
+            LinearLayout infoCol = new LinearLayout(this);
+            infoCol.setOrientation(LinearLayout.VERTICAL);
+            infoCol.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            TextView tvName = makeTitleText((p.isPlayer ? "⭐ " : "") + p.name);
+            tvName.setTextSize(13f);
+            if (p.isPlayer) tvName.setTextColor(Color.parseColor("#FDE68A"));
+            infoCol.addView(tvName);
+
+            String sub = (!p.deckName.isEmpty() ? p.deckName + " · " : "")
+                    + RpgAiStrategy.getStyleDisplayName(p.style);
+            TextView tvSub = makeSubtleText(sub);
+            tvSub.setTextSize(11f);
+            infoCol.addView(tvSub);
+            row.addView(infoCol);
+
+            LinearLayout statCol = new LinearLayout(this);
+            statCol.setOrientation(LinearLayout.VERTICAL);
+            statCol.setGravity(Gravity.END);
+            double wr = p.getWinRatePercent();
+            TextView tvWr = new TextView(this);
+            tvWr.setText(String.format(Locale.US, "%.1f%%", wr));
+            tvWr.setTextSize(14f);
+            tvWr.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvWr.setTextColor(Color.parseColor(
+                    wr >= 60.0 ? "#34D399" : (wr >= 40.0 ? "#FBBF24" : "#F87171")));
+            statCol.addView(tvWr);
+
+            String rec = p.wins + "胜 " + p.losses + "负" + (p.draws > 0 ? (" " + p.draws + "平") : "");
+            TextView tvRec = makeSubtleText(rec);
+            tvRec.setTextSize(11f);
+            statCol.addView(tvRec);
+            row.addView(statCol);
+
+            row.setOnClickListener(v -> showLeagueParticipantDetail(rank, p, byId));
+            card.addView(row);
+        }
+
+        Button copyBtn = makeActionButton("📋 复制排行榜", "#0284C7");
+        copyBtn.setOnClickListener(v -> {
+            ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.setPrimaryClip(ClipData.newPlainText("rpg_round_robin", res.formatPlainTextReport()));
+                Toast.makeText(this, "已复制循环赛排行榜到剪贴板", Toast.LENGTH_SHORT).show();
+            }
+        });
+        Button rerunBtn = makeActionButton("🔄 再赛一轮", "#059669");
+        rerunBtn.setOnClickListener(v -> startRoundRobinLeagueFlow());
+        card.addView(makeEqualWeightButtonRow(10, copyBtn, rerunBtn));
+
+        layoutContent.addView(card);
+    }
+
+    private void showLeagueParticipantDetail(int rank,
+                                             RoundRobinLeagueEngine.Participant p,
+                                             Map<String, RoundRobinLeagueEngine.Participant> byId) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format(Locale.US,
+                "第 %d 名 · 总战绩：%d 胜 %d 负 %d 平（胜率 %.1f%% · 平均 %.1f 回合）\n",
+                rank, p.wins, p.losses, p.draws, p.getWinRatePercent(), p.getAvgTurns()));
+        if (!p.deckName.isEmpty()) {
+            sb.append("使用卡组：").append(p.deckName).append("\n");
+        }
+        sb.append("AI 策略：").append(RpgAiStrategy.getStyleDisplayName(p.style)).append("\n\n");
+        sb.append("--- 逐对交手明细 ---\n");
+        for (Map.Entry<String, int[]> e : p.headToHead.entrySet()) {
+            RoundRobinLeagueEngine.Participant opp = byId.get(e.getKey());
+            String oppName = opp != null ? ((opp.isPlayer ? "⭐ " : "") + opp.name) : e.getKey();
+            int[] h = e.getValue();
+            int tot = h[0] + h[1] + h[2];
+            double rate = tot > 0 ? (h[0] * 100.0 / tot) : 0.0;
+            sb.append(String.format(Locale.US, "• vs %s：%d胜 %d负%s (%.0f%%)\n",
+                    oppName, h[0], h[1], h[2] > 0 ? (" " + h[2] + "平") : "", rate));
+        }
+        new AlertDialog.Builder(this)
+                .setTitle((p.isPlayer ? "⭐ " : "") + p.name + " · 循环赛战绩明细")
+                .setMessage(sb.toString().trim())
+                .setPositiveButton("知道了", null)
+                .show();
     }
 
     private int dp(int v) {

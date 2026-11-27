@@ -1044,4 +1044,78 @@ public class RpgEnginesTest {
         assertEquals(Integer.valueOf(0), sanitized.get(2));
         assertEquals(Integer.valueOf(7), sanitized.get(8));
     }
+
+    @Test
+    public void roundRobinLeaguePairsAllUnlockedAisAndPlayerDeckAndSortsByWins() {
+        String date = "1999-07-08";
+        OcgRuleSet rule = TimelineEngine.getActiveRuleSet(catalog, date);
+        AiOpponent sampleOpp = AiDeckGenerator.getDemoOpponents().get(0);
+        AiDeckGenerator.GeneratedAiDeck playerDeck =
+                AiDeckGenerator.generateDeck(catalog, sampleOpp, date, new Random(7L));
+
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant> parts =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.buildParticipants(
+                        catalog, date, rule, true, "测试自组",
+                        playerDeck.main, playerDeck.extra, new Random(42L));
+
+        // 1999-07-08 unlocks 9 AI opponents + 1 player deck = 10 participants
+        assertEquals(10, parts.size());
+        assertTrue(parts.get(0).isPlayer);
+        for (cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant p : parts) {
+            assertEquals("Each contestant must have 40-card main deck", 40, p.main.size());
+        }
+
+        // Deterministic executor: higher id rank wins so standings order is predictable
+        final java.util.Map<String, Integer> power = new java.util.HashMap<>();
+        for (int i = 0; i < parts.size(); i++) {
+            power.put(parts.get(i).id, i * 10);
+        }
+        power.put("player_deck", 999); // Player deck strongest -> must finish #1 with 100% win rate!
+
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.LeagueResult res =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.runRoundRobin(
+                        parts, rule, date, 5,
+                        (a, b, r, d, aFirst, rng) -> {
+                            boolean aWon = power.get(a.id) > power.get(b.id);
+                            return new cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.DuelResult(
+                                    aWon, false, aWon ? 8000 : 0, aWon ? 0 : 8000, 6, r,
+                                    java.util.Collections.emptyList(), a.name, b.name, a.style, b.style, null);
+                        },
+                        null, null, new Random(99L));
+
+        assertFalse(res.cancelled);
+        assertEquals(45, res.totalPairs);
+        assertEquals(45, res.completedPairs);
+        assertEquals(225, res.totalGames);
+        assertEquals(225, res.completedGames);
+        assertEquals("player_deck", res.standings.get(0).id);
+        assertEquals(45, res.standings.get(0).wins);
+        assertEquals(100.0, res.standings.get(0).getWinRatePercent(), 0.01);
+
+        // Standings must be monotonically non-increasing by wins
+        for (int i = 1; i < res.standings.size(); i++) {
+            assertTrue("Standings must be sorted by wins desc",
+                    res.standings.get(i - 1).wins >= res.standings.get(i).wins);
+            assertEquals("Every contestant plays (N-1)*5 = 45 games", 45, res.standings.get(i).gamesPlayed);
+        }
+        assertTrue(res.formatPlainTextReport().contains("全环境 AI 循环赛排行榜"));
+
+        // Verify mid-run cancellation stops immediately
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant> cancelParts =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.buildParticipants(
+                        catalog, date, rule, false, null, null, null, new Random(1L));
+        java.util.concurrent.atomic.AtomicBoolean cancelFlag = new java.util.concurrent.atomic.AtomicBoolean(false);
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.LeagueResult cancelledRes =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.runRoundRobin(
+                        cancelParts, rule, date, 5,
+                        (a, b, r, d, aFirst, rng) -> new cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.DuelResult(
+                                true, false, 8000, 0, 5, r,
+                                java.util.Collections.emptyList(), a.name, b.name, a.style, b.style, null),
+                        (done, tot, doneP, totP, lbl) -> {
+                            if (done >= 7) cancelFlag.set(true);
+                        },
+                        cancelFlag, new Random(2L));
+        assertTrue(cancelledRes.cancelled);
+        assertEquals(7, cancelledRes.completedGames);
+    }
 }
