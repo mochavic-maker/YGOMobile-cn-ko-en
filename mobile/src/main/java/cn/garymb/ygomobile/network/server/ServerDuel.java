@@ -210,6 +210,7 @@ final class ServerDuel extends ServerDuelBase {
         try {
             OcgDuelEngine.setPlayerInfo(pduel, 0, hi.startLp, hi.startHand, hi.drawCount);
             OcgDuelEngine.setPlayerInfo(pduel, 1, hi.startLp, hi.startHand, hi.drawCount);
+            cn.garymb.ygomobile.rpg.RpgIntegration.applyActiveRpgRulesToDuel(pduel);
             // 卡组装载：录像 base 段（双方卡组名与卡码）已在首次开局写好，只喂引擎不再写
             baseRecordFrozen = true;
             try {
@@ -243,7 +244,6 @@ final class ServerDuel extends ServerDuelBase {
                 room.curPlayer[0] = room.players[0];
                 room.curPlayer[1] = room.players[3];
             }
-            cn.garymb.ygomobile.rpg.RpgIntegration.applyActiveRpgRulesToDuel(pduel);
             OcgDuelEngine.startDuel(pduel, undoOpt);
             ok = processSilent();
             for (int i = 0; ok && i < keep; i++) {

@@ -105,6 +105,7 @@ public final class RpgIntegration {
         if (!RpgSessionManager.hasActiveRpgDuel()) {
             if (sActiveRpgDuelRuleSet != null) {
                 sActiveRpgDuelRuleSet = null;
+                sActiveRpgDuelTimelineDate = null;
                 final int backTab = sSpectateReturnTab;
                 cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.stopActive();
                 activity.runOnUiThread(() -> scheduleReturnToRpg(activity, backTab, null));
@@ -112,6 +113,7 @@ public final class RpgIntegration {
             return;
         }
         sActiveRpgDuelRuleSet = null;
+        sActiveRpgDuelTimelineDate = null;
         cn.garymb.ygomobile.rpg.ai.RpgAiDuelClient.stopActive();
         boolean isDraw = (winner == 2);
         DuelRewardEngine.RewardSettlement settlement =
@@ -170,6 +172,7 @@ public final class RpgIntegration {
     private static volatile java.util.Map<Integer, Integer> sRpgDeckCurrentCounts = null;
     private static volatile ocgcore.data.LimitList sRpgDeckLimitList = null;
     private static volatile OcgRuleSet sActiveRpgDuelRuleSet = null;
+    private static volatile String sActiveRpgDuelTimelineDate = null;
     private static volatile int sSpectateReturnTab = RpgHomeActivity.TAB_AI_SHOWDOWN;
     private static volatile Context sAppContext = null;
     private static volatile String sActiveDuelPlayerAvatarId = null;
@@ -360,6 +363,7 @@ public final class RpgIntegration {
         sActiveDuelPlayerAvatarId = null;
         sActiveDuelOpponentAvatarId = null;
         sActiveRpgDuelRuleSet = null;
+        sActiveRpgDuelTimelineDate = null;
         sRpgDeckLimitList = null;
         sActiveRpgReplayReturnTab = -1;
         sRpgReplayEndDialogShowing = false;
@@ -379,56 +383,19 @@ public final class RpgIntegration {
     }
 
     /**
-     * Writes historical OCG rule overrides (e.g. 1999-02-04 no-tribute summon/set, no Turn 1 draw,
-     * no 6-card End Phase hand limit) to {@code <resourcePath>/rpg_rule_override.lua}.
+     * Writes historical OCG rule overrides and pre-errata card Lua scripts (e.g. 1999 Crush Card Virus,
+     * pre-errata Sangan & Witch of the Black Forest) to {@code <resourcePath>/rpg_rule_override.lua}.
      */
     public static boolean writeRuleOverrideScript(OcgRuleSet rule) {
-        if (rule == null) return false;
-        StringBuilder lua = new StringBuilder();
-        lua.append("-- Auto-generated OCG Timeline RPG rule override: ").append(rule.id).append("\n");
-        if (!rule.tributeSummonEnabled) {
-            // 1999.02.04 公式ルール: Level 5+ monsters require 0 tributes to Normal Summon or Normal Set
-            lua.append("local e1=Effect.GlobalEffect()\n");
-            lua.append("e1:SetType(EFFECT_TYPE_FIELD)\n");
-            lua.append("e1:SetCode(EFFECT_DECREASE_TRIBUTE)\n");
-            lua.append("e1:SetProperty(EFFECT_FLAG_IGNORE_IMMUNE)\n");
-            lua.append("e1:SetTargetRange(LOCATION_HAND,LOCATION_HAND)\n");
-            lua.append("e1:SetValue(0x20002)\n");
-            lua.append("Duel.RegisterEffect(e1,0)\n");
+        return writeRuleOverrideScript(rule, sActiveRpgDuelTimelineDate);
+    }
 
-            lua.append("local e2=Effect.GlobalEffect()\n");
-            lua.append("e2:SetType(EFFECT_TYPE_FIELD)\n");
-            lua.append("e2:SetCode(EFFECT_DECREASE_TRIBUTE_SET)\n");
-            lua.append("e2:SetProperty(EFFECT_FLAG_IGNORE_IMMUNE)\n");
-            lua.append("e2:SetTargetRange(LOCATION_HAND,LOCATION_HAND)\n");
-            lua.append("e2:SetValue(0x20002)\n");
-            lua.append("Duel.RegisterEffect(e2,0)\n");
-        }
-        if (!rule.firstTurnDrawEnabled) {
-            // 1999 Series 1 Official & Expert Rules: Turn 1 player does not draw in Draw Phase
-            lua.append("local e3=Effect.GlobalEffect()\n");
-            lua.append("e3:SetType(EFFECT_TYPE_FIELD)\n");
-            lua.append("e3:SetProperty(EFFECT_FLAG_PLAYER_TARGET)\n");
-            lua.append("e3:SetCode(EFFECT_DRAW_COUNT)\n");
-            lua.append("e3:SetTargetRange(1,1)\n");
-            lua.append("e3:SetCondition(function(e) return Duel.GetTurnCount()==1 end)\n");
-            lua.append("e3:SetValue(0)\n");
-            lua.append("Duel.RegisterEffect(e3,0)\n");
-        }
-        if (rule.deckOutCompareLp) {
-            // 1999 Series 1 rules had no 6-card hand size limit in End Phase
-            lua.append("local e4=Effect.GlobalEffect()\n");
-            lua.append("e4:SetType(EFFECT_TYPE_FIELD)\n");
-            lua.append("e4:SetProperty(EFFECT_FLAG_PLAYER_TARGET)\n");
-            lua.append("e4:SetCode(EFFECT_HAND_LIMIT)\n");
-            lua.append("e4:SetTargetRange(1,1)\n");
-            lua.append("e4:SetValue(100)\n");
-            lua.append("Duel.RegisterEffect(e4,0)\n");
-        }
-
+    public static boolean writeRuleOverrideScript(OcgRuleSet rule, String timelineDate) {
+        if (rule == null && (timelineDate == null || timelineDate.trim().isEmpty())) return false;
+        String lua = cn.garymb.ygomobile.rpg.engine.RpgHistoricalLuaBuilder.buildScript(rule, timelineDate);
         File ruleFile = new File(AppsSettings.get().getResourcePath(), "rpg_rule_override.lua");
         try (java.io.FileOutputStream fos = new java.io.FileOutputStream(ruleFile)) {
-            fos.write(lua.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            fos.write(lua.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return true;
         } catch (Exception e) {
             android.util.Log.e("RpgIntegration", "Failed to write rpg_rule_override.lua", e);
@@ -437,17 +404,20 @@ public final class RpgIntegration {
     }
 
     /**
-     * Hook called from ServerDuelBase (and ServerDuel undo rebuild) right before OcgDuelEngine.startDuel().
-     * Injects historical OCG rule overrides directly into ocgcore via Lua GlobalEffects.
+     * Hook called from ServerDuelBase (and ServerDuel undo rebuild) BEFORE loadDeckToEngine/newCard.
+     * Injects historical OCG rule overrides AND pre-errata card tables (e.g. 1999 Crush Card Virus)
+     * directly into ocgcore's per-duel Lua state without polluting expansions/script/ or normal duels.
      */
     public static void applyActiveRpgRulesToDuel(long pduel) {
         OcgRuleSet rule = sActiveRpgDuelRuleSet;
-        if (pduel == 0L || rule == null) return;
-        if (!writeRuleOverrideScript(rule)) return;
+        String date = sActiveRpgDuelTimelineDate;
+        if (pduel == 0L || (rule == null && date == null)) return;
+        if (!writeRuleOverrideScript(rule, date)) return;
         int res = cn.garymb.ygomobile.engine.OcgDuelEngine.preloadScript(pduel, "./rpg_rule_override.lua");
-        android.util.Log.i("RpgIntegration", "Preloaded RPG rule override (" + rule.id
-                + ", tribute=" + rule.tributeSummonEnabled
-                + ", t1Draw=" + rule.firstTurnDrawEnabled + ") -> res=" + res);
+        android.util.Log.i("RpgIntegration", "Preloaded RPG rule & pre-errata override ("
+                + (rule != null ? rule.id : "null") + " @ " + date
+                + ", tribute=" + (rule != null && rule.tributeSummonEnabled)
+                + ", t1Draw=" + (rule != null && rule.firstTurnDrawEnabled) + ") -> res=" + res);
     }
 
     /**
@@ -835,6 +805,7 @@ public final class RpgIntegration {
                             () -> {
                                 sAppContext = act.getApplicationContext();
                                 sActiveRpgDuelRuleSet = activeRuleSet;
+                                sActiveRpgDuelTimelineDate = currentTimelineDate;
                                 sActiveDuelPlayerAvatarId = playerAvatarId;
                                 sActiveDuelOpponentAvatarId = opponentAvatarId;
 
@@ -895,6 +866,7 @@ public final class RpgIntegration {
                             },
                             () -> {
                                 sActiveRpgDuelRuleSet = activeRuleSet;
+                                sActiveRpgDuelTimelineDate = currentTimelineDate;
                                 sActiveDuelPlayerAvatarId = playerAvatarId;
                                 sActiveDuelOpponentAvatarId = opponentAvatarId;
                                 PlayerWaitingDialog cur = act.getPlayerWaitingDialog();
@@ -1115,6 +1087,7 @@ public final class RpgIntegration {
                             () -> {
                                 sAppContext = hostAct.getApplicationContext();
                                 sActiveRpgDuelRuleSet = activeRuleSet;
+                                sActiveRpgDuelTimelineDate = currentTimelineDate;
                                 sSpectateReturnTab = returnTab;
                                 sActiveDuelPlayerAvatarId = avatarA;
                                 sActiveDuelOpponentAvatarId = avatarB;
@@ -1189,6 +1162,7 @@ public final class RpgIntegration {
                             },
                             () -> {
                                 sActiveRpgDuelRuleSet = activeRuleSet;
+                                sActiveRpgDuelTimelineDate = currentTimelineDate;
                                 sActiveDuelPlayerAvatarId = avatarA;
                                 sActiveDuelOpponentAvatarId = avatarB;
                                 PlayerWaitingDialog cur = hostAct.getPlayerWaitingDialog();

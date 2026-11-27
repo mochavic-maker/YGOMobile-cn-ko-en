@@ -220,15 +220,16 @@ public final class RpgOcgHeadlessDuelRunner {
                     yrp.writeInt32(opt);
                 }
 
+                // Inject exact historical OCG Lua rule & pre-errata card overrides BEFORE loadZone/newCard
+                // so ocgcore uses pre-errata card tables (e.g. 1999 Crush Card Virus, Sangan, Witch).
+                if (RpgIntegration.writeRuleOverrideScript(ruleSet, currentDate)) {
+                    OcgDuelEngine.preloadScript(pduel, "./rpg_rule_override.lua");
+                }
+
                 loadZone(pduel, p0Main, 0, OcgDuelEngine.LOCATION_DECK, yrp);
                 loadZone(pduel, p0Extra, 0, OcgDuelEngine.LOCATION_EXTRA, yrp);
                 loadZone(pduel, p1Main, 1, OcgDuelEngine.LOCATION_DECK, yrp);
                 loadZone(pduel, p1Extra, 1, OcgDuelEngine.LOCATION_EXTRA, yrp);
-
-                // Inject exact 1999 historical OCG Lua rule overrides
-                if (ruleSet != null && RpgIntegration.writeRuleOverrideScript(ruleSet)) {
-                    OcgDuelEngine.preloadScript(pduel, "./rpg_rule_override.lua");
-                }
 
                 if (yrp != null) {
                     byte[] startBuf = new byte[19];

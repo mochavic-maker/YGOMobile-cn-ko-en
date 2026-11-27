@@ -216,6 +216,10 @@ abstract class ServerDuelBase implements YGOProtocol {
         replay.writeInt32(hi.drawCount);
         replay.writeInt32(opt);
 
+        // Must run BEFORE newCard/loadDeckToEngine so pre-errata card Lua tables (e.g. 1999 Crush Card Virus)
+        // are already defined in _G before ocgcore calls load_card_script().
+        cn.garymb.ygomobile.rpg.RpgIntegration.applyActiveRpgRulesToDuel(pduel);
+
         if (tag) {
             // 装载顺序对齐 TagDuel::TPResult：引擎玩家 0 = decks[0](single)+decks[1](tag)，
             // 引擎玩家 1 = decks[3](single)+decks[2](tag)。
@@ -283,7 +287,6 @@ abstract class ServerDuelBase implements YGOProtocol {
 
         analyzer.refreshExtra(0);
         analyzer.refreshExtra(1);
-        cn.garymb.ygomobile.rpg.RpgIntegration.applyActiveRpgRulesToDuel(pduel);
         OcgDuelEngine.startDuel(pduel, opt);
         if (hi.timeLimit != 0) {
             startTimer();

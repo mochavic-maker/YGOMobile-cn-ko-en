@@ -1217,4 +1217,42 @@ public class RpgEnginesTest {
                         + ") must exceed MidWeak avgOpponentElo (" + midWeak.avgOpponentElo + ")",
                 midStrong.avgOpponentElo > midWeak.avgOpponentElo);
     }
+
+    @Test
+    public void historicalLuaBuilderGeneratesPreErrataCrushCardVirusAndSanganScripts() {
+        OcgRuleSet rule1999 = TimelineEngine.getActiveRuleSet(catalog, "1999-07-08");
+        String lua199907 = cn.garymb.ygomobile.rpg.engine.RpgHistoricalLuaBuilder.buildScript(rule1999, "1999-07-08");
+
+        // 1999-07-08 MUST override c57728570 with 3-opponent-turn draw destruction and NO 2015 damage-0 nerf!
+        assertTrue("Must define c57728570 table before newCard", lua199907.contains("c57728570={}"));
+        assertTrue("Must register EVENT_DRAW 3-turn opponent check",
+                lua199907.contains("e1:SetCode(EVENT_DRAW)")
+                        && lua199907.contains("RESET_PHASE+PHASE_END+RESET_OPPO_TURN,3"));
+        assertFalse("Must NOT contain 2015 nerfed EFFECT_CHANGE_DAMAGE zero-damage penalty",
+                lua199907.contains("EFFECT_CHANGE_DAMAGE"));
+
+        // 1999-11-18 ~ 1999-12-19: Sangan & Witch trigger from ANY zone (no LOCATION_ONFIELD condition)
+        String luaPreErrataSangan = cn.garymb.ygomobile.rpg.engine.RpgHistoricalLuaBuilder.buildScript(rule1999, "1999-12-16");
+        assertTrue(luaPreErrataSangan.contains("c26202165={}"));
+        assertTrue(luaPreErrataSangan.contains("c78010363={}"));
+        assertFalse("Pre-1999-12-20 Sangan/Witch must NOT restrict to LOCATION_ONFIELD",
+                luaPreErrataSangan.contains("IsPreviousLocation(LOCATION_ONFIELD)"));
+
+        // 1999-12-20+: Sangan & Witch restrict to LOCATION_ONFIELD, still without 2016/2017 HOPT/search lock
+        String luaPost1stErrata = cn.garymb.ygomobile.rpg.engine.RpgHistoricalLuaBuilder.buildScript(rule1999, "1999-12-20");
+        assertTrue("Post-1999-12-20 Sangan/Witch must check LOCATION_ONFIELD",
+                luaPost1stErrata.contains("IsPreviousLocation(LOCATION_ONFIELD)"));
+        assertFalse("1999-12-20 Sangan/Witch must NOT have 2016/2017 EFFECT_CANNOT_ACTIVATE lock",
+                luaPost1stErrata.contains("EFFECT_CANNOT_ACTIVATE"));
+
+        // 1999-07-08 also restores pre-2014 Catapult Turtle (no once-per-turn)
+        assertTrue(lua199907.contains("c95727991={}"));
+
+        // 2018-01-01+: no pre-errata overrides for CCV / Sangan / Witch / Catapult Turtle
+        String luaModern = cn.garymb.ygomobile.rpg.engine.RpgHistoricalLuaBuilder.buildScript(null, "2018-01-01");
+        assertFalse(luaModern.contains("c57728570={}"));
+        assertFalse(luaModern.contains("c26202165={}"));
+        assertFalse(luaModern.contains("c78010363={}"));
+        assertFalse(luaModern.contains("c95727991={}"));
+    }
 }
