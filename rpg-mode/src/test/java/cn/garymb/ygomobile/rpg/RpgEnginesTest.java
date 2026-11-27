@@ -1118,4 +1118,103 @@ public class RpgEnginesTest {
         assertTrue(cancelledRes.cancelled);
         assertEquals(7, cancelledRes.completedGames);
     }
+
+    @Test
+    public void swissLadderAndBradleyTerryEloScaleAndRespectOpponentStrength() {
+        // 1) Scaling verification: O(N log N) Swiss rounds vs O(N^2) Round-Robin
+        assertEquals(6, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(10));
+        assertEquals(6, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(14));
+        assertEquals(7, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(30));
+
+        // 2) Full 1999-12-31 field (13 AIs + player = 14 contestants): Swiss 6 rounds * 7 pairs * 3 games = 126 games
+        //    vs 455 games in Round-Robin (3.6x fewer games!)
+        String date = "1999-12-31";
+        OcgRuleSet rule = TimelineEngine.getActiveRuleSet(catalog, date);
+        AiDeckGenerator.GeneratedAiDeck playerDeck =
+                AiDeckGenerator.generateDeck(catalog, AiDeckGenerator.getDemoOpponents().get(0), date, new Random(5L));
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant> parts =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.buildParticipants(
+                        catalog, date, rule, true, "测试天梯", playerDeck.main, playerDeck.extra, new Random(11L));
+        assertEquals(14, parts.size());
+
+        final java.util.Map<String, Integer> trueRank = new java.util.HashMap<>();
+        for (int i = 0; i < parts.size(); i++) {
+            trueRank.put(parts.get(i).id, i * 100);
+        }
+        trueRank.put("player_deck", 9999);
+
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DuelExecutor exec =
+                (a, b, r, d, aFirst, rng) -> {
+                    boolean aWon = trueRank.get(a.id) > trueRank.get(b.id);
+                    return new cn.garymb.ygomobile.rpg.ai.RpgAiAutoDuelModels.DuelResult(
+                            aWon, false, aWon ? 8000 : 0, aWon ? 0 : 8000, 7, r,
+                            java.util.Collections.emptyList(), a.name, b.name, a.style, b.style, null);
+                };
+
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.LeagueResult swiss =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.runSwissLadder(
+                        parts, rule, date, 6, 3, 0, 0L, exec, null, null, new Random(77L));
+
+        assertTrue(swiss.isSwissMode());
+        assertEquals(6, swiss.roundsPlayed);
+        assertEquals(126, swiss.completedGames);
+        assertEquals("player_deck", swiss.standings.get(0).id);
+        assertTrue("Top undefeated contestant must have Elo > 1620 (S tier)",
+                swiss.standings.get(0).eloRating >= 1620);
+        assertEquals("S", swiss.standings.get(0).getTierLabel());
+        assertTrue("Standings must be sorted by Elo descending",
+                swiss.standings.get(0).eloRating > swiss.standings.get(swiss.standings.size() - 1).eloRating);
+
+        // 3) Append 2 more Swiss rounds incrementally -> accumulates from 126 -> 168 games cleanly
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.LeagueResult extended =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.runSwissLadder(
+                        new java.util.ArrayList<>(swiss.standings), rule, date, 2, 3,
+                        swiss.roundsPlayed, swiss.elapsedMs, exec, null, null, new Random(88L));
+        assertEquals(8, extended.roundsPlayed);
+        assertEquals(168, extended.completedGames);
+        assertEquals("player_deck", extended.standings.get(0).id);
+        assertTrue(extended.formatPlainTextReport().contains("Bradley-Terry"));
+
+        // 4) Strength-of-Schedule proof: MidStrong (50% vs Boss & Mid) MUST outrank MidWeak (50% vs Mid & Dummy)
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant boss =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("boss", "Boss", "", false, null, null, "GOOD_STUFF");
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant midStrong =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("midS", "MidStrong", "", false, null, null, "GOOD_STUFF");
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant midBridge =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("midB", "MidBridge", "", false, null, null, "GOOD_STUFF");
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant midWeak =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("midW", "MidWeak", "", false, null, null, "GOOD_STUFF");
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant dummy =
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("dummy", "Dummy", "", false, null, null, "GOOD_STUFF");
+
+        // Boss crushes MidBridge 5-0, edges MidStrong 3-2
+        boss.headToHead.put("midB", new int[]{5, 0, 0}); boss.wins += 5; boss.gamesPlayed += 5;
+        midBridge.headToHead.put("boss", new int[]{0, 5, 0}); midBridge.losses += 5; midBridge.gamesPlayed += 5;
+        boss.headToHead.put("midS", new int[]{3, 2, 0}); boss.wins += 3; boss.losses += 2; boss.gamesPlayed += 5;
+        midStrong.headToHead.put("boss", new int[]{2, 3, 0}); midStrong.wins += 2; midStrong.losses += 3; midStrong.gamesPlayed += 5;
+        // MidStrong beats MidBridge 3-2 -> MidStrong total = 5-5 (50%)
+        midStrong.headToHead.put("midB", new int[]{3, 2, 0}); midStrong.wins += 3; midStrong.losses += 2; midStrong.gamesPlayed += 5;
+        midBridge.headToHead.put("midS", new int[]{2, 3, 0}); midBridge.wins += 2; midBridge.losses += 3; midBridge.gamesPlayed += 5;
+        // MidBridge beats MidWeak 3-2, MidWeak beats Dummy 3-2 -> MidWeak total = 5-5 (50%)
+        midBridge.headToHead.put("midW", new int[]{3, 2, 0}); midBridge.wins += 3; midBridge.losses += 2; midBridge.gamesPlayed += 5;
+        midWeak.headToHead.put("midB", new int[]{2, 3, 0}); midWeak.wins += 2; midWeak.losses += 3; midWeak.gamesPlayed += 5;
+        midWeak.headToHead.put("dummy", new int[]{3, 2, 0}); midWeak.wins += 3; midWeak.losses += 2; midWeak.gamesPlayed += 5;
+        dummy.headToHead.put("midW", new int[]{2, 3, 0}); dummy.wins += 2; dummy.losses += 3; dummy.gamesPlayed += 5;
+        // MidBridge crushes Dummy 5-0 so Boss >> MidStrong > MidBridge > MidWeak > Dummy
+        midBridge.headToHead.put("dummy", new int[]{5, 0, 0}); midBridge.wins += 5; midBridge.gamesPlayed += 5;
+        dummy.headToHead.put("midB", new int[]{0, 5, 0}); dummy.losses += 5; dummy.gamesPlayed += 5;
+
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant> sosList =
+                java.util.Arrays.asList(boss, midStrong, midBridge, midWeak, dummy);
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.computeBradleyTerryElo(sosList);
+
+        assertEquals("Both MidStrong and MidWeak have 50% raw win rate",
+                midStrong.getWinRatePercent(), midWeak.getWinRatePercent(), 0.01);
+        assertTrue("Bradley-Terry Elo must rank MidStrong (" + midStrong.eloRating
+                        + ") strictly above MidWeak (" + midWeak.eloRating + ") due to stronger opponents!",
+                midStrong.eloRating > midWeak.eloRating);
+        assertTrue("MidStrong avgOpponentElo (" + midStrong.avgOpponentElo
+                        + ") must exceed MidWeak avgOpponentElo (" + midWeak.avgOpponentElo + ")",
+                midStrong.avgOpponentElo > midWeak.avgOpponentElo);
+    }
 }
