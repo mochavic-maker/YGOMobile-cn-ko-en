@@ -1102,6 +1102,41 @@ public class RpgAiStrategyTest {
                 4, withTrapResp);
     }
 
+    @Test
+    public void darkVirusAiPrioritizesSettingDarkTributeWhenHoldingCrushCardVirus() {
+        final int DARK_ARTIST = 72520073;  // DARK Lv3 600/1400 (Booster 3, 1999-07-05)
+        final int RYU_KISHIN = 36304921;   // 魔人 死亡撒旦 DARK Lv4 1400/1300
+
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-07-08");
+        state.turnPlayer = 0;
+        state.turnCount = 1;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        addHandCard(state, RYU_KISHIN);
+        addHandCard(state, DARK_ARTIST);
+        addHandCard(state, RpgAiCardKnowledge.CRUSH_CARD_VIRUS);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "DARK_VIRUS");
+        RpgAiStrategy.IdleCmdPrompt prompt = new RpgAiStrategy.IdleCmdPrompt();
+        prompt.summonable.add(new RpgAiStrategy.CmdEntry(
+                RYU_KISHIN, 1, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        prompt.summonable.add(new RpgAiStrategy.CmdEntry(
+                DARK_ARTIST, 1, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 1));
+        prompt.msetable.add(new RpgAiStrategy.CmdEntry(
+                RYU_KISHIN, 1, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        prompt.msetable.add(new RpgAiStrategy.CmdEntry(
+                DARK_ARTIST, 1, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 1));
+        prompt.ssetable.add(new RpgAiStrategy.CmdEntry(
+                RpgAiCardKnowledge.CRUSH_CARD_VIRUS, 1, 0, RpgAiDuelState.LOC_HAND, 2, 0, 0, 0));
+        prompt.canBattle = false;
+        prompt.canEnd = true;
+
+        int resp = strategy.chooseIdleCmd(prompt);
+        assertEquals("DARK_VIRUS AI holding Crush Card Virus should Set Dark Artist (msetable index 1 -> (1<<16)+3)",
+                (1 << 16) + 3, resp);
+    }
+
     private static void sendPacket(OutputStream out, int proto, byte[] body) throws Exception {
         int len = 1 + body.length;
         ByteBuffer b = ByteBuffer.allocate(2 + len).order(ByteOrder.LITTLE_ENDIAN);

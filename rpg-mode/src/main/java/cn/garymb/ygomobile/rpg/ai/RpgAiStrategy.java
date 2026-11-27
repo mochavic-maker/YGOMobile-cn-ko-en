@@ -1044,6 +1044,15 @@ public class RpgAiStrategy {
             return base;
         }
 
+        // DARK_VIRUS combo setup: when we hold or have set Crush Card Virus and don't yet control
+        // a DARK <= 1000 ATK tribute on board, prioritize Setting a DARK <= 1000 ATK monster!
+        if (isDarkVirusStyle()
+                && !state.hasDarkVirusTributeOnMyField()
+                && hasCrushCardVirusReady()
+                && isDarkVirusFodder(code)) {
+            return Math.max(def, 1200) + 750;
+        }
+
         // Wall of Illusion (1000/1850) & era-high-DEF walls
         if (code == RpgAiCardKnowledge.WALL_OF_ILLUSION) {
             return (oppBoardEmpty && !isExodiaStyle() && !isBurnStyle() && !isMillStyle()) ? 1400 : 1950;
@@ -1380,6 +1389,21 @@ public class RpgAiStrategy {
                 || code == RpgAiCardKnowledge.SHADOW_SPELL
                 || code == RpgAiCardKnowledge.SPELLBINDING_CIRCLE
                 || code == RpgAiCardKnowledge.MAGICAL_HATS;
+    }
+
+    private boolean hasCrushCardVirusReady() {
+        for (RpgAiDuelState.CardSlot s : state.getSpellTraps(0)) {
+            if (s != null && s.code == RpgAiCardKnowledge.CRUSH_CARD_VIRUS) {
+                return true;
+            }
+        }
+        return state.getFreeMainSzoneCount(0) > 0
+                && state.hasCardInHand(RpgAiCardKnowledge.CRUSH_CARD_VIRUS);
+    }
+
+    private boolean isDarkVirusFodder(int code) {
+        int attr = state.getCardAttrMask(code);
+        return (attr & 0x20) != 0 && state.getCardBaseAtk(code) <= 1000;
     }
 
     private int countFaceDownBackrow(int localPlayer) {

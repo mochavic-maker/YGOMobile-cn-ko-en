@@ -293,15 +293,15 @@ public final class AiDeckGenerator {
                         "Lv.3 · 【死之卡组破坏病毒】专精",
                         "1999-07-08",
                         3, 500, 210, 125,
-                        "还原 yugioh-history 环境年表 8~11 月【死のデッキ破壊ウイルス】：以暗之假面/三眼怪为媒体引爆 1999 原版 3 回合病毒！",
+                        "还原 yugioh-history 环境年表 8~11 月【死のデッキ破壊ウイルス】：以暗之艺术家/暗之假面/三眼怪为媒体引爆 1999 原版 3 回合病毒！",
                         Arrays.asList(
                                 new AiOpponent.EraDeckProfile("1999-07-08", "【DM2 初代死毒暗属性】", "1999.07 病毒降临",
-                                        "围绕 DM2 特典「死之卡组破坏病毒」(1999原版摧毁后续3回合抽卡) 与低攻暗属性怪兽构筑。",
-                                        recipe(57728570, 3, 41356845, 2, 18144506, 2, 55144522, 3, 83764718, 3, 12580477, 3, 53129443, 2, 72302403, 3, 4206964, 3, 36304921, 3, 74677422, 2, 53375573, 3),
+                                        "围绕 DM2 特典「死之卡组破坏病毒」(1999原版摧毁后续3回合抽卡) 与暗之艺术家(600/1400)、骷髅寺院(900/1300)、恶魔蜗牛(700/1300) 等低攻暗属性媒体构筑。",
+                                        recipe(57728570, 3, 72520073, 3, 732302, 3, 98075147, 3, 47060154, 3, 36304921, 3, 28279543, 2, 74677422, 1, 41356845, 2, 18144506, 2, 55144522, 3, 83764718, 3, 72302403, 2, 12580477, 2, 53129443, 2, 4206964, 3),
                                         null, "DARK_VIRUS"),
                                 new AiOpponent.EraDeckProfile("1999-07-22", "【暗之假面 · 死毒循环控】", "1999.07~08 暗假面循环",
-                                        "yugioh-history 第10回实录：暗之假面(暗/ATK 900) 既是死毒祭品又能反转回收死毒，配恶魔召唤收割！",
-                                        recipe(57728570, 3, 28933734, 3, 70781052, 3, 31560081, 3, 54652250, 3, 55144522, 3, 83764718, 3, 18144506, 2, 72302403, 3, 12580477, 1, 53129443, 1, 4206964, 1),
+                                        "yugioh-history 第10回实录：暗之假面(暗/ATK 900) 既是死毒祭品又能反转回收死毒，搭暗之艺术家/骷髅寺院稳定触发并配恶魔召唤收割！",
+                                        recipe(57728570, 3, 28933734, 3, 72520073, 3, 732302, 3, 70781052, 3, 47060154, 3, 31560081, 3, 54652250, 2, 55144522, 3, 83764718, 3, 18144506, 2, 72302403, 3, 41356845, 2, 12580477, 1, 53129443, 1, 4206964, 2),
                                         null, "DARK_VIRUS"),
                                 new AiOpponent.EraDeckProfile("1999-11-18", "【三眼怪/魔女 · 死毒完全体】", "1999.11 Vol.6终极暗控",
                                         "三眼怪(暗/ATK 1000) 献祭发动死毒后还能触发检索！配合机械猎手、天使的施舍、神之宣告彻底封锁对手。",
@@ -444,6 +444,40 @@ public final class AiDeckGenerator {
             }
         }
 
+        // 1b) Structural safeguard: any AI deck containing Crush Card Virus (57728570) MUST have enough
+        //     DARK monsters with ATK <= 1000 (excluding Exodia pieces) to actually activate it!
+        if (countOf(main, 57728570) > 0 && main.size() < 40) {
+            int darkVirusTributes = 0;
+            for (Integer id : main) {
+                RpgCard c = id != null ? catalog.findCard(id) : null;
+                if (isDarkVirusTributeMonster(c)) darkVirusTributes++;
+            }
+            if (darkVirusTributes < 6) {
+                List<RpgCard> virusPool = new ArrayList<>();
+                for (RpgCard c : released) {
+                    if (isDarkVirusTributeMonster(c) && banlist.getMaxCopies(c.id) > 0) {
+                        virusPool.add(c);
+                    }
+                }
+                Collections.sort(virusPool, new Comparator<RpgCard>() {
+                    @Override
+                    public int compare(RpgCard a, RpgCard b) {
+                        return Integer.compare(scoreDarkVirusTribute(b), scoreDarkVirusTribute(a));
+                    }
+                });
+                for (RpgCard c : virusPool) {
+                    int already = countOf(main, c.id);
+                    int legalMax = banlist.getMaxCopies(c.id);
+                    while (already < legalMax && darkVirusTributes < 6 && main.size() < 40) {
+                        main.add(c.id);
+                        already++;
+                        darkVirusTributes++;
+                    }
+                    if (darkVirusTributes >= 6 || main.size() >= 40) break;
+                }
+            }
+        }
+
         // 2) Fill remaining slots up to 40 using archetype-aware scoring (strictly <= currentDate & banlist)
         if (main.size() < 40) {
             boolean isNonTopTier = "NOVICE_NR".equals(style)
@@ -503,6 +537,26 @@ public final class AiDeckGenerator {
         return new GeneratedAiDeck(main, extra, banlist, profile);
     }
 
+    private static boolean isExodiaPieceId(int id) {
+        return id == 33396948 || id == 70903634 || id == 7902349 || id == 8124921 || id == 44519536;
+    }
+
+    private static boolean isDarkVirusTributeMonster(RpgCard c) {
+        return c != null && c.isMonster() && !c.isExtraDeckCard()
+                && !"ritual".equalsIgnoreCase(c.frameType)
+                && "DARK".equalsIgnoreCase(c.attribute)
+                && c.atk <= 1000
+                && !isExodiaPieceId(c.id);
+    }
+
+    private static int scoreDarkVirusTribute(RpgCard c) {
+        int score = c.def + c.atk / 2;
+        if (c.id == 26202165 || c.id == 28933734) score += 1200; // 三眼怪 / 暗之假面
+        else if (c.descCn != null && c.descCn.contains("反转")) score += 500;
+        if (c.level >= 5) score -= 800;
+        return score;
+    }
+
     /** Top-tier 1999 blowout staples withheld from novice/casual/mid-tier filler pools. */
     private static boolean isTopTierStaple(int cardId) {
         return cardId == 12580477 // 雷击
@@ -550,8 +604,13 @@ public final class AiDeckGenerator {
             return base + bonus - pen;
         }
         if ("DARK_VIRUS".equals(style)) {
-            int bonus = "DARK".equalsIgnoreCase(c.attribute) ? (c.atk <= 1000 ? 700 : 450) : 0;
-            return base + bonus;
+            if (isExodiaPieceId(c.id)) return -5000;
+            if (isDarkVirusTributeMonster(c)) {
+                return 2200 + scoreDarkVirusTribute(c);
+            }
+            int bonus = "DARK".equalsIgnoreCase(c.attribute) ? 450 : 0;
+            int pen = (rule != null && rule.tributeSummonEnabled) ? (c.level >= 7 ? 700 : (c.level >= 5 ? 250 : 0)) : 0;
+            return base + bonus - pen;
         }
         if ("BURN_WALL".equals(style)) {
             int bonus = c.isMonster() ? (c.def >= 1500 ? 600 : -200) : 500;

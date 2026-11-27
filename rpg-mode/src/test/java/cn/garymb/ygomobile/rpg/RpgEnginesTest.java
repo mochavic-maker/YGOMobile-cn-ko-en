@@ -371,6 +371,21 @@ public class RpgEnginesTest {
                     assertFalse(opp.id + " should not pack Dark Hole", aiDeck.main.contains(DARK_HOLE));
                     assertFalse(opp.id + " should not pack Pot of Greed", aiDeck.main.contains(POT_OF_GREED));
                 }
+                // Verify any AI deck packing Crush Card Virus (57728570) has enough DARK <= 1000 ATK tributes
+                if (aiDeck.main.contains(57728570)) {
+                    int darkVirusFodder = 0;
+                    for (Integer cid : aiDeck.main) {
+                        RpgCard card = catalog.findCard(cid);
+                        if (card != null && card.isMonster()
+                                && "DARK".equalsIgnoreCase(card.attribute)
+                                && card.atk <= 1000) {
+                            darkVirusFodder++;
+                        }
+                    }
+                    assertTrue("AI deck with Crush Card Virus (" + opp.id + " at " + date
+                                    + ") must have >= 6 DARK <= 1000 ATK tributes, got " + darkVirusFodder,
+                            darkVirusFodder >= 6);
+                }
             }
         }
 
