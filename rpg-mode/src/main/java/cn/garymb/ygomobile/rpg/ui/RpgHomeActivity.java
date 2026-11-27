@@ -140,6 +140,8 @@ public class RpgHomeActivity extends AppCompatActivity {
     private String showdownKeyB = null;
     private RpgAiAutoDuelModels.BatchResult lastShowdownReport = null;
     private RoundRobinLeagueEngine.LeagueResult lastLeagueResult = null;
+    private boolean ladderIncludeActiveDeck = true;
+    private final java.util.Set<String> selectedLadderSavedDeckIds = new java.util.LinkedHashSet<>();
     private TimelineEngine.TimelineDigest currentTimelineDigest = null;
 
     @Override
@@ -3345,13 +3347,24 @@ public class RpgHomeActivity extends AppCompatActivity {
         // ===== Full-Environment AI Ladder: Swiss+Elo (O(N log N)) & Full Round-Robin =====
         List<AiOpponent> unlockedOpps = TimelineEngine.getAvailableOpponents(
                 AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate);
-        DeckValidator.ValidationResult playerDeckVal = DeckValidator.validatePlayerDeck(profile, catalog);
-        int playerSlotCount = playerDeckVal.valid ? 1 : 0;
-        int contestantCount = unlockedOpps.size() + playerSlotCount;
+        List<RoundRobinLeagueEngine.PlayerDeckEntry> selectedPlayerDecks = collectSelectedValidLadderPlayerDecks();
+        int savedTotalCount = profile.savedDecks != null ? profile.savedDecks.size() : 0;
+        int contestantCount = unlockedOpps.size() + selectedPlayerDecks.size();
         int swissRounds = RoundRobinLeagueEngine.recommendedSwissRounds(contestantCount);
         int swissGames = swissRounds * (contestantCount / 2) * RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR;
         int rrPairs = contestantCount * (contestantCount - 1) / 2;
         int rrGames = rrPairs * RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR;
+
+        String playerDeckSummary;
+        if (selectedPlayerDecks.isEmpty()) {
+            playerDeckSummary = "（未勾选合规自组卡组，仅 AI 参赛 · 可点下方选择已存卡组）";
+        } else {
+            List<String> names = new ArrayList<>();
+            for (RoundRobinLeagueEngine.PlayerDeckEntry e : selectedPlayerDecks) {
+                names.add(e.name + (!e.deckName.isEmpty() && !"已存卡组".equals(e.deckName) ? "(" + e.deckName + ")" : ""));
+            }
+            playerDeckSummary = " + " + selectedPlayerDecks.size() + " 套自组【" + TextUtils.join("、", names) + "】";
+        }
 
         LinearLayout leagueCard = makeCardContainer();
         TextView leagueTitle = makeTitleText("🏆 全环境天梯赛 · 瑞士轮积分 / 全量循环赛");
@@ -3363,10 +3376,20 @@ public class RpgHomeActivity extends AppCompatActivity {
                         + "• 全量循环赛：所有选手两两打满 %d 局（%d 组 / %d 局），同步产出胜场榜与 Elo 积分。",
                 profile.currentTimelineDate,
                 unlockedOpps.size(),
-                playerDeckVal.valid ? " + 我的当前卡组" : "（当前自组卡组未通过校验，可先组卡或仅 AI 参赛）",
+                playerDeckSummary,
                 contestantCount,
                 swissRounds, RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR, swissGames,
                 RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR, rrPairs, rrGames)));
+
+        Button selectDecksBtn = makeActionButton(
+                "📋 选择参赛卡组（已选 " + selectedPlayerDecks.size() + " 套自组 · 已存 " + savedTotalCount + " 套）",
+                "#2563EB");
+        LinearLayout.LayoutParams selLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        selLp.topMargin = dp(8);
+        selectDecksBtn.setLayoutParams(selLp);
+        selectDecksBtn.setOnClickListener(v -> openLadderDeckSelectorDialog());
+        leagueCard.addView(selectDecksBtn);
 
         Button startSwissBtn = makeActionButton(
                 "⚡ 瑞士轮天梯 (" + swissGames + "局)", "#059669");
@@ -3384,34 +3407,276 @@ public class RpgHomeActivity extends AppCompatActivity {
         }
     }
 
+    private boolean isSavedDeckIdenticalToActive(RpgProfile.SavedDeck saved) {
+        if (saved == null || profile.activeDeckId == null || !profile.activeDeckId.equals(saved.id)) {
+            return false;
+        }
+        List<Integer> sm = saved.main != null ? saved.main : java.util.Collections.emptyList();
+        List<Integer> se = saved.extra != null ? saved.extra : java.util.Collections.emptyList();
+        List<Integer> am = profile.activeDeckMain != null ? profile.activeDeckMain : java.util.Collections.emptyList();
+        List<Integer> ae = profile.activeDeckExtra != null ? profile.activeDeckExtra : java.util.Collections.emptyList();
+        return sm.equals(am) && se.equals(ae);
+    }
+
+    private List<RoundRobinLeagueEngine.PlayerDeckEntry> collectSelectedValidLadderPlayerDecks() {
+        List<RoundRobinLeagueEngine.PlayerDeckEntry> entries = new ArrayList<>();
+        if (ladderIncludeActiveDeck) {
+            DeckValidator.ValidationResult activeVal = DeckValidator.validatePlayerDeck(profile, catalog);
+            if (activeVal.valid) {
+                RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
+                String playerDeckLabel = activeSaved != null ? activeSaved.name : "当前编辑卡组";
+                entries.add(new RoundRobinLeagueEngine.PlayerDeckEntry(
+                        "player_deck",
+                        "我的卡组",
+                        playerDeckLabel,
+                        profile.activeDeckMain,
+                        profile.activeDeckExtra));
+            }
+        }
+        if (profile.savedDecks != null) {
+            for (RpgProfile.SavedDeck saved : profile.savedDecks) {
+                if (saved == null || saved.id == null || !selectedLadderSavedDeckIds.contains(saved.id)) continue;
+                DeckValidator.ValidationResult val = DeckValidator.validateDeck(
+                        saved.main, saved.extra, catalog, profile.currentTimelineDate, profile.collection);
+                if (val.valid) {
+                    String deckTitle = saved.name != null && !saved.name.trim().isEmpty()
+                            ? saved.name.trim() : "已存卡组";
+                    entries.add(new RoundRobinLeagueEngine.PlayerDeckEntry(
+                            "player_saved_" + saved.id,
+                            "自组 · " + deckTitle,
+                            "已存卡组",
+                            saved.main,
+                            saved.extra));
+                }
+            }
+        }
+        return entries;
+    }
+
+    private void openLadderDeckSelectorDialog() {
+        final OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+        final DeckValidator.ValidationResult activeVal = DeckValidator.validatePlayerDeck(profile, catalog);
+        final RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
+        final String activeLabel = activeSaved != null ? activeSaved.name : "当前编辑卡组";
+
+        final boolean[] tempIncludeActive = new boolean[]{ladderIncludeActiveDeck && activeVal.valid};
+        final java.util.Set<String> tempSavedIds = new java.util.LinkedHashSet<>(selectedLadderSavedDeckIds);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setBackgroundColor(Color.parseColor("#0F172A"));
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(dp(14), dp(12), dp(14), dp(10));
+        scroll.addView(body);
+
+        TextView intro = makeSubtleText("勾选要加入 " + profile.currentTimelineDate
+                + " 天梯排位的自组卡组（均须通过当期卡池、禁限表与拥有数校验，可多套同台竞技）：");
+        intro.setTextColor(Color.parseColor("#CBD5E1"));
+        body.addView(intro);
+
+        final android.widget.CheckBox cbActive = new android.widget.CheckBox(this);
+        final Map<String, android.widget.CheckBox> savedCheckboxes = new java.util.LinkedHashMap<>();
+        final Map<String, Boolean> savedValidMap = new HashMap<>();
+        final Map<String, Boolean> savedMirrorActiveMap = new HashMap<>();
+
+        // Quick action row: 全选合规 / 仅当前 / 仅 AI
+        Button btnSelectAllValid = makeActionButton("✅ 全选合规", "#059669");
+        Button btnOnlyActive = makeActionButton("🃏 仅当前", "#2563EB");
+        Button btnOnlyAi = makeActionButton("🤖 仅 AI", "#475569");
+        body.addView(makeEqualWeightButtonRow(8, btnSelectAllValid, btnOnlyActive, btnOnlyAi));
+
+        // Section 1: Current Active Deck
+        TextView secActive = makeTitleText("当前卡组");
+        secActive.setTextSize(13f);
+        secActive.setTextColor(Color.parseColor("#FDE68A"));
+        secActive.setPadding(0, dp(10), 0, dp(4));
+        body.addView(secActive);
+
+        LinearLayout activeBox = new LinearLayout(this);
+        activeBox.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable actBg = new GradientDrawable();
+        actBg.setColor(Color.parseColor("#1E293B"));
+        actBg.setCornerRadius(dp(8));
+        actBg.setStroke(dp(1), Color.parseColor(activeVal.valid ? "#3B82F6" : "#475569"));
+        activeBox.setBackground(actBg);
+        activeBox.setPadding(dp(10), dp(8), dp(10), dp(8));
+
+        cbActive.setText("⭐ 我的当前卡组：" + activeLabel);
+        cbActive.setTextColor(Color.parseColor(activeVal.valid ? "#F8FAFC" : "#64748B"));
+        cbActive.setTextSize(13f);
+        cbActive.setEnabled(activeVal.valid);
+        cbActive.setChecked(tempIncludeActive[0]);
+        cbActive.setOnCheckedChangeListener((btn, checked) -> tempIncludeActive[0] = checked);
+        activeBox.addView(cbActive);
+
+        String activeSub;
+        if (activeVal.valid) {
+            String st = RpgAiStrategy.inferStyleFromDeck(profile.activeDeckMain, profile.activeDeckExtra, activeRule);
+            activeSub = "主卡组 " + profile.activeDeckMain.size() + " 张"
+                    + (profile.activeDeckExtra.isEmpty() ? "" : (" · 额外 " + profile.activeDeckExtra.size() + " 张"))
+                    + " · 识别流派：" + RpgAiStrategy.getStyleDisplayName(st);
+        } else {
+            activeSub = "⚠ 未通过当期校验：" + (activeVal.errors.isEmpty() ? "卡组不合规" : activeVal.errors.get(0));
+        }
+        TextView tvActiveSub = makeSubtleText(activeSub);
+        tvActiveSub.setTextColor(Color.parseColor(activeVal.valid ? "#86EFAC" : "#FCA5A5"));
+        tvActiveSub.setPadding(dp(28), dp(2), 0, 0);
+        activeBox.addView(tvActiveSub);
+        body.addView(activeBox);
+
+        // Section 2: Saved Decks
+        int savedCount = profile.savedDecks != null ? profile.savedDecks.size() : 0;
+        TextView secSaved = makeTitleText("已存储卡组（" + savedCount + " 套）");
+        secSaved.setTextSize(13f);
+        secSaved.setTextColor(Color.parseColor("#38BDF8"));
+        secSaved.setPadding(0, dp(12), 0, dp(4));
+        body.addView(secSaved);
+
+        if (savedCount == 0) {
+            TextView noSaved = makeSubtleText("暂无已存储卡组。在「🃏 组卡」页点击「💾 保存卡组」即可保存多套卡组并同时加入天梯排位！");
+            noSaved.setPadding(dp(4), dp(4), dp(4), dp(6));
+            body.addView(noSaved);
+        } else {
+            for (final RpgProfile.SavedDeck saved : profile.savedDecks) {
+                if (saved == null || saved.id == null) continue;
+                DeckValidator.ValidationResult sval = DeckValidator.validateDeck(
+                        saved.main, saved.extra, catalog, profile.currentTimelineDate, profile.collection);
+                boolean isMirror = isSavedDeckIdenticalToActive(saved);
+                savedValidMap.put(saved.id, sval.valid);
+                savedMirrorActiveMap.put(saved.id, isMirror);
+                if (!sval.valid) {
+                    tempSavedIds.remove(saved.id);
+                }
+
+                LinearLayout itemBox = new LinearLayout(this);
+                itemBox.setOrientation(LinearLayout.VERTICAL);
+                GradientDrawable itemBg = new GradientDrawable();
+                itemBg.setColor(Color.parseColor("#1E293B"));
+                itemBg.setCornerRadius(dp(8));
+                itemBg.setStroke(dp(1), Color.parseColor(sval.valid ? "#334155" : "#451A1A"));
+                itemBox.setBackground(itemBg);
+                itemBox.setPadding(dp(10), dp(8), dp(10), dp(8));
+                LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                ilp.topMargin = dp(6);
+                itemBox.setLayoutParams(ilp);
+
+                android.widget.CheckBox cb = new android.widget.CheckBox(this);
+                String title = (saved.name != null && !saved.name.trim().isEmpty() ? saved.name.trim() : "未命名卡组")
+                        + (isMirror ? "（与当前卡组内容一致）" : "");
+                cb.setText(title);
+                cb.setTextColor(Color.parseColor(sval.valid ? "#F8FAFC" : "#64748B"));
+                cb.setTextSize(13f);
+                cb.setEnabled(sval.valid);
+                cb.setChecked(sval.valid && tempSavedIds.contains(saved.id));
+                cb.setOnCheckedChangeListener((btn, checked) -> {
+                    if (checked) tempSavedIds.add(saved.id);
+                    else tempSavedIds.remove(saved.id);
+                });
+                savedCheckboxes.put(saved.id, cb);
+                itemBox.addView(cb);
+
+                String sub;
+                if (sval.valid) {
+                    String st = RpgAiStrategy.inferStyleFromDeck(saved.main, saved.extra, activeRule);
+                    int mSz = saved.main != null ? saved.main.size() : 0;
+                    int eSz = saved.extra != null ? saved.extra.size() : 0;
+                    sub = "主卡组 " + mSz + " 张"
+                            + (eSz > 0 ? (" · 额外 " + eSz + " 张") : "")
+                            + " · 识别流派：" + RpgAiStrategy.getStyleDisplayName(st)
+                            + (saved.savedAtDate != null ? (" · 存自 " + saved.savedAtDate) : "");
+                } else {
+                    sub = "⚠ 当期不可参赛：" + (sval.errors.isEmpty() ? "卡组不合规" : sval.errors.get(0));
+                }
+                TextView tvSub = makeSubtleText(sub);
+                tvSub.setTextColor(Color.parseColor(sval.valid ? "#93C5FD" : "#FCA5A5"));
+                tvSub.setPadding(dp(28), dp(2), 0, 0);
+                itemBox.addView(tvSub);
+                body.addView(itemBox);
+            }
+        }
+
+        btnSelectAllValid.setOnClickListener(v -> {
+            if (activeVal.valid) {
+                cbActive.setChecked(true);
+            }
+            for (Map.Entry<String, android.widget.CheckBox> e : savedCheckboxes.entrySet()) {
+                String id = e.getKey();
+                boolean valid = Boolean.TRUE.equals(savedValidMap.get(id));
+                boolean isMirror = Boolean.TRUE.equals(savedMirrorActiveMap.get(id));
+                // Avoid double-entering the exact same deck twice when active deck is already checked
+                boolean shouldCheck = valid && !(activeVal.valid && isMirror);
+                e.getValue().setChecked(shouldCheck);
+            }
+        });
+        btnOnlyActive.setOnClickListener(v -> {
+            if (activeVal.valid) cbActive.setChecked(true);
+            for (android.widget.CheckBox cb : savedCheckboxes.values()) {
+                cb.setChecked(false);
+            }
+        });
+        btnOnlyAi.setOnClickListener(v -> {
+            cbActive.setChecked(false);
+            for (android.widget.CheckBox cb : savedCheckboxes.values()) {
+                cb.setChecked(false);
+            }
+        });
+
+        new AlertDialog.Builder(this)
+                .setTitle("📋 选择参与天梯排位的自组卡组")
+                .setView(scroll)
+                .setPositiveButton("确定", (d, w) -> {
+                    ladderIncludeActiveDeck = tempIncludeActive[0];
+                    selectedLadderSavedDeckIds.clear();
+                    selectedLadderSavedDeckIds.addAll(tempSavedIds);
+                    renderCurrentTab();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     private void startLeagueFlow(final String mode) {
         final RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
         if (bridge == null) {
             Toast.makeText(this, "未注册 YGOMobile 决斗引擎桥接器", Toast.LENGTH_LONG).show();
             return;
         }
-        DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
-        if (val.valid) {
-            runLeague(mode, true, null, 0);
-        } else {
-            new AlertDialog.Builder(this)
-                    .setTitle("当前 RPG 卡组未通过校验")
-                    .setMessage(TextUtils.join("\n", val.errors)
-                            + "\n\n是否先去组卡，或仅运行现环境所有 AI 之间的天梯赛？")
-                    .setPositiveButton("仅 AI 参赛", (d, w) -> runLeague(mode, false, null, 0))
-                    .setNeutralButton("去组卡", (d, w) -> selectTabById(TAB_DECK))
-                    .setNegativeButton("取消", null)
-                    .show();
+        List<RoundRobinLeagueEngine.PlayerDeckEntry> selectedPlayerDecks = collectSelectedValidLadderPlayerDecks();
+        if (!selectedPlayerDecks.isEmpty()) {
+            runLeague(mode, selectedPlayerDecks, null, 0);
+            return;
         }
+        // User explicitly unchecked everything or active deck is invalid: confirm before running AI-only
+        DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
+        boolean hasSaved = profile.savedDecks != null && !profile.savedDecks.isEmpty();
+        if (!ladderIncludeActiveDeck && selectedLadderSavedDeckIds.isEmpty()) {
+            // User explicitly chose AI-only in the deck selector
+            runLeague(mode, java.util.Collections.emptyList(), null, 0);
+            return;
+        }
+        String errText = val.valid
+                ? "当前未勾选任何合规自组卡组。"
+                : TextUtils.join("\n", val.errors);
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
+                .setTitle(val.valid ? "未勾选自组卡组" : "当前 RPG 卡组未通过校验")
+                .setMessage(errText + "\n\n是否选择已存储卡组、先去组卡，或仅运行现环境所有 AI 之间的天梯赛？")
+                .setPositiveButton("仅 AI 参赛", (d, w) -> runLeague(mode, java.util.Collections.emptyList(), null, 0))
+                .setNegativeButton("取消", null);
+        if (hasSaved) {
+            b.setNeutralButton("选已存卡组", (d, w) -> openLadderDeckSelectorDialog());
+        } else {
+            b.setNeutralButton("去组卡", (d, w) -> selectTabById(TAB_DECK));
+        }
+        b.show();
     }
 
     private void appendExtraSwissRounds(final RoundRobinLeagueEngine.LeagueResult baseResult, final int extraRounds) {
         if (baseResult == null || baseResult.standings == null || baseResult.standings.size() < 2) return;
-        runLeague(RoundRobinLeagueEngine.MODE_SWISS_ELO, false, baseResult, extraRounds);
+        runLeague(RoundRobinLeagueEngine.MODE_SWISS_ELO, java.util.Collections.emptyList(), baseResult, extraRounds);
     }
 
     private void runLeague(final String mode,
-                           final boolean includePlayer,
+                           final List<RoundRobinLeagueEngine.PlayerDeckEntry> selectedPlayerDecks,
                            final RoundRobinLeagueEngine.LeagueResult appendBase,
                            final int extraSwissRounds) {
         final RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
@@ -3430,13 +3695,10 @@ public class RpgHomeActivity extends AppCompatActivity {
         if (isAppending) {
             participants = new ArrayList<>(appendBase.standings);
         } else {
-            RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
-            String playerDeckLabel = activeSaved != null ? activeSaved.name : "当前编辑卡组";
             long deckSeed = ("rpg_ladder_deck_" + curDate).hashCode() * 31L + 19990204L;
             participants = RoundRobinLeagueEngine.buildParticipants(
                     catalog, curDate, activeRule,
-                    includePlayer, playerDeckLabel,
-                    profile.activeDeckMain, profile.activeDeckExtra,
+                    selectedPlayerDecks,
                     new Random(deckSeed));
         }
 

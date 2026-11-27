@@ -238,9 +238,27 @@ public final class RoundRobinLeagueEngine {
         return Math.max(15, 3 * (ceilLog2 + 2));
     }
 
+    /** Descriptor for a player-authored deck (active or saved) entering the AI ladder. */
+    public static final class PlayerDeckEntry {
+        public final String id;
+        public final String name;
+        public final String deckName;
+        public final List<Integer> main;
+        public final List<Integer> extra;
+
+        public PlayerDeckEntry(String id, String name, String deckName,
+                               List<Integer> main, List<Integer> extra) {
+            this.id = id != null && !id.trim().isEmpty() ? id.trim() : "player_deck";
+            this.name = name != null && !name.trim().isEmpty() ? name.trim() : "我的卡组";
+            this.deckName = deckName != null ? deckName.trim() : "";
+            this.main = main != null ? new ArrayList<>(main) : new ArrayList<>();
+            this.extra = extra != null ? new ArrayList<>(extra) : new ArrayList<>();
+        }
+    }
+
     /**
      * Builds the list of participants for the active timeline date:
-     * all unlocked AI opponents (each using its active era deck) + optionally the player's deck.
+     * all unlocked AI opponents (each using its active era deck) + optionally the player's current deck.
      */
     public static List<Participant> buildParticipants(
             RpgCatalog catalog,
@@ -251,22 +269,49 @@ public final class RoundRobinLeagueEngine {
             List<Integer> playerMain,
             List<Integer> playerExtra,
             Random deckRng) {
-        Random rng = deckRng != null ? deckRng : new Random();
-        List<Participant> list = new ArrayList<>();
-
+        List<PlayerDeckEntry> playerDecks = new ArrayList<>();
         if (includePlayer && playerMain != null && !playerMain.isEmpty()) {
-            String playerStyle = RpgAiStrategy.inferStyleFromDeck(playerMain, playerExtra, ruleSet);
             String label = (playerDeckLabel != null && !playerDeckLabel.trim().isEmpty())
                     ? playerDeckLabel.trim()
                     : "当前自组卡组";
-            list.add(new Participant(
-                    "player_deck",
-                    "我的卡组",
-                    label,
-                    true,
-                    playerMain,
-                    playerExtra,
-                    playerStyle));
+            playerDecks.add(new PlayerDeckEntry("player_deck", "我的卡组", label, playerMain, playerExtra));
+        }
+        return buildParticipants(catalog, currentDate, ruleSet, playerDecks, deckRng);
+    }
+
+    /**
+     * Builds the list of participants for the active timeline date:
+     * zero or more player-selected decks (active deck and/or saved decks) + all unlocked AI opponents.
+     */
+    public static List<Participant> buildParticipants(
+            RpgCatalog catalog,
+            String currentDate,
+            OcgRuleSet ruleSet,
+            List<PlayerDeckEntry> playerDecks,
+            Random deckRng) {
+        Random rng = deckRng != null ? deckRng : new Random();
+        List<Participant> list = new ArrayList<>();
+        java.util.Set<String> seenIds = new java.util.HashSet<>();
+
+        if (playerDecks != null) {
+            for (PlayerDeckEntry entry : playerDecks) {
+                if (entry == null || entry.main == null || entry.main.isEmpty()) continue;
+                String uniqueId = entry.id;
+                int suffix = 2;
+                while (seenIds.contains(uniqueId)) {
+                    uniqueId = entry.id + "_" + (suffix++);
+                }
+                seenIds.add(uniqueId);
+                String playerStyle = RpgAiStrategy.inferStyleFromDeck(entry.main, entry.extra, ruleSet);
+                list.add(new Participant(
+                        uniqueId,
+                        entry.name,
+                        entry.deckName,
+                        true,
+                        entry.main,
+                        entry.extra,
+                        playerStyle));
+            }
         }
 
         List<AiOpponent> unlocked = TimelineEngine.getAvailableOpponents(

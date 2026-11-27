@@ -1268,6 +1268,31 @@ public class RpgEnginesTest {
         assertTrue(extended.formatPlainTextReport().contains("Bradley-Terry"));
         assertTrue(extended.formatPlainTextReport().contains("±"));
 
+        // 3b) Multiple player decks (active + saved decks) can enter the same ladder with unique IDs & styles
+        AiDeckGenerator.GeneratedAiDeck savedExodia =
+                AiDeckGenerator.generateDeck(catalog, AiDeckGenerator.getDemoOpponents().get(10), date, new Random(6L));
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.PlayerDeckEntry> multiEntries = java.util.Arrays.asList(
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.PlayerDeckEntry(
+                        "player_deck", "我的卡组", "当前编辑", playerDeck.main, playerDeck.extra),
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.PlayerDeckEntry(
+                        "player_saved_1", "自组 · 老艾收藏", "已存卡组", savedExodia.main, savedExodia.extra),
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.PlayerDeckEntry(
+                        "player_saved_2", "自组 · 凡骨二号", "已存卡组", playerDeck.main, playerDeck.extra)
+        );
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant> multiParts =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.buildParticipants(
+                        catalog, date, rule, multiEntries, new Random(19L));
+        assertEquals("13 AIs + 3 player decks = 16 contestants", 16, multiParts.size());
+        int playerCount = 0;
+        for (cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant mp : multiParts) {
+            if (mp.isPlayer) playerCount++;
+        }
+        assertEquals(3, playerCount);
+        assertEquals("player_deck", multiParts.get(0).id);
+        assertEquals("player_saved_1", multiParts.get(1).id);
+        assertEquals("EXODIA_DRAW", multiParts.get(1).style);
+        assertEquals("player_saved_2", multiParts.get(2).id);
+
         // 4) Strength-of-Schedule proof: MidStrong (50% vs Boss & Mid) MUST outrank MidWeak (50% vs Mid & Dummy)
         cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant boss =
                 new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant("boss", "Boss", "", false, null, null, "GOOD_STUFF");
