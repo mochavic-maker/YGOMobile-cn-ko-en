@@ -1499,13 +1499,6 @@ public class RpgHomeActivity extends AppCompatActivity {
     private void renderDeckTab() {
         Button nativeEditorBtn = makeActionButton("🛠️ 原版卡组编辑器", "#7C3AED");
         nativeEditorBtn.setOnClickListener(v -> launchNativeDeckEditor());
-        Button autoBtn = makeActionButton("智能组卡 (40张)", "#059669");
-        autoBtn.setOnClickListener(v -> {
-            int built = DeckValidator.autoBuildLegalPlayerDeck(profile, catalog);
-            saveProfileSafe();
-            Toast.makeText(this, "已按当前时间轴与卡库自动构筑 " + built + " 张主卡组", Toast.LENGTH_SHORT).show();
-            refreshAll();
-        });
         Button saveDeckBtn = makeActionButton("💾 保存卡组", "#0284C7");
         saveDeckBtn.setOnClickListener(v -> showSaveDeckDialog());
         Button loadDeckBtn = makeActionButton("📂 读取卡组", "#0D9488");
@@ -1528,7 +1521,6 @@ public class RpgHomeActivity extends AppCompatActivity {
         actionRow.setOrientation(LinearLayout.HORIZONTAL);
         actionRow.setGravity(Gravity.CENTER_VERTICAL);
         actionRow.addView(nativeEditorBtn);
-        actionRow.addView(autoBtn);
         actionRow.addView(saveDeckBtn);
         actionRow.addView(loadDeckBtn);
         actionRow.addView(deleteDeckBtn);

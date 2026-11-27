@@ -1013,7 +1013,7 @@ public final class RpgPackVisualDialogs {
             } else if (deckMode && uniqueCards.isEmpty()) {
                 tvDetailName.setText("当前卡组为空");
                 tvDetailName.setTextColor(Color.parseColor("#94A3B8"));
-                tvDetailStats.setText("点击上方「🛠️ 原版卡组编辑器」或「智能组卡」开始构筑");
+                tvDetailStats.setText("点击上方「🛠️ 原版卡组编辑器」开始构筑");
                 tvDetailMeta.setText("也可点击「📂 读取卡组」载入已保存构筑");
                 tvDetailDesc.setText("");
             } else {
