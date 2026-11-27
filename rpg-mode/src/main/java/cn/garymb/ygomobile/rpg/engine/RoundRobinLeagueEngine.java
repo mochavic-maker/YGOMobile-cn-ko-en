@@ -23,9 +23,11 @@ import cn.garymb.ygomobile.rpg.model.RpgCatalog;
  * <ol>
  *   <li><b>Swiss-System + Bradley-Terry Elo Ladder ({@link #MODE_SWISS_ELO})</b>:
  *       Scales as {@code O(N log N)} instead of {@code O(N^2)} by running Swiss rounds
- *       (pairing adjacent-rated decks each round) with {@code 3} games per pairing, and solving
- *       global Bayesian Bradley-Terry MLE ratings (order-independent, strength-of-schedule aware).
- *       Also supports appending additional Swiss rounds incrementally to tighten confidence.</li>
+ *       (pairing adjacent-rated decks each round) with {@code 6} balanced games per pairing
+ *       (3 first + 3 second, eliminating first-turn bias), and solving global Bayesian
+ *       Bradley-Terry MLE ratings (order-independent, strength-of-schedule aware) with Fisher
+ *       Information Elo standard errors ({@code ±SE}). Also supports appending additional Swiss
+ *       rounds incrementally to further tighten confidence.</li>
  *   <li><b>Full Round-Robin ({@link #MODE_ROUND_ROBIN})</b>:
  *       Every unlocked AI opponent (plus optionally the player's current RPG deck) plays every
  *       other contestant for {@code gamesPerPair} (default 5) real ocgcore headless duels,
@@ -34,16 +36,17 @@ import cn.garymb.ygomobile.rpg.model.RpgCatalog;
  */
 public final class RoundRobinLeagueEngine {
     public static final int DEFAULT_GAMES_PER_PAIR = 5;
-    public static final int DEFAULT_SWISS_GAMES_PER_PAIR = 3;
+    /** 6 games per Swiss pairing (3 first + 3 second) for zero first-turn bias and tighter Elo convergence. */
+    public static final int DEFAULT_SWISS_GAMES_PER_PAIR = 6;
 
     public static final String MODE_ROUND_ROBIN = "ROUND_ROBIN";
     public static final String MODE_SWISS_ELO = "SWISS_ELO";
 
     private static final double BASE_ELO = 1500.0;
     private static final double ELO_SCALE = 400.0;
-    /** Virtual Bayesian prior against a 1500-Elo average anchor (prevents infinity on 100%/0% records). */
-    private static final double PRIOR_GAMES = 1.0;
-    private static final double PRIOR_WINS = 0.5;
+    /** Virtual Bayesian prior (1W-1L vs 1500 anchor) to stabilize early Swiss rounds and extreme records. */
+    private static final double PRIOR_GAMES = 2.0;
+    private static final double PRIOR_WINS = 1.0;
     private static final int BT_ITERATIONS = 80;
 
     private RoundRobinLeagueEngine() {}
@@ -82,6 +85,8 @@ public final class RoundRobinLeagueEngine {
 
         /** Global Bayesian Bradley-Terry Elo rating (centered at 1500). */
         public int eloRating = 1500;
+        /** Fisher-information Elo standard error (±SE); shrinks as more games/rounds are played. */
+        public int eloStdError = 150;
         /** Average Elo rating of all opponents faced (weighted by games played). */
         public int avgOpponentElo = 1500;
 
@@ -198,10 +203,11 @@ public final class RoundRobinLeagueEngine {
             for (int i = 0; i < standings.size(); i++) {
                 Participant p = standings.get(i);
                 sb.append(String.format(Locale.US,
-                        "#%d [%s级 · Elo %d] %s%s — %d胜 %d负 %d平 (胜率 %.1f%% · 对手均分 %d)",
+                        "#%d [%s级 · Elo %d ±%d] %s%s — %d胜 %d负 %d平 (胜率 %.1f%% · 对手均分 %d)",
                         i + 1,
                         p.getTierLabel(),
                         p.eloRating,
+                        p.eloStdError,
                         p.isPlayer ? "★ " : "",
                         p.name,
                         p.wins, p.losses, p.draws,
@@ -610,10 +616,23 @@ public final class RoundRobinLeagueEngine {
             }
         }
 
+        double eloPerNat = ELO_SCALE / Math.log(10.0);
         for (int i = 0; i < n; i++) {
             Participant p = participants.get(i);
             double elo = BASE_ELO + ELO_SCALE * Math.log10(s[i]);
             p.eloRating = (int) Math.round(elo);
+            // Fisher information in log-strength theta_i = ln(s_i):
+            // I(theta_i) = PRIOR_GAMES * p_anchor * (1 - p_anchor) + sum_j games[i][j] * p_ij * (1 - p_ij)
+            double pAnchor = s[i] / (s[i] + 1.0);
+            double fisher = PRIOR_GAMES * pAnchor * (1.0 - pAnchor);
+            for (int j = 0; j < n; j++) {
+                if (games[i][j] > 0.0) {
+                    double pij = s[i] / (s[i] + s[j]);
+                    fisher += games[i][j] * pij * (1.0 - pij);
+                }
+            }
+            double seElo = fisher > 1e-9 ? (eloPerNat / Math.sqrt(fisher)) : 250.0;
+            p.eloStdError = (int) Math.max(1L, Math.round(seElo));
         }
 
         // Compute weighted average opponent Elo (Strength of Schedule / 对手均分)

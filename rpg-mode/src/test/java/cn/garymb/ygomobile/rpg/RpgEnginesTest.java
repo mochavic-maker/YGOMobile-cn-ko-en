@@ -1126,8 +1126,9 @@ public class RpgEnginesTest {
         assertEquals(6, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(14));
         assertEquals(7, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.recommendedSwissRounds(30));
 
-        // 2) Full 1999-12-31 field (13 AIs + player = 14 contestants): Swiss 6 rounds * 7 pairs * 3 games = 126 games
-        //    vs 455 games in Round-Robin (3.6x fewer games!)
+        // 2) Full 1999-12-31 field (13 AIs + player = 14 contestants): Swiss 6 rounds * 7 pairs * 6 games = 252 games
+        //    (3 first + 3 second per pairing, 2x previous 3-game setting, zero first-turn bias)
+        assertEquals(6, cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR);
         String date = "1999-12-31";
         OcgRuleSet rule = TimelineEngine.getActiveRuleSet(catalog, date);
         AiDeckGenerator.GeneratedAiDeck playerDeck =
@@ -1153,27 +1154,36 @@ public class RpgEnginesTest {
 
         cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.LeagueResult swiss =
                 cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.runSwissLadder(
-                        parts, rule, date, 6, 3, 0, 0L, exec, null, null, new Random(77L));
+                        parts, rule, date, 6,
+                        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR,
+                        0, 0L, exec, null, null, new Random(77L));
 
         assertTrue(swiss.isSwissMode());
         assertEquals(6, swiss.roundsPlayed);
-        assertEquals(126, swiss.completedGames);
+        assertEquals(252, swiss.completedGames);
         assertEquals("player_deck", swiss.standings.get(0).id);
-        assertTrue("Top undefeated contestant must have Elo > 1620 (S tier)",
+        assertTrue("Top undefeated contestant must have Elo >= 1620 (S tier)",
                 swiss.standings.get(0).eloRating >= 1620);
         assertEquals("S", swiss.standings.get(0).getTierLabel());
         assertTrue("Standings must be sorted by Elo descending",
                 swiss.standings.get(0).eloRating > swiss.standings.get(swiss.standings.size() - 1).eloRating);
+        int midSeBefore = swiss.standings.get(7).eloStdError;
+        assertTrue("Mid-field Elo standard error must be reasonable (>0 and <120)",
+                midSeBefore > 0 && midSeBefore < 120);
 
-        // 3) Append 2 more Swiss rounds incrementally -> accumulates from 126 -> 168 games cleanly
+        // 3) Append 2 more Swiss rounds incrementally -> accumulates from 252 -> 336 games and tightens SE
         cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.LeagueResult extended =
                 cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.runSwissLadder(
-                        new java.util.ArrayList<>(swiss.standings), rule, date, 2, 3,
+                        new java.util.ArrayList<>(swiss.standings), rule, date, 2,
+                        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR,
                         swiss.roundsPlayed, swiss.elapsedMs, exec, null, null, new Random(88L));
         assertEquals(8, extended.roundsPlayed);
-        assertEquals(168, extended.completedGames);
+        assertEquals(336, extended.completedGames);
         assertEquals("player_deck", extended.standings.get(0).id);
+        assertTrue("Appending rounds keeps positive Elo SE",
+                extended.standings.get(7).eloStdError > 0);
         assertTrue(extended.formatPlainTextReport().contains("Bradley-Terry"));
+        assertTrue(extended.formatPlainTextReport().contains("±"));
 
         // 4) Strength-of-Schedule proof: MidStrong (50% vs Boss & Mid) MUST outrank MidWeak (50% vs Mid & Dummy)
         cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant boss =
@@ -1216,6 +1226,22 @@ public class RpgEnginesTest {
         assertTrue("MidStrong avgOpponentElo (" + midStrong.avgOpponentElo
                         + ") must exceed MidWeak avgOpponentElo (" + midWeak.avgOpponentElo + ")",
                 midStrong.avgOpponentElo > midWeak.avgOpponentElo);
+
+        // 5) Doubling games per pairing strictly shrinks Elo standard error (±SE)
+        int seBefore2x = midStrong.eloStdError;
+        for (cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant p : sosList) {
+            p.wins *= 2;
+            p.losses *= 2;
+            p.gamesPlayed *= 2;
+            for (int[] h : p.headToHead.values()) {
+                h[0] *= 2;
+                h[1] *= 2;
+            }
+        }
+        cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.computeBradleyTerryElo(sosList);
+        assertTrue("Doubling games must strictly shrink Elo SE (" + midStrong.eloStdError
+                        + " < " + seBefore2x + ")",
+                midStrong.eloStdError < seBefore2x);
     }
 
     @Test

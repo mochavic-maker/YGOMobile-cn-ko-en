@@ -3240,7 +3240,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         leagueCard.addView(leagueTitle);
         leagueCard.addView(makeSubtleText(String.format(Locale.US,
                 "现环境（%s）已解锁 %d 位 AI%s → 共 %d 名选手。\n"
-                        + "• 瑞士轮天梯（推荐）：按实时积分撮合强强对话，%d 轮×每组 %d 局（仅需 %d 局），用 Bradley-Terry 全局最大似然模型解算 Elo 积分与 S~D 评级，后期流派再多也极快且支持随时追加轮次！\n"
+                        + "• 瑞士轮天梯（推荐）：按实时积分撮合强强对话，%d 轮×每组 %d 局（3先3后消除先后手偏差，共 %d 局），用 Bradley-Terry 全局最大似然模型解算 Elo 积分、误差 ±SE 与 S~D 评级，后期流派再多也极快且支持随时追加轮次！\n"
                         + "• 全量循环赛：所有选手两两打满 %d 局（%d 组 / %d 局），同步产出胜场榜与 Elo 积分。",
                 profile.currentTimelineDate,
                 unlockedOpps.size(),
@@ -3313,11 +3313,12 @@ public class RpgHomeActivity extends AppCompatActivity {
         } else {
             RpgProfile.SavedDeck activeSaved = profile.findSavedDeck(profile.activeDeckId);
             String playerDeckLabel = activeSaved != null ? activeSaved.name : "当前编辑卡组";
+            long deckSeed = ("rpg_ladder_deck_" + curDate).hashCode() * 31L + 19990204L;
             participants = RoundRobinLeagueEngine.buildParticipants(
                     catalog, curDate, activeRule,
                     includePlayer, playerDeckLabel,
                     profile.activeDeckMain, profile.activeDeckExtra,
-                    new Random());
+                    new Random(deckSeed));
         }
 
         if (participants.size() < 2) {
@@ -3502,8 +3503,9 @@ public class RpgHomeActivity extends AppCompatActivity {
             statCol.setGravity(Gravity.END);
             double wr = p.getWinRatePercent();
             TextView tvMainStat = new TextView(this);
-            tvMainStat.setText(String.format(Locale.US, "Elo %d · %.1f%%", p.eloRating, wr));
-            tvMainStat.setTextSize(12.5f);
+            tvMainStat.setText(String.format(Locale.US, "Elo %d ±%d · %.1f%%",
+                    p.eloRating, p.eloStdError, wr));
+            tvMainStat.setTextSize(12f);
             tvMainStat.setTypeface(null, android.graphics.Typeface.BOLD);
             tvMainStat.setTextColor(Color.parseColor(
                     p.eloRating >= 1580 ? "#34D399" : (p.eloRating >= 1450 ? "#FBBF24" : "#F87171")));
@@ -3530,7 +3532,8 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
         });
         if (res.isSwissMode() && res.timelineDate.equals(profile.currentTimelineDate)) {
-            Button moreSwissBtn = makeActionButton("➕ 追加2轮瑞士轮", "#059669");
+            int addGames = 2 * (res.standings.size() / 2) * RoundRobinLeagueEngine.DEFAULT_SWISS_GAMES_PER_PAIR;
+            Button moreSwissBtn = makeActionButton("➕ 追加2轮 (+" + addGames + "局)", "#059669");
             moreSwissBtn.setOnClickListener(v -> appendExtraSwissRounds(res, 2));
             card.addView(makeEqualWeightButtonRow(10, moreSwissBtn, copyBtn));
         } else {
@@ -3547,8 +3550,8 @@ public class RpgHomeActivity extends AppCompatActivity {
                                              Map<String, RoundRobinLeagueEngine.Participant> byId) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format(Locale.US,
-                "第 %d 名 · [%s级] 天梯积分 Elo %d（对手均分 SOS %d）\n",
-                rank, p.getTierLabel(), p.eloRating, p.avgOpponentElo));
+                "第 %d 名 · [%s级] 天梯积分 Elo %d ±%d（对手均分 SOS %d）\n",
+                rank, p.getTierLabel(), p.eloRating, p.eloStdError, p.avgOpponentElo));
         sb.append(String.format(Locale.US,
                 "总战绩：%d 胜 %d 负 %d 平（胜率 %.1f%% · 平均 %.1f 回合）\n",
                 p.wins, p.losses, p.draws, p.getWinRatePercent(), p.getAvgTurns()));
