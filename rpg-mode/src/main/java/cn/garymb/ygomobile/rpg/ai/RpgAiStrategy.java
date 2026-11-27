@@ -443,6 +443,20 @@ public class RpgAiStrategy {
         int oppBackrow = state.getSpellTraps(1).size();
         int myBackrow = state.getSpellTraps(0).size();
 
+        CmdEntry deSpell = findActivatable(p, RpgAiCardKnowledge.DE_SPELL);
+        CmdEntry removeTrap = findActivatable(p, RpgAiCardKnowledge.REMOVE_TRAP);
+
+        // Conserve Harpie's Feather Duster / Heavy Storm when opponent has ONLY 1 backrow card
+        // and a cheaper single-target face-up removal (De-Spell / Remove Trap) solves it identically!
+        if (oppBackrow == 1) {
+            if (deSpell != null && hasFaceUpSpellOnField(1)) {
+                return activateIdle(deSpell);
+            }
+            if (removeTrap != null && hasFaceUpTrapOnField(1)) {
+                return activateIdle(removeTrap);
+            }
+        }
+
         CmdEntry hfd = findActivatable(p, RpgAiCardKnowledge.HARPIES_FEATHER_DUSTER);
         if (hfd != null && oppBackrow >= 1) {
             return activateIdle(hfd);
@@ -452,12 +466,10 @@ public class RpgAiStrategy {
             return activateIdle(storm);
         }
         // De-Spell (Vol.2): snipe opponent's face-up Spell (e.g. Swords of Revealing Light / Equip)
-        CmdEntry deSpell = findActivatable(p, RpgAiCardKnowledge.DE_SPELL);
         if (deSpell != null && hasFaceUpSpellOnField(1)) {
             return activateIdle(deSpell);
         }
         // Remove Trap (Starter Box): snipe opponent's face-up Trap (e.g. Royal Decree / Dragon Capture Jar)
-        CmdEntry removeTrap = findActivatable(p, RpgAiCardKnowledge.REMOVE_TRAP);
         if (removeTrap != null && hasFaceUpTrapOnField(1)) {
             return activateIdle(removeTrap);
         }
@@ -498,9 +510,12 @@ public class RpgAiStrategy {
         int myEffectiveBest = Math.max(myBestOnField, myBestInHand);
         int oppStrongestAtk = state.getStrongestAtk(1);
         int oppStrongestThreat = state.getStrongestThreatValue(1);
-        int oppWeakestFaceUpAtk = getWeakestFaceUpMonsterAtk(1);
+        RpgAiDuelState.CardSlot oppWeakestFaceUp = getWeakestFaceUpMonster(1);
+        int oppWeakestFaceUpThreat = oppWeakestFaceUp != null
+                ? oppWeakestFaceUp.effectiveCombatValue(state.eraEstimatedFaceDownDef)
+                : 0;
         boolean oppHasFaceDown = hasFaceDownMonster(1);
-        boolean oppHasFaceUp = hasFaceUpMonster(1);
+        boolean oppHasFaceUp = oppWeakestFaceUp != null;
         // First Flip monsters (Man-Eater Bug / Hane-Hane / Needle Worm) debuted in Vol.3 (1999-05-27)
         boolean flipMonstersExist = state.currentTimelineDate.compareTo("1999-05-27") >= 0;
         boolean clearForLethal = !state.isMain2() && p.canBattle
@@ -548,6 +563,25 @@ public class RpgAiStrategy {
             return activateIdle(toonWorld);
         }
 
+        // Pre-evaluate Fissure (destroys opponent's LOWEST-ATK face-up monster):
+        // Hold Fissure if our field/hand already beats over that target in battle (save Fissure for
+        // threats we can't run over, high-DEF face-up walls, lethal clears, or M2 after battle!).
+        CmdEntry fissure = findActivatable(p, RpgAiCardKnowledge.FISSURE);
+        boolean fissureWorthIt = false;
+        if (fissure != null && oppHasFaceUp) {
+            boolean targetBeatsOrTiesUs = oppWeakestFaceUpThreat >= myEffectiveBest;
+            boolean singleBlockerLethal = oppMons.size() == 1 && clearForLethal;
+            boolean stallClear = (isExodiaStyle() || isBurnStyle()) && oppWeakestFaceUpThreat >= state.eraTypicalLowerAtk;
+            fissureWorthIt = targetBeatsOrTiesUs || singleBlockerLethal || stallClear;
+        }
+
+        // 1d) Resource conservation: when opponent has ONLY 1 monster and it is face-up,
+        //     ALWAYS fire Fissure BEFORE Raigeki / Dark Hole! It achieves the exact same 1-for-1
+        //     clear while conserving strictly superior multi-kill / anti-set board wipes.
+        if (fissureWorthIt && oppMons.size() == 1 && oppHasFaceUp) {
+            return activateIdle(fissure);
+        }
+
         // 2) Raigeki: one-sided wipe — preserve unless it earns real value (multi-kill, answers threat we
         //    can't beat in battle, protects a Boss from post-Vol.3 Flip monsters, or secures immediate lethal!)
         CmdEntry raigeki = findActivatable(p, RpgAiCardKnowledge.RAIGEKI);
@@ -571,17 +605,9 @@ public class RpgAiStrategy {
             return activateIdle(darkHole);
         }
 
-        // 4) Fissure: destroys opponent's LOWEST-ATK face-up monster!
-        //    Hold Fissure if our field/hand already beats over that target in battle (save Fissure for
-        //    Dark Magician / Gaia / Blue-Eyes / Summoned Skull, or use in M2 after clearing smaller monsters!).
-        CmdEntry fissure = findActivatable(p, RpgAiCardKnowledge.FISSURE);
-        if (fissure != null && oppHasFaceUp) {
-            boolean targetBeatsOrTiesUs = oppWeakestFaceUpAtk >= myEffectiveBest;
-            boolean singleBlockerLethal = oppMons.size() == 1 && clearForLethal;
-            boolean stallClear = (isExodiaStyle() || isBurnStyle()) && oppWeakestFaceUpAtk >= state.eraTypicalLowerAtk;
-            if (targetBeatsOrTiesUs || singleBlockerLethal || stallClear) {
-                return activateIdle(fissure);
-            }
+        // 4) Fissure (fallback when opponent has 2+ monsters and we don't have / can't use board wipes)
+        if (fissureWorthIt) {
+            return activateIdle(fissure);
         }
 
         // 5) Tribute to the Doomed: costs a discard (-1), so ONLY use against threats we can't beat over
@@ -613,14 +639,19 @@ public class RpgAiStrategy {
         return null;
     }
 
-    private int getWeakestFaceUpMonsterAtk(int localPlayer) {
-        int weakest = Integer.MAX_VALUE;
+    private RpgAiDuelState.CardSlot getWeakestFaceUpMonster(int localPlayer) {
+        RpgAiDuelState.CardSlot weakest = null;
+        int minAtk = Integer.MAX_VALUE;
         for (RpgAiDuelState.CardSlot m : state.getMonsters(localPlayer)) {
             if (m.isFaceUp()) {
-                weakest = Math.min(weakest, Math.max(0, m.atk));
+                int atk = Math.max(0, m.atk);
+                if (weakest == null || atk < minAtk) {
+                    minAtk = atk;
+                    weakest = m;
+                }
             }
         }
-        return weakest == Integer.MAX_VALUE ? 0 : weakest;
+        return weakest;
     }
 
     /**

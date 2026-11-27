@@ -1137,6 +1137,75 @@ public class RpgAiStrategyTest {
                 (1 << 16) + 3, resp);
     }
 
+    @Test
+    public void conservesRaigekiAndFeatherDusterWhenSingleTargetRemovalSuffices() {
+        final int BLUE_EYES = 89631139;      // 3000/2500
+        final int GIANT_SOLDIER = 13039848;  // 1300/2000
+        final int LA_JINN = 97590747;        // 1800/1000
+        final int MAMMOTH = 40374923;        // 1200/800
+
+        // Case 1: Opponent has ONLY 1 face-up monster (Blue-Eyes 3000), AI holds 1 Raigeki + 3 Fissures.
+        // AI MUST activate Fissure (activatable index 1) and conserve Raigeki (activatable index 0)!
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-07-08");
+        state.turnCount = 4;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        placeMonster(state, 1, 2, BLUE_EYES, RpgAiDuelState.POS_FACEUP_ATTACK, 3000, 2500);
+        addHandCard(state, RpgAiCardKnowledge.RAIGEKI);
+        addHandCard(state, RpgAiCardKnowledge.FISSURE);
+        addHandCard(state, RpgAiCardKnowledge.FISSURE);
+        addHandCard(state, RpgAiCardKnowledge.FISSURE);
+        addHandCard(state, LA_JINN);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "BEATDOWN");
+        RpgAiStrategy.IdleCmdPrompt p1 = new RpgAiStrategy.IdleCmdPrompt();
+        p1.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.RAIGEKI, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p1.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.FISSURE, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 1));
+        p1.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.FISSURE, 0, 0, RpgAiDuelState.LOC_HAND, 2, 0, 0, 2));
+        p1.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.FISSURE, 0, 0, RpgAiDuelState.LOC_HAND, 3, 0, 0, 3));
+        p1.summonable.add(new RpgAiStrategy.CmdEntry(LA_JINN, 0, 0, RpgAiDuelState.LOC_HAND, 4, 0, 0, 0));
+        p1.canBattle = true;
+        p1.canEnd = true;
+        assertEquals("With 1 face-up Blue-Eyes and 1 Raigeki + 3 Fissures, MUST fire Fissure (index 1) to save Raigeki!",
+                (1 << 16) + 5, strategy.chooseIdleCmd(p1));
+
+        // Case 2: Opponent has ONLY 1 face-up DEF wall (Giant Soldier 1300/2000), AI has La Jinn (1800) + Raigeki + Fissure.
+        // Fissure must evaluate the wall's 2000 DEF threat (>= 1800) and fire Fissure instead of Raigeki!
+        state.mzone[1][2] = null;
+        placeMonster(state, 1, 2, GIANT_SOLDIER, RpgAiDuelState.POS_FACEUP_DEFENSE, 1300, 2000);
+        assertEquals("Against lone face-up 1300/2000 DEF wall, MUST fire Fissure (index 1) instead of Raigeki!",
+                (1 << 16) + 5, strategy.chooseIdleCmd(p1));
+
+        // Case 3: Opponent has 2 monsters (Giant Soldier + Mammoth) -> NOW Raigeki (index 0) is a genuine 2-for-1 wipe!
+        placeMonster(state, 1, 1, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        assertEquals("Against 2 opponent monsters, MUST fire Raigeki (index 0) for 2-for-1 wipe!",
+                (0 << 16) + 5, strategy.chooseIdleCmd(p1));
+
+        // Case 4: Backrow conservation — opponent has ONLY 1 face-up Spell (Swords of Revealing Light),
+        // AI holds Harpie's Feather Duster (index 0) + De-Spell (index 1) -> MUST fire De-Spell!
+        state.reset();
+        state.turnCount = 4;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        RpgAiDuelState.CardSlot swords = new RpgAiDuelState.CardSlot();
+        swords.code = RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT;
+        swords.controller = 1;
+        swords.location = RpgAiDuelState.LOC_SZONE;
+        swords.sequence = 2;
+        swords.position = RpgAiDuelState.POS_FACEUP_ATTACK;
+        swords.type = RpgAiDuelState.TYPE_SPELL;
+        state.szone[1][2] = swords;
+
+        RpgAiStrategy.IdleCmdPrompt p4 = new RpgAiStrategy.IdleCmdPrompt();
+        p4.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.HARPIES_FEATHER_DUSTER, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p4.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.DE_SPELL, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 1));
+        p4.canEnd = true;
+        assertEquals("Against lone face-up Spell, MUST fire De-Spell (index 1) to conserve Harpie's Feather Duster!",
+                (1 << 16) + 5, strategy.chooseIdleCmd(p4));
+    }
+
     private static void sendPacket(OutputStream out, int proto, byte[] body) throws Exception {
         int len = 1 + body.length;
         ByteBuffer b = ByteBuffer.allocate(2 + len).order(ByteOrder.LITTLE_ENDIAN);
