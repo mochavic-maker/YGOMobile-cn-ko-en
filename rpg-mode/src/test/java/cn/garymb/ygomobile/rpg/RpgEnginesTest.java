@@ -1313,4 +1313,70 @@ public class RpgEnginesTest {
         assertFalse(luaModern.contains("c78010363={}"));
         assertFalse(luaModern.contains("c95727991={}"));
     }
+
+    @Test
+    public void allAiAndCanonDecksHaveZeroUnsummonableNomiOrDeadDependencyFillers() {
+        List<AiOpponent> allOpps = AiDeckGenerator.getDemoOpponents();
+        for (String date : cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.getCalibratedMilestoneDates()) {
+            List<AiOpponent> unlocked = TimelineEngine.getAvailableOpponents(allOpps, date);
+            for (AiOpponent opp : unlocked) {
+                AiDeckGenerator.GeneratedAiDeck deck = AiDeckGenerator.generateDeck(
+                        catalog, opp, date, new Random(1999L + date.hashCode() + opp.id.hashCode()));
+                assertEquals(opp.id + " @ " + date + " must have 40 cards", 40, deck.main.size());
+                String style = deck.appliedProfile != null ? deck.appliedProfile.fillStyle : "";
+                java.util.Set<Integer> uniq = new java.util.HashSet<>(deck.main);
+                for (int id : uniq) {
+                    RpgCard c = catalog.findCard(id);
+                    assertNotNull(c);
+                    assertFalse(opp.id + " @ " + date + " must NOT contain Special-Summon-Only/Nomi monster " + c.nameCn,
+                            AiDeckGenerator.isSpecialSummonOnlyMonster(c));
+                    assertFalse(opp.id + " @ " + date + " must NOT contain Ritual Spell " + c.nameCn,
+                            AiDeckGenerator.isRitualSpell(c));
+                    if (id == 90219263) {
+                        assertTrue(opp.id + " @ " + date + " has Elegant Egotist without Harpie Lady",
+                                uniq.contains(76812113));
+                    }
+                    if (id == 63224564) {
+                        assertTrue(opp.id + " @ " + date + " has Cyber Shield without Harpie Lady",
+                                uniq.contains(76812113) || uniq.contains(12206212));
+                    }
+                    if (id == 40240595) {
+                        assertTrue(opp.id + " @ " + date + " has Cocoon of Evolution without Petit Moth",
+                                uniq.contains(58192742));
+                    }
+                    if ((id == 24094653 || id == 26902560 || id == 69015963 || id == 84133008)
+                            && !"FUSION_COMBO".equals(style)) {
+                        org.junit.Assert.fail(opp.id + " @ " + date + " leaked Fusion-only card " + c.nameCn + " into non-Fusion deck");
+                    }
+                    String eqReq = AiDeckGenerator.getEquipTargetRequirement(id);
+                    if (eqReq != null) {
+                        int targets = AiDeckGenerator.countEquipCompatibleMonsters(eqReq, deck.main, catalog);
+                        assertTrue(opp.id + " @ " + date + " has dead Equip " + c.nameCn
+                                        + " with only " + targets + " valid targets (" + eqReq + ")",
+                                targets >= 3);
+                    }
+                }
+            }
+        }
+
+        // Also enforce zero Nomi / Ritual / dead Equip bricks in Canon Duel filler padding
+        for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel duel : catalog.canonDuels) {
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide side
+                    : new cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide[]{duel.sideA, duel.sideB}) {
+                cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.BuiltCanonDeck built =
+                        cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.buildDeck(catalog, duel, side, null);
+                for (int id : new java.util.HashSet<>(built.main)) {
+                    if (built.canonCardIds.contains(id)) continue; // canon cards are preserved faithfully
+                    RpgCard c = catalog.findCardOrCanon(id);
+                    if (c == null) continue;
+                    assertFalse("Canon filler for " + duel.id + "/" + side.characterName
+                                    + " must NOT pad Nomi monster " + c.nameCn,
+                            AiDeckGenerator.isSpecialSummonOnlyMonster(c));
+                    assertFalse("Canon filler for " + duel.id + "/" + side.characterName
+                                    + " must NOT pad Ritual Spell " + c.nameCn,
+                            AiDeckGenerator.isRitualSpell(c));
+                }
+            }
+        }
+    }
 }

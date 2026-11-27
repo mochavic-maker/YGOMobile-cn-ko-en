@@ -107,60 +107,60 @@ public final class EraBountyCalibrator {
 
         // 1999-02-04: Vol.1 Official Rule (N=4, 16 gpp, 96 games)
         list.add(new EraSnapshot("1999-02-04", 140, 380, era(
-                "ai_vol1_yugi", 1829, 89.6,
-                "ai_burn_mage", 1666, 70.8,
-                "ai_street_novice", 1334, 29.2,
-                "ai_shop_regular", 1171, 10.4
+                "ai_vol1_yugi", 1799, 83.3,
+                "ai_burn_mage", 1781, 81.3,
+                "ai_street_novice", 1278, 25.0,
+                "ai_shop_regular", 1142, 10.4
         )));
 
         // 1999-03-01: Booster 1 + Weekend Challenger (N=5, 16 gpp, 160 games)
         list.add(new EraSnapshot("1999-03-01", 140, 400, era(
-                "ai_vol1_yugi", 1806, 89.1,
-                "ai_burn_mage", 1639, 70.3,
-                "ai_weekend_challenger", 1393, 35.9,
-                "ai_shop_regular", 1360, 31.3,
-                "ai_street_novice", 1302, 23.4
+                "ai_burn_mage", 1840, 87.5,
+                "ai_vol1_yugi", 1790, 82.8,
+                "ai_weekend_challenger", 1328, 31.3,
+                "ai_shop_regular", 1290, 26.6,
+                "ai_street_novice", 1252, 21.9
         )));
 
         // 1999-03-18: Starter Box + Kaiba No-Tribute Blue-Eyes Dark Age (N=6, 16 gpp, 240 games)
         list.add(new EraSnapshot("1999-03-18", 140, 500, era(
-                "ai_starter_kaiba", 1941, 93.8,
-                "ai_vol1_yugi", 1690, 72.5,
-                "ai_burn_mage", 1595, 62.5,
-                "ai_street_novice", 1302, 28.8,
-                "ai_weekend_challenger", 1247, 22.5,
-                "ai_shop_regular", 1224, 20.0
+                "ai_starter_kaiba", 1993, 95.0,
+                "ai_vol1_yugi", 1744, 76.3,
+                "ai_burn_mage", 1572, 60.0,
+                "ai_street_novice", 1250, 25.0,
+                "ai_weekend_challenger", 1238, 23.8,
+                "ai_shop_regular", 1203, 20.0
         )));
 
         // 1999-03-27: Vol.2 (N=6, 16 gpp, 240 games)
         list.add(new EraSnapshot("1999-03-27", 140, 500, era(
-                "ai_starter_kaiba", 2138, 97.5,
-                "ai_vol1_yugi", 1774, 73.8,
-                "ai_burn_mage", 1696, 67.5,
-                "ai_street_novice", 1182, 25.0,
-                "ai_weekend_challenger", 1182, 25.0,
-                "ai_shop_regular", 1027, 11.3
+                "ai_starter_kaiba", 2164, 97.5,
+                "ai_vol1_yugi", 1813, 75.0,
+                "ai_burn_mage", 1715, 67.5,
+                "ai_weekend_challenger", 1160, 25.0,
+                "ai_street_novice", 1146, 23.8,
+                "ai_shop_regular", 1002, 11.3
         )));
 
         // 1999-05-05: Expert Rule (Tribute Summon introduced) (N=6, 16 gpp, 240 games)
         list.add(new EraSnapshot("1999-05-05", 140, 500, era(
-                "ai_vol1_yugi", 1927, 90.0,
-                "ai_starter_kaiba", 1892, 87.5,
-                "ai_burn_mage", 1405, 43.8,
-                "ai_shop_regular", 1269, 27.5,
-                "ai_weekend_challenger", 1269, 27.5,
-                "ai_street_novice", 1238, 23.8
+                "ai_vol1_yugi", 1987, 91.3,
+                "ai_starter_kaiba", 1932, 87.5,
+                "ai_burn_mage", 1466, 51.3,
+                "ai_weekend_challenger", 1232, 26.3,
+                "ai_street_novice", 1197, 22.5,
+                "ai_shop_regular", 1185, 21.3
         )));
 
         // 1999-05-25: Booster 2 + Equip Beat debut (N=7, 12 gpp, 252 games)
         list.add(new EraSnapshot("1999-05-25", 140, 520, era(
-                "ai_equip_beat", 1992, 88.9,
-                "ai_starter_kaiba", 1955, 86.1,
-                "ai_vol1_yugi", 1751, 69.4,
-                "ai_street_novice", 1506, 48.6,
-                "ai_weekend_challenger", 1355, 36.1,
-                "ai_shop_regular", 1108, 18.1,
-                "ai_burn_mage", 833, 2.8
+                "ai_equip_beat", 1946, 88.9,
+                "ai_starter_kaiba", 1909, 86.1,
+                "ai_vol1_yugi", 1682, 66.7,
+                "ai_street_novice", 1488, 48.6,
+                "ai_weekend_challenger", 1353, 36.1,
+                "ai_shop_regular", 1090, 13.9,
+                "ai_burn_mage", 1032, 9.7
         )));
 
         // 1999-05-27: Vol.3 + Flip Control debut (N=8, 12 gpp, 336 games)
@@ -177,158 +177,158 @@ public final class EraBountyCalibrator {
 
         // 1999-07-08: DM2 + Crush Card Virus debut (pre-errata 3-turn draw check) (N=9, 12 gpp, 432 games)
         list.add(new EraSnapshot("1999-07-08", 140, 540, era(
-                "ai_flip_control", 2073, 95.8,
-                "ai_equip_beat", 1752, 74.0,
-                "ai_virus_control", 1664, 65.6,
-                "ai_starter_kaiba", 1664, 65.6,
-                "ai_vol1_yugi", 1622, 61.5,
-                "ai_burn_mage", 1344, 34.4,
-                "ai_street_novice", 1309, 31.3,
-                "ai_weekend_challenger", 1112, 15.6,
-                "ai_shop_regular", 959, 6.3
+                "ai_flip_control", 2116, 96.9,
+                "ai_equip_beat", 1779, 76.0,
+                "ai_starter_kaiba", 1676, 66.7,
+                "ai_virus_control", 1622, 61.5,
+                "ai_vol1_yugi", 1612, 60.4,
+                "ai_burn_mage", 1376, 37.5,
+                "ai_street_novice", 1294, 30.2,
+                "ai_weekend_challenger", 1103, 15.6,
+                "ai_shop_regular", 923, 5.2
         )));
 
         // 1999-07-22: Vol.4 Summoned Skull / MoF / Mask of Darkness (N=9, 12 gpp, 432 games)
         list.add(new EraSnapshot("1999-07-22", 140, 580, era(
-                "ai_flip_control", 2000, 91.7,
-                "ai_vol1_yugi", 1818, 78.1,
-                "ai_starter_kaiba", 1781, 75.0,
-                "ai_virus_control", 1711, 68.8,
-                "ai_equip_beat", 1528, 52.1,
-                "ai_burn_mage", 1271, 29.2,
-                "ai_street_novice", 1235, 26.0,
-                "ai_weekend_challenger", 1198, 22.9,
-                "ai_shop_regular", 957, 6.3
+                "ai_flip_control", 2049, 93.8,
+                "ai_virus_control", 1789, 75.0,
+                "ai_vol1_yugi", 1766, 72.9,
+                "ai_starter_kaiba", 1719, 68.8,
+                "ai_equip_beat", 1595, 57.3,
+                "ai_burn_mage", 1257, 28.1,
+                "ai_street_novice", 1257, 28.1,
+                "ai_weekend_challenger", 1178, 21.9,
+                "ai_shop_regular", 889, 4.2
         )));
 
         // 1999-08-26: Tokyo Dome 1st Banlist + Good Stuff + PP1 Exodia (N=11, 10 gpp, 550 games)
         list.add(new EraSnapshot("1999-08-26", 140, 660, era(
-                "ai_tokyo_dome", 1992, 92.0,
-                "ai_starter_kaiba", 1846, 82.0,
-                "ai_virus_control", 1699, 69.0,
-                "ai_exodia_master", 1689, 68.0,
-                "ai_flip_control", 1638, 63.0,
-                "ai_vol1_yugi", 1589, 58.0,
-                "ai_equip_beat", 1408, 40.0,
-                "ai_street_novice", 1255, 26.0,
-                "ai_burn_mage", 1243, 25.0,
-                "ai_weekend_challenger", 1206, 22.0,
-                "ai_shop_regular", 936, 5.0
+                "ai_tokyo_dome", 2028, 93.0,
+                "ai_starter_kaiba", 1849, 81.0,
+                "ai_exodia_master", 1704, 68.0,
+                "ai_flip_control", 1683, 66.0,
+                "ai_virus_control", 1673, 65.0,
+                "ai_vol1_yugi", 1622, 60.0,
+                "ai_equip_beat", 1477, 46.0,
+                "ai_burn_mage", 1218, 24.0,
+                "ai_street_novice", 1191, 22.0,
+                "ai_weekend_challenger", 1177, 21.0,
+                "ai_shop_regular", 878, 4.0
         )));
 
         // 1999-09-23: Vol.5 Change of Heart / Three Gods (N=11, 10 gpp, 550 games)
         list.add(new EraSnapshot("1999-09-23", 140, 660, era(
-                "ai_tokyo_dome", 1903, 88.0,
-                "ai_virus_control", 1762, 76.0,
-                "ai_starter_kaiba", 1731, 73.0,
+                "ai_tokyo_dome", 1885, 87.0,
+                "ai_starter_kaiba", 1730, 73.0,
                 "ai_flip_control", 1711, 71.0,
-                "ai_exodia_master", 1662, 66.0,
-                "ai_vol1_yugi", 1530, 52.0,
-                "ai_equip_beat", 1482, 47.0,
-                "ai_street_novice", 1287, 28.0,
-                "ai_burn_mage", 1218, 22.0,
-                "ai_weekend_challenger", 1143, 16.0,
-                "ai_shop_regular", 1072, 11.0
+                "ai_virus_control", 1711, 71.0,
+                "ai_exodia_master", 1664, 66.0,
+                "ai_vol1_yugi", 1600, 59.0,
+                "ai_equip_beat", 1460, 44.0,
+                "ai_street_novice", 1306, 29.0,
+                "ai_burn_mage", 1295, 28.0,
+                "ai_weekend_challenger", 1118, 14.0,
+                "ai_shop_regular", 1020, 8.0
         )));
 
         // 1999-10-17: Booster 5 Morphing Jar / Needle Worm Mill (N=12, 10 gpp, 660 games)
         list.add(new EraSnapshot("1999-10-17", 140, 680, era(
-                "ai_tokyo_dome", 1822, 81.8,
-                "ai_flip_control", 1760, 75.5,
-                "ai_starter_kaiba", 1738, 73.6,
-                "ai_mill_morphing", 1703, 70.0,
-                "ai_virus_control", 1703, 70.0,
-                "ai_vol1_yugi", 1581, 56.4,
-                "ai_exodia_master", 1504, 47.3,
-                "ai_equip_beat", 1491, 46.4,
-                "ai_street_novice", 1339, 30.9,
-                "ai_burn_mage", 1309, 28.2,
-                "ai_weekend_challenger", 1143, 15.5,
-                "ai_shop_regular", 906, 3.6
+                "ai_tokyo_dome", 1889, 85.5,
+                "ai_flip_control", 1813, 79.1,
+                "ai_mill_morphing", 1745, 72.7,
+                "ai_starter_kaiba", 1736, 71.8,
+                "ai_virus_control", 1727, 70.9,
+                "ai_exodia_master", 1592, 57.3,
+                "ai_vol1_yugi", 1574, 55.5,
+                "ai_street_novice", 1316, 30.9,
+                "ai_equip_beat", 1295, 29.1,
+                "ai_burn_mage", 1229, 23.6,
+                "ai_weekend_challenger", 1169, 19.1,
+                "ai_shop_regular", 914, 4.5
         )));
 
         // 1999-11-18: Vol.6 Pre-Errata Sangan/Witch + Solemn Judgment + Cannon Soldier (N=12, 10 gpp, 660 games)
         list.add(new EraSnapshot("1999-11-18", 140, 720, era(
-                "ai_tokyo_dome", 1881, 83.6,
-                "ai_exodia_master", 1830, 79.1,
-                "ai_virus_control", 1764, 72.7,
-                "ai_flip_control", 1755, 71.8,
-                "ai_starter_kaiba", 1737, 70.0,
-                "ai_mill_morphing", 1584, 53.6,
-                "ai_vol1_yugi", 1515, 46.4,
-                "ai_burn_mage", 1506, 45.5,
-                "ai_equip_beat", 1423, 37.3,
-                "ai_street_novice", 1272, 24.5,
-                "ai_weekend_challenger", 1126, 15.5,
-                "ai_shop_regular", 608, 0.0
+                "ai_exodia_master", 1889, 82.7,
+                "ai_tokyo_dome", 1889, 82.7,
+                "ai_starter_kaiba", 1755, 70.0,
+                "ai_virus_control", 1755, 70.0,
+                "ai_flip_control", 1720, 66.4,
+                "ai_mill_morphing", 1652, 59.1,
+                "ai_vol1_yugi", 1566, 50.0,
+                "ai_burn_mage", 1539, 47.3,
+                "ai_equip_beat", 1423, 36.4,
+                "ai_street_novice", 1253, 23.6,
+                "ai_weekend_challenger", 1013, 11.8,
+                "ai_shop_regular", 548, 0.0
         )));
 
         // 1999-12-01: Booster 6 Penguin Soldier + Fusion/Cyber-Stein (N=13, 10 gpp, 780 games)
         list.add(new EraSnapshot("1999-12-01", 140, 720, era(
-                "ai_flip_control", 1789, 80.0,
-                "ai_exodia_master", 1739, 75.0,
-                "ai_tokyo_dome", 1716, 72.5,
-                "ai_virus_control", 1693, 70.0,
-                "ai_starter_kaiba", 1678, 68.3,
-                "ai_fusion_stein", 1619, 61.7,
-                "ai_mill_morphing", 1569, 55.8,
-                "ai_burn_mage", 1505, 48.3,
-                "ai_vol1_yugi", 1438, 40.8,
-                "ai_equip_beat", 1357, 32.5,
+                "ai_flip_control", 1782, 79.2,
+                "ai_exodia_master", 1757, 76.7,
+                "ai_tokyo_dome", 1717, 72.5,
+                "ai_virus_control", 1687, 69.2,
+                "ai_starter_kaiba", 1650, 65.0,
+                "ai_fusion_stein", 1621, 61.7,
+                "ai_mill_morphing", 1593, 58.3,
+                "ai_burn_mage", 1499, 47.5,
+                "ai_vol1_yugi", 1492, 46.7,
+                "ai_equip_beat", 1305, 27.5,
                 "ai_street_novice", 1267, 24.2,
-                "ai_weekend_challenger", 1147, 15.0,
-                "ai_shop_regular", 983, 5.8
+                "ai_weekend_challenger", 1170, 16.7,
+                "ai_shop_regular", 959, 5.0
         )));
 
         // 1999-12-09: PS Promo Metalmorph Equip Beat upgrade (N=13, 10 gpp, 780 games)
         list.add(new EraSnapshot("1999-12-09", 140, 720, era(
-                "ai_tokyo_dome", 1706, 74.2,
-                "ai_exodia_master", 1684, 71.7,
-                "ai_starter_kaiba", 1677, 70.8,
-                "ai_virus_control", 1635, 65.8,
-                "ai_equip_beat", 1622, 64.2,
-                "ai_flip_control", 1596, 60.8,
-                "ai_fusion_stein", 1576, 58.3,
-                "ai_mill_morphing", 1531, 52.5,
-                "ai_vol1_yugi", 1424, 39.2,
-                "ai_burn_mage", 1424, 39.2,
-                "ai_street_novice", 1304, 25.8,
-                "ai_weekend_challenger", 1212, 17.5,
-                "ai_shop_regular", 1109, 10.0
+                "ai_tokyo_dome", 1695, 70.8,
+                "ai_exodia_master", 1695, 70.8,
+                "ai_flip_control", 1688, 70.0,
+                "ai_starter_kaiba", 1681, 69.2,
+                "ai_equip_beat", 1660, 66.7,
+                "ai_virus_control", 1639, 64.2,
+                "ai_fusion_stein", 1552, 53.3,
+                "ai_mill_morphing", 1539, 51.7,
+                "ai_burn_mage", 1519, 49.2,
+                "ai_vol1_yugi", 1463, 42.5,
+                "ai_street_novice", 1271, 23.3,
+                "ai_weekend_challenger", 1132, 13.3,
+                "ai_shop_regular", 967, 5.0
         )));
 
         // 1999-12-16: EX Starter Set (Yugi/Kaiba EX + Last Will + Anti-Exodia Morphing Jar) (N=13, 10 gpp, 780 games)
         list.add(new EraSnapshot("1999-12-16", 140, 740, era(
-                "ai_vol1_yugi", 1690, 72.5,
-                "ai_starter_kaiba", 1690, 72.5,
-                "ai_tokyo_dome", 1676, 70.8,
-                "ai_flip_control", 1655, 68.3,
-                "ai_virus_control", 1648, 67.5,
-                "ai_equip_beat", 1543, 54.2,
-                "ai_exodia_master", 1537, 53.3,
-                "ai_burn_mage", 1511, 50.0,
-                "ai_fusion_stein", 1466, 44.2,
-                "ai_mill_morphing", 1459, 43.3,
-                "ai_street_novice", 1314, 26.7,
-                "ai_weekend_challenger", 1215, 17.5,
-                "ai_shop_regular", 1097, 9.2
+                "ai_starter_kaiba", 1706, 73.3,
+                "ai_vol1_yugi", 1685, 70.8,
+                "ai_tokyo_dome", 1678, 70.0,
+                "ai_flip_control", 1678, 70.0,
+                "ai_virus_control", 1637, 65.0,
+                "ai_burn_mage", 1571, 56.7,
+                "ai_exodia_master", 1539, 52.5,
+                "ai_equip_beat", 1525, 50.8,
+                "ai_mill_morphing", 1506, 48.3,
+                "ai_fusion_stein", 1479, 45.0,
+                "ai_street_novice", 1313, 26.7,
+                "ai_weekend_challenger", 1172, 15.0,
+                "ai_shop_regular", 1011, 5.8
         )));
 
         // 1999-12-20: Sangan/Witch 1st Errata (field-to-GY only) (N=13, 10 gpp, 780 games)
         list.add(new EraSnapshot("1999-12-20", 140, 740, era(
-                "ai_flip_control", 1849, 86.7,
-                "ai_starter_kaiba", 1665, 68.3,
-                "ai_tokyo_dome", 1630, 64.2,
-                "ai_vol1_yugi", 1624, 63.3,
-                "ai_equip_beat", 1603, 60.8,
-                "ai_virus_control", 1584, 58.3,
-                "ai_burn_mage", 1570, 56.7,
-                "ai_exodia_master", 1524, 50.8,
-                "ai_mill_morphing", 1511, 49.2,
-                "ai_fusion_stein", 1471, 44.2,
-                "ai_street_novice", 1319, 27.5,
-                "ai_weekend_challenger", 1167, 15.0,
-                "ai_shop_regular", 982, 5.0
+                "ai_flip_control", 1824, 85.0,
+                "ai_tokyo_dome", 1642, 65.8,
+                "ai_vol1_yugi", 1642, 65.8,
+                "ai_starter_kaiba", 1642, 65.8,
+                "ai_equip_beat", 1583, 58.3,
+                "ai_virus_control", 1576, 57.5,
+                "ai_burn_mage", 1543, 53.3,
+                "ai_exodia_master", 1537, 52.5,
+                "ai_mill_morphing", 1537, 52.5,
+                "ai_fusion_stein", 1491, 46.7,
+                "ai_street_novice", 1303, 25.8,
+                "ai_weekend_challenger", 1170, 15.0,
+                "ai_shop_regular", 1009, 5.8
         )));
 
         return Collections.unmodifiableList(list);

@@ -77,7 +77,7 @@ public final class AiDeckGenerator {
                         Arrays.asList(
                                 new AiOpponent.EraDeckProfile("1999-02-04", "【Vol.1 初学者凡骨】", "1999.02 入门",
                                         "仅用 Vol.1 低罕贵凡骨与基础装备/回复卡。",
-                                        recipe(76184692, 3, 40374923, 3, 90357090, 3, 61854111, 2, 46009906, 2, 38199696, 2, 76103675, 2),
+                                        recipe(76184692, 3, 40374923, 3, 90357090, 3, 15401633, 3, 64511793, 2, 61854111, 2, 46009906, 2, 38199696, 2, 76103675, 2),
                                         null, "NOVICE_NR", 150, 70, 45),
                                 new AiOpponent.EraDeckProfile("1999-05-25", "【Booster 2 下级凡骨重击】", "1999.05 专家规则入门",
                                         "适应祭品规则，换装神圣人偶(1600)、吸血跳蚤(1500)、豌豆战士(1400)等高攻下级。",
@@ -485,8 +485,8 @@ public final class AiDeckGenerator {
                     || "MID_TIER_THEME".equals(style);
             List<RpgCard> fillPool = new ArrayList<>();
             for (RpgCard c : released) {
-                if (c.isExtraDeckCard() || "ritual".equalsIgnoreCase(c.frameType)) continue;
                 if (banlist.getMaxCopies(c.id) <= 0) continue;
+                if (isUnsafeFillerCard(c, main, extra, catalog, style)) continue;
                 if (isNonTopTier && isTopTierStaple(c.id)) continue;
                 if (("NOVICE_NR".equals(style) || "CASUAL_MID".equals(style))
                         && c.getRarityEnum().ordinal() >= Rarity.SR.ordinal()) continue;
@@ -495,7 +495,10 @@ public final class AiDeckGenerator {
             }
             if (fillPool.isEmpty()) {
                 for (RpgCard c : released) {
-                    if (!c.isExtraDeckCard() && banlist.getMaxCopies(c.id) > 0) fillPool.add(c);
+                    if (!isUnsafeFillerCard(c, main, extra, catalog, style)
+                            && banlist.getMaxCopies(c.id) > 0) {
+                        fillPool.add(c);
+                    }
                 }
             }
 
@@ -513,6 +516,7 @@ public final class AiDeckGenerator {
 
             int prefCopies = ("NOVICE_NR".equals(style) || "CASUAL_MID".equals(style)) ? 2 : 3;
             for (RpgCard c : fillPool) {
+                if (isUnsafeFillerCard(c, main, extra, catalog, style)) continue;
                 int already = countOf(main, c.id);
                 int legalMax = Math.min(prefCopies, banlist.getMaxCopies(c.id));
                 while (already < legalMax && main.size() < 40) {
@@ -523,6 +527,7 @@ public final class AiDeckGenerator {
             }
             if (main.size() < 40) {
                 for (RpgCard c : fillPool) {
+                    if (isUnsafeFillerCard(c, main, extra, catalog, style)) continue;
                     int already = countOf(main, c.id);
                     int legalMax = banlist.getMaxCopies(c.id);
                     while (already < legalMax && main.size() < 40) {
@@ -537,13 +542,175 @@ public final class AiDeckGenerator {
         return new GeneratedAiDeck(main, extra, banlist, profile);
     }
 
+    /**
+     * Returns true if {@code c} is a Special-Summon-Only ("Nomi") monster, Ritual monster,
+     * or Extra Deck monster that CANNOT be Normal Summoned/Set as generic deck filler
+     * (e.g., Perfectly Ultimate Great Moth, Great Moth, Harpie Lady Sisters, Gate Guardian,
+     * Metalzoa, Red-Eyes Black Metal Dragon, Larvae Moth, or future Series 2+ Nomi monsters).
+     */
+    public static boolean isSpecialSummonOnlyMonster(RpgCard c) {
+        if (c == null) return true;
+        if (c.isExtraDeckCard() || "ritual".equalsIgnoreCase(c.frameType)) return true;
+        int id = c.id;
+        if (id == 12206212    // 鹰身女郎三姐妹
+                || id == 14141448 // 大飞蛾
+                || id == 48579379 // 究极完全态大飞蛾
+                || id == 87756343 // 飞蛾幼虫
+                || id == 25833572 // 门之守护神
+                || id == 50705071 // 钢铁恶魔兽灵
+                || id == 64335804 // 真红眼黑钢龙
+        ) {
+            return true;
+        }
+        if (c.isMonster() && c.descCn != null) {
+            return c.descCn.contains("不能通常召唤")
+                    || c.descCn.contains("作祭品来特殊召唤")
+                    || c.descCn.contains("解放的场合可以特殊召唤")
+                    || c.descCn.contains("特殊召唤上场");
+        }
+        return false;
+    }
+
+    /** Returns true if {@code c} is a Ritual Spell (requires a specific Ritual Monster in deck). */
+    public static boolean isRitualSpell(RpgCard c) {
+        if (c == null || c.isMonster()) return false;
+        int id = c.id;
+        if (id == 31066283    // 骷髅骑手的复活
+                || id == 54539105 // 狮子的仪式
+                || id == 55761792 // 混沌的仪式
+                || id == 81756897 // 杰拉的仪式
+                || id == 81933259 // 恶魔镜的仪式
+        ) {
+            return true;
+        }
+        if (c.descCn != null) {
+            return c.descCn.contains("降临必需")
+                    || c.descCn.contains("降临必要")
+                    || c.descCn.contains("仪式召唤");
+        }
+        return false;
+    }
+
+    /**
+     * Shared rationality guard used by both {@link AiDeckGenerator} and {@link CanonDuelDeckBuilder}
+     * to guarantee that filler slots NEVER contain unplayable Nomi monsters, unmatched Ritual/Fusion
+     * cards, named-partner bricks, Exodia leaks, unsupported Crush Card Virus, or dead Equip Spells.
+     */
+    public static boolean isUnsafeFillerCard(RpgCard c,
+                                             List<Integer> curMain,
+                                             List<Integer> curExtra,
+                                             RpgCatalog catalog,
+                                             String style) {
+        if (c == null) return true;
+        if (isSpecialSummonOnlyMonster(c)) return true;
+        if (isRitualSpell(c)) return true;
+        int id = c.id;
+
+        // Never pad Exodia pieces into non-Exodia decks
+        if (isExodiaPieceId(id) && !"EXODIA_DRAW".equals(style)) return true;
+
+        // Never pad Fusion spells / fusion searchers / Cyber-Stein / fusion substitutes into non-Fusion decks
+        boolean allowFusionFiller = "FUSION_COMBO".equals(style) && curExtra != null && !curExtra.isEmpty();
+        if (!allowFusionFiller && (id == 24094653 // 融合
+                || id == 26902560 // 融合贤者
+                || id == 69015963 // 恶魔科学怪人
+                || id == 84133008 // 眼球怪
+                || id == 53493204 // 心眼之女神
+                || id == 30451366 // 幻想绵羊
+                || id == 50259460 // 破坏神 瓦沙克
+                || id == 99426834 // 沼地的魔兽王
+        )) {
+            return true;
+        }
+
+        // Named-partner & narrow combo dependencies
+        if (id == 90219263 && countOf(curMain, 76812113) == 0) return true; // 万华镜 needs 鹰身女郎
+        if (id == 63224564 && countOf(curMain, 76812113) == 0 && countOf(curMain, 12206212) == 0) return true; // 电子紧身衣
+        if (id == 43973174 && countOf(curMain, 17985575) == 0) return true; // 呼龙笛 needs 龙之支配者
+        if (id == 40240595 && countOf(curMain, 58192742) == 0) return true; // 进化之茧 needs 飞蛾宝宝
+        if (id == 55763552) return true; // 壶魔人 (only counters Dragon Capture Jar)
+        // Ultra-narrow 1-card anti-staple bricks (White Hole, Anti Raigeki, Call of the Grave/Darkness)
+        if (id == 42364257 || id == 43487744 || id == 16970158 || id == 78637313) return true;
+
+        // Never pad Crush Card Virus unless the deck already has >= 6 DARK <=1000 tributes
+        if (id == 57728570) {
+            int darkTributes = 0;
+            if (curMain != null && catalog != null) {
+                for (Integer mid : curMain) {
+                    RpgCard mc = mid != null ? catalog.findCardOrCanon(mid) : null;
+                    if (isDarkVirusTributeMonster(mc)) darkTributes++;
+                }
+            }
+            if (darkTributes < 6) return true;
+        }
+
+        // Never pad Race/Attribute-restricted Equip Spells unless the deck already has >= 4 valid targets!
+        String equipReq = getEquipTargetRequirement(id);
+        if (equipReq != null) {
+            int targets = countEquipCompatibleMonsters(equipReq, curMain, catalog);
+            if (targets < 4) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns {@code "RACE:<race>"} or {@code "ATTR:<attr>"} for Race/Attribute-restricted Equip Spells,
+     * or {@code null} for universal equips (e.g. Black Pendant) / non-equips.
+     */
+    public static String getEquipTargetRequirement(int cardId) {
+        switch (cardId) {
+            case 1435851:  return "RACE:Dragon";        // 龙之秘宝
+            case 1557499:  return "RACE:Fairy";         // 银之弓矢
+            case 4614116:  return "RACE:Fiend";         // 暗能量
+            case 15052462: return "RACE:Zombie";        // 紫水晶
+            case 25769732: return "RACE:Machine";       // 机械改造工厂
+            case 36607978: return "RACE:Beast-Warrior"; // 魔性之月
+            case 37820550: return "RACE:Thunder";       // 电击鞭
+            case 39774685: return "RACE:Plant";         // 魔菌
+            case 46009906: return "RACE:Beast";         // 猛兽之齿
+            case 51267887: return "RACE:Dinosaur";      // 体温上升
+            case 61854111: return "RACE:Warrior";       // 传说之剑
+            case 77007920: return "RACE:Insect";        // 镭射炮机甲铠
+            case 3492538:  return "RACE:Insect";        // 附火器的机甲铠
+            case 77027445: return "RACE:Aqua";          // 波塞冬之力
+            case 91595718: return "RACE:Spellcaster";   // 秘术之书
+            case 98252586: return "RACE:Winged Beast";  // 随风翼
+            case 2370081:  return "ATTR:WATER";         // 钢甲壳
+            case 18937875: return "ATTR:FIRE";          // 灼热之枪
+            case 32268901: return "ATTR:FIRE";          // 飞龙炎
+            case 37120512: return "ATTR:DARK";          // 暗之破神剑
+            case 39897277: return "ATTR:LIGHT";         // 精灵之光
+            case 82878489: return "ATTR:LIGHT";         // 光之城
+            case 55321970: return "ATTR:WIND";          // 突风之扇
+            case 98374133: return "ATTR:EARTH";         // 觉醒
+            default:       return null;
+        }
+    }
+
+    public static int countEquipCompatibleMonsters(String equipReq, List<Integer> main, RpgCatalog catalog) {
+        if (equipReq == null || main == null || catalog == null) return 0;
+        int colon = equipReq.indexOf(':');
+        if (colon <= 0) return 0;
+        String kind = equipReq.substring(0, colon);
+        String val = equipReq.substring(colon + 1);
+        int count = 0;
+        for (Integer mid : main) {
+            if (mid == null) continue;
+            RpgCard mc = catalog.findCardOrCanon(mid);
+            if (mc == null || !mc.isMonster()) continue;
+            if ("RACE".equals(kind) && val.equalsIgnoreCase(mc.race)) count++;
+            else if ("ATTR".equals(kind) && val.equalsIgnoreCase(mc.attribute)) count++;
+        }
+        return count;
+    }
+
     private static boolean isExodiaPieceId(int id) {
         return id == 33396948 || id == 70903634 || id == 7902349 || id == 8124921 || id == 44519536;
     }
 
     private static boolean isDarkVirusTributeMonster(RpgCard c) {
-        return c != null && c.isMonster() && !c.isExtraDeckCard()
-                && !"ritual".equalsIgnoreCase(c.frameType)
+        return c != null && c.isMonster() && !isSpecialSummonOnlyMonster(c)
                 && "DARK".equalsIgnoreCase(c.attribute)
                 && c.atk <= 1000
                 && !isExodiaPieceId(c.id);

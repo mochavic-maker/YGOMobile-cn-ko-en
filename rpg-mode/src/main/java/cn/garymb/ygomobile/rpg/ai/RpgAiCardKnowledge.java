@@ -314,7 +314,8 @@ public final class RpgAiCardKnowledge {
         // Insect=0x800, Thunder=0x1000, Dragon=0x2000, Beast=0x4000, BeastWarrior=0x8000, Dinosaur=0x10000
         switch (equipCode) {
             case SWORD_OF_DARK_DESTRUCTION:      return (attribute & 0x20) != 0;
-            case ELFS_LIGHT:                     return (attribute & 0x10) != 0;
+            case ELFS_LIGHT:
+            case 82878489:                       return (attribute & 0x10) != 0; // 光之城
             case INVIGORATION:                   return (attribute & 0x01) != 0;
             case STEEL_SHELL:                    return (attribute & 0x02) != 0;
             case BURNING_SPEAR:
@@ -344,8 +345,10 @@ public final class RpgAiCardKnowledge {
     public static int getEquipAtkBonus(int equipCode) {
         switch (equipCode) {
             case SALAMANDRA:
+            case 82878489:
             case INSECT_ARMOR_WITH_LASER_CANNON: return 700;
-            case BLACK_PENDANT: return 500;
+            case BLACK_PENDANT:
+            case 63224564: return 500;
             case SWORD_OF_DARK_DESTRUCTION:
             case ELFS_LIGHT:
             case INVIGORATION:

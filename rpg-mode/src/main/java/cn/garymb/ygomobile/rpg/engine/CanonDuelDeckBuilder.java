@@ -145,11 +145,13 @@ public final class CanonDuelDeckBuilder {
         }
 
         // Separate available Main Deck candidates into spells/traps vs monsters
+        final String style = side.fillStyle != null ? side.fillStyle : "GOOD_STUFF";
         List<RpgCard> spellTraps = new ArrayList<>();
         List<RpgCard> monsters = new ArrayList<>();
         for (RpgCard c : pool) {
             if (c == null || c.isExtraDeckCard()) continue;
             if (RpgAiCardKnowledge.EXODIA_PIECES.contains(c.id)) continue; // never pad random Exodia pieces
+            if (AiDeckGenerator.isUnsafeFillerCard(c, main, extra, catalog, style)) continue;
             int maxLegal = banlist.getMaxCopies(c.id);
             if (maxLegal <= 0) continue;
             if (c.isMonster()) {
@@ -160,7 +162,6 @@ public final class CanonDuelDeckBuilder {
         }
 
         // Sort candidates deterministically by theme affinity + era strength
-        final String style = side.fillStyle != null ? side.fillStyle : "GOOD_STUFF";
         final boolean hasExtraFusions = !extra.isEmpty();
         Collections.sort(spellTraps, (a, b) -> {
             int sa = scoreSpellTrap(a, style, prefRaces, prefAttrs, hasExtraFusions);

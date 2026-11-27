@@ -1,31 +1,34 @@
-# `:rpg-mode` — YGOMobile OCG RPG 编年史模块
+# `:rpg-mode` — YGOMobile OCG 时间轴 RPG 编年史模块
 
-本模块以**最小侵入、零上游冲突**的方式为 `YGOMobile-cn-ko-en` 扩展 OCG 编年史 RPG 模式：
+本模块以**最小侵入、零上游冲突**的方式为 `YGOMobile-cn-ko-en` 扩展日版 OCG 编年史 RPG 模式（独立共存包名 `cn.garymb.ygomobile.CN.rpg`）。
 
-## 核心特性（当前 Demo：Vol.1 & Vol.2）
-1. **OCG 真实卡包数据**：内置 OCG 最早发售的两弹基本补充包——`Vol.1`（`1999-02-04`，40 种）与 `Vol.2`（`1999-03-27`，40 种），共 80 张卡片的 8 位卡密（与 `cards.cdb` 同源）、中文卡名、稀罕度与攻守效果。
-2. **时间轴维度**：玩家可自由移动当前时间点：
-   - 仅可购买、合成、使用发售日 `<= 当前时间点` 的卡包与卡片；
-   - 自动匹配 `生效日期 <= 当前时间点` 的最新 OCG 历史禁限卡表（如 `1999-02-04` 无禁限 → `1999-08-26` 东京巨蛋首届限制表：黑洞/落穴限 1 → `2000-04-01` 正式制限改订：黑洞限 1、死者苏生准限 2、落穴解除）；
-   - AI 对手同样严格遵守当前时间轴的已发售卡池与最新 OCG 禁限表。
-3. **开包与保底**：按 OCG 第一期 5 张/包规则（4 张 N + 第 5 张按稀罕度权重抽取，每 5 包保底 R 以上）。
-4. **分解与合成**：支持单卡分解、一键分解多余卡（>3 张）换取尘埃，消耗尘埃合成当前时间轴已发售卡片。
-5. **严格组卡与纯 Java 专属 AI 对战**：RPG 卡组同时校验「已拥有数量」「已发售时间」「当前禁限表」，导出标准 `.ydk` 并由内置纯 Java OCG 专属 AI（`RpgAiDuelClient` + `RpgAiStrategy`，按卡组流派与单卡逻辑独立决策，不依赖 WindBot `Deck=Lucky`）直连本机服务器对战、通过 `EngineCallbackDelegate.onDuelResult` 自动结算代币奖励。
+## 核心特性（当前已完成：1999 第 1 期全编年史 `1999-02-04 ~ 1999-12-31`）
+1. **完整 1999 OCG 实卡池与商品体系**：
+   - 收录 1999 年全部日版 OCG 常规卡包、贩卖机 Booster、Starter Box（通常版）、EX、Premium Pack / Limited Edition 与游戏/杂志/东京巨蛋大会特典活动，共 **591 张**卡片的 8 位卡密（与 `cards.cdb` 同源）、中日英卡名、日元原价 1:1 映射代币价与真实稀罕度。
+2. **时间轴驱动的规则、禁限表与历史原版效果（Pre-Errata Lua）**：
+   - 玩家可自由推进/回退时间点，自动联动已发售卡池、OCG 规则演变（`1999-02-04` 公式规则免祭品/先攻不抽/无6卡手牌上限 → `1999-05-05` 专家规则祭品召唤）与历史 OCG 禁限表（`1999-08-26` 东京巨蛋首份限制表等）。
+   - 通过 [`RpgHistoricalLuaBuilder`](src/main/java/cn/garymb/ygomobile/rpg/engine/RpgHistoricalLuaBuilder.java) 在每局 RPG 加载卡组前注入独立 `lua_State` 覆盖，**精确还原 1999 原版卡效**（如 1999 原版 3 回合抽卡破坏《死之卡组破坏病毒》、1999-12-20 前任意区域送墓触发《三眼怪》《黑森林的魔女》、无一回合一次《弹射龟》），对普通 YGOMobile 对战零污染。
+3. **13 位多时代进化 AI 对手 + 14 场原著「🎬 对决还原」**：
+   - 涵盖 3 位循序渐进的休闲/中坚对手 + 10 位源自 `yugioh-history.com` 第 1 期环境史的主流流派对手（暗游戏、海马、火焰直伤、装备 Beat、反转控制、死毒暗控、东京巨蛋 Good Stuff、艾克佐迪亚、变形壶卡组破坏、融合科学怪人），随时间轴自动切换卡组形态，并全部配备游戏王画风头像。
+   - 「🎬 对决还原」收录 14 场 1999 年前后的原作漫画与东映动画经典对决，按原著日期升序展示、按核心卡 OCG 首发日定档解锁、100% 保留原著用卡并支持 4 模式挑战与通关标记。
+4. **纯 Java 专属战术 AI、全环境瑞士轮天梯与实测 Elo 奖金校准**：
+   - 彻底脱离 WindBot 随机脚本与近似模拟器，由真实 `ocgcore` + [`RpgAiStrategy`](src/main/java/cn/garymb/ygomobile/rpg/ai/RpgAiStrategy.java) 驱动人机对战、AI 托管快战、锦标赛、3D 观战及全环境天梯赛。
+   - 内置 [`RoundRobinLeagueEngine`](src/main/java/cn/garymb/ygomobile/rpg/engine/RoundRobinLeagueEngine.java)（$O(N \log N)$ 6 局均衡先后手瑞士轮 + 全局贝叶斯 Bradley-Terry Elo / `±SE` / 对手均分 SOS，支持随时追加轮次与全量循环赛）。
+   - [`EraBountyCalibrator`](src/main/java/cn/garymb/ygomobile/rpg/engine/EraBountyCalibrator.java) 基于真实 `ocgcore` 全年代基准实测 Elo 校准每个时期的 AI 对战奖金，保证强弱与收益严格单调一致。
+5. **开包、分解合成、严格组卡与多套卡组管理**：
+   - 按 OCG 第 1 期规则开包与保底，支持一键分解多余卡、按时间轴合法范围合成单卡、多套卡组保存/导入导出与严格拥有数/发售日/禁限表校验。
 
-## 对上游 `YGOMobile-cn-ko-en` 的极薄接入点（仅 4 处）
+## 对上游 `YGOMobile-cn-ko-en` 的极薄接入点
 - `settings.gradle`：加入 `':rpg-mode'`
 - `mobile/build.gradle`：末尾追加 `apply from: '../rpg-custom.gradle'`
 - `MainMenuDialog.java`：1 行 `RpgIntegration.attachMainMenuButton(activity, root);`
 - `EngineCallbackDelegate.java`：1 行 `RpgIntegration.onDuelResult(activity, winner, selfWon);`
+- `ServerDuelBase.java` / `ServerDuel.java`：在 `loadDeckToEngine` 前 1 行 `RpgIntegration.applyActiveRpgRulesToDuel(pduel);`
 
-## 如何同步上游最新改动
+## 扩展新年代（2000 第 2 期及以后）强制规范
+请务必先阅读 [`docs/OCG_TIMELINE_DATA_SOURCES.md`](docs/OCG_TIMELINE_DATA_SOURCES.md)（含权威 OCG 数据源、新流派 AI & 头像生成、原著对决还原 Backlog [`docs/CANON_DUELS_FUTURE_BACKLOG.md`](docs/CANON_DUELS_FUTURE_BACKLOG.md)、Pre-Errata Lua 还原、全 AI 零废牌守卫与实测 Elo 奖金校准全流程）。
+
 ```bash
-git fetch upstream master
-git merge upstream/master
-./gradlew :rpg-mode:testDebugUnitTest --configure-on-demand
+# 运行全部 RPG 单元测试与自动化守卫校验
+./gradlew :rpg-mode:testDebugUnitTest
 ```
-或者直接在 GitHub Actions 手动触发 `.github/workflows/sync-upstream.yml`。
-
-## 扩展更多 OCG 卡包、禁限表与 AI 对手
-- 卡包/特典/禁限表/规则：向 `rpg-mode/src/main/assets/rpg/ocg_demo_catalog.json` 追加新条目，勘误追加至 `ocg_errata_history.json`。
-- **参考环境史新建流派 AI 对手、生成游戏王风格头像并优化专属 AI（强制规范）**：延长时间线时，必须参考对应时期的游戏王环境史（`yugioh-history.com` 等）：① 为新出现的主流/特色流派创建对应 AI 对手及多阶段进化线（`AiDeckGenerator.java`）；② 为每位新 AI 对手生成 1:1 游戏王风格头像保存至 `rpg-mode/src/main/assets/rpg/avatars/<opponent_id>.webp`（流派吻合时可用原版角色，由单测守卫强制校验）；③ 优化该时代博弈逻辑并补齐专属纯 Java AI 系统（`RpgAiCardKnowledge` / `RpgAiDuelState` / `RpgAiStrategy` 含 `SUPPORTED_STYLES` 与 `inferStyleFromDeck` / `RpgAiStrategyTest`），详见 [`docs/OCG_TIMELINE_DATA_SOURCES.md`](docs/OCG_TIMELINE_DATA_SOURCES.md) 第 7~8 节。
