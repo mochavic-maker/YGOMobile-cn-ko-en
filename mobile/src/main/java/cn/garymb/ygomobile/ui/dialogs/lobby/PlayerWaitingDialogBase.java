@@ -118,6 +118,17 @@ abstract class PlayerWaitingDialogBase {
     protected boolean isSelfReady = false;
     protected boolean isHost = false;
     protected boolean isTagMode = false;
+    /** RPG 模式手打专用：连接并成为房主后自动上传卡组准备，双方均就绪且脚本加载完后自动点击开始 */
+    protected boolean autoReadyAndStart = false;
+    protected boolean autoReadyTriggered = false;
+    protected boolean autoStartTriggered = false;
+
+    public void setAutoReadyAndStart(boolean enabled) {
+        this.autoReadyAndStart = enabled;
+        if (enabled && isShowing()) {
+            updateStartButtonState();
+        }
+    }
     /** 当前房间禁卡表哈希（STOC_JOIN_GAME 的 lflist，0=N/A 无禁限）：供 /ai 人机列表过滤 */
     protected int roomLflist = 0;
     protected int watchCount = 0;
@@ -735,6 +746,17 @@ abstract class PlayerWaitingDialogBase {
         // “/ai”按钮与开始按钮同源刷新：房主变更、TAG 模式回显、solo 开关、席位出入
         // （经 setPlayerReady/refreshPlayerDisplay）都会走到这里
         updateAiSummonButtonState();
+        // RPG 手打模式：连接成为房主后自动点准备（上传卡组并发送 CTOS_HS_READY）
+        if (autoReadyAndStart && !autoReadyTriggered && isHost && !soloMode && selfPos == 0
+                && !isSelfReady && btnPwReady != null && btnPwReady.isEnabled()
+                && !TextUtils.isEmpty(currentDeckPath) && isShowing()) {
+            autoReadyTriggered = true;
+            btnPwReady.post(() -> {
+                if (isShowing() && !isSelfReady && btnPwReady.isEnabled()) {
+                    btnPwReady.performClick();
+                }
+            });
+        }
         if (btnPwStartGame == null) return;
         if (!isHost) {
             btnPwStartGame.setEnabled(false);
@@ -770,6 +792,15 @@ abstract class PlayerWaitingDialogBase {
         }
         btnPwStartGame.setEnabled(true);
         btnPwStartGame.setTextColor(Color.WHITE);
+        // RPG 手打模式：双方均已准备且脚本就绪后自动点击开始，无需手动再点「准备」「开始」
+        if (autoReadyAndStart && !autoStartTriggered && isShowing()) {
+            autoStartTriggered = true;
+            btnPwStartGame.post(() -> {
+                if (isShowing() && btnPwStartGame.isEnabled()) {
+                    btnPwStartGame.performClick();
+                }
+            });
+        }
     }
     public interface CardNameResolver {
         String resolve(int cardCode);
@@ -815,8 +846,8 @@ abstract class PlayerWaitingDialogBase {
         if (layoutScriptLoading != null) {
             layoutScriptLoading.setVisibility(s.ready ? View.GONE : View.VISIBLE);
         }
-        if (wasReady != s.ready) {
-            // 就绪态翻转：重评开始按钮（未就绪→置灰；就绪→按席位/准备态恢复）
+        if (wasReady != s.ready || (autoReadyAndStart && (!autoReadyTriggered || !autoStartTriggered))) {
+            // 就绪态翻转或自动开局待触发：重评开始按钮
             updateStartButtonState();
         }
         if (!s.ready) {

@@ -741,7 +741,9 @@ public final class RpgIntegration {
 
             @Override
             public void showWaitingDialog() {
-                PlayerWaitingDialog.showPlayerWaitingForBotHost(act);
+                boolean autoStart = sActiveRpgLiveDuelSession
+                        && (sLastRpgDuelMeta == null || !"RPG_SPECTATE".equals(sLastRpgDuelMeta.source));
+                PlayerWaitingDialog.showPlayerWaitingForBotHost(act, autoStart);
             }
 
             @Override
@@ -973,7 +975,7 @@ public final class RpgIntegration {
                                 engine.gameTimeLimit = 0;
                                 engine.hasJoinRoomInfoCache = true;
 
-                                PlayerWaitingDialog.showPlayerWaitingForBotHost(act);
+                                PlayerWaitingDialog.showPlayerWaitingForBotHost(act, true);
 
                                 cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
                                 if (catalog == null) {
@@ -1000,8 +1002,11 @@ public final class RpgIntegration {
                                 sActiveDuelPlayerAvatarId = playerAvatarId;
                                 sActiveDuelOpponentAvatarId = opponentAvatarId;
                                 PlayerWaitingDialog cur = act.getPlayerWaitingDialog();
-                                if (cur != null && cur.isShowing() && playerName != null && !playerName.isEmpty()) {
-                                    cur.setPlayerName(0, playerName);
+                                if (cur != null && cur.isShowing()) {
+                                    if (playerName != null && !playerName.isEmpty()) {
+                                        cur.setPlayerName(0, playerName);
+                                    }
+                                    cur.setAutoReadyAndStart(true);
                                 }
                             });
                 });

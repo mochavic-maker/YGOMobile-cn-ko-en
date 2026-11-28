@@ -214,6 +214,10 @@ public class PlayerWaitingDialog extends PlayerWaitingDialogMid {
     }
 
     public static void showPlayerWaitingForBotHost(YGOProActivity activity) {
+        showPlayerWaitingForBotHost(activity, false);
+    }
+
+    public static void showPlayerWaitingForBotHost(YGOProActivity activity, boolean autoReadyAndStart) {
         activity.hideGameUI();
         final String playerName = Constants.PlayerName;
         // 人机 TAG 为 4 席位（房主 + 队友 AI + 对手 AI×2），建主时已把 duelMode 预写入 engine.gameMode，
@@ -224,12 +228,13 @@ public class PlayerWaitingDialog extends PlayerWaitingDialogMid {
         anchor.post(() -> {
             if (activity.isFinishing() || activity.isDestroyed()) return;
             PlayerWaitingDialog dialog = new PlayerWaitingDialog(activity, activity.getPlayerWaitingListener());
+            dialog.setAutoReadyAndStart(autoReadyAndStart);
             activity.setPlayerWaitingDialog(dialog);
             dialog.setOnDismissListener(() -> activity.getMainMenuDialog().restoreMainMenu());
             dialog.show(anchor);
             dialog.setPlayerName(0, playerName);
             dialog.setTagPlayersVisible(tagMode);
-		});
+        });
     }
 
     /**
