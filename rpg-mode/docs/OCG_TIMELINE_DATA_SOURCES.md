@@ -120,13 +120,14 @@
    - 为新流派/新卡与该时代环境博弈编写专属决策逻辑：
      - 先后攻偏好（`chooseGoFirst`，结合当前规则的先攻抽卡设定）；
      - 主阶段出牌先后序、核心 Combo 展开链、资源克制与防自爆逻辑（例如清场/削手/抽滤先于通召、不乱交地割/黑洞/雷击/装备卡、先用下级试探对手盖牌、虚张声势盖魔、绝不先招主力再黑洞/大岚炸自己）；
+     - **格子留空纪律（后场优先防卡死）**：魔法与陷阱区域尽量保留最后 1 格（4/5 占满时，除紧急高价值陷阱如《圣防》《神宣》《角笛》《死毒》等外禁止继续盖放低优先魔陷/虚张声势卡，避免卡死手牌通常/速攻魔法发动空间）；怪兽区已占 4 格且手牌有更高价值的反转/功能怪时，避免用冗余通常怪占满第 5 格；
      - 选目标/弃牌/检索/苏生/解放/表示形式优先级（`chooseSelectCard` / `chooseSelectTribute` / `choosePosition`）；
      - 陷阱与速攻连锁时机（`chooseChain` / `chooseEffectYn`，如防同效果陷阱重复叠连锁、按目标威胁与己方解场能力判断落穴/神宣/角笛交留、战斗陷阱不在主阶乱开）；
      - 校验 `RpgAiDuelState` 的动态时代卡池基准（`computeEraBenchmarks`）与新规则/新召唤/新胜利机制评估（如抽干直接判负、仪式/同调/超量/灵摆/连接、手控削手等）。
-5. **同步扩展玩家自选卡组流派自动识别（`RpgAiStrategy.inferStyleFromDeck`）**
-   - 确保玩家自己在 RPG 组卡中构筑同类新流派卡组时，AI 托管快战、AI 对决与 3D 观战也能自动识别并调用这套新流派专属 AI。
+5. **同步扩展玩家自选卡组流派自动识别（`RpgAiStrategy.inferStyleFromDeck`）与手动策略覆盖**
+   - 确保玩家自己在 RPG 组卡中构筑同类新流派卡组时，AI 托管快战、AI 对决与 3D 观战能准确自动识别流派（例如避免 Good Stuff 卡组因混入少量泛用反转怪而被误判为纯 `FLIP_CONTROL`），并同步支持玩家在组卡页为每套卡组**手动指定 AI 策略**（`SavedDeck.aiStyleOverride` / `activeDeckAiStyleOverride`，留空则自动识别）。
 6. **补充战术单元测试（`RpgAiStrategyTest.java`）**
-   - 为该时期环境史的关键博弈场景、新流派核心展开 Combo、防低级失误场景及 `inferStyleFromDeck` 自动分类补充单元测试。
+   - 为该时期环境史的关键博弈场景、新流派核心展开 Combo、防低级失误场景、格子留空纪律及 `inferStyleFromDeck` 自动分类补充单元测试。
 7. **执行自动化守卫校验**
    - 运行 `./gradlew :rpg-mode:testDebugUnitTest`，确认全部卡组构筑校验、战术单测、`allAiOpponentDeckStylesHaveDedicatedStrategySupport` 以及 `everyAiOpponentHasBundledAvatarAsset` 守卫测试全部通过。
 
@@ -198,11 +199,12 @@
      - 非原著角色的纯环境流派 AI（如死毒暗控、装备Beat、反转控制、融合科学怪人、卡组破坏等）在自动补位时同样由 `CanonCharacterCardRegistry.getCoreSynergyBonus` 优先挑选与卡组核心主题高度联动的卡牌。
    - **自动化守卫**：`RpgEnginesTest#canonCharacterFidelityAndCoreSynergyGuard` 与 `RpgEnginesTest#canonDuelPaddingMatchesEventDateCardPoolStrength` 覆盖全部里程碑日期的角色 AI 与全部原著对决，自动拦截任何串场王牌、缺失的核心联动件以及落后于事件日期卡池强度的非原著通常怪补位。
 4. **【强制】全环境 AI 天梯（瑞士轮 + 全局最小权完美匹配 + Bradley-Terry Elo `±SE` + Fisher-Jenks 动态分档）与实测奖金校准（`EraBountyCalibrator`）**
-   - `RoundRobinLeagueEngine` 提供 $O(N \log N)$ **瑞士轮天梯**（默认每组 **2 局 = 1 先 1 后**，消除先后手偏差且以同等总耗时提供 **3 倍轮数与对手覆盖面**，例如 10~14 人默认 18 轮可实现 100% 全员交手 + 相近名次决胜加赛；采用**全局最小权完美匹配** `pairRoundGloballyOptimal` 同步压低重赛与实际 `|Elo_i - Elo_j|` 差，消除贪心尾效应；同日期固定 AI 卡组种子；全局贝叶斯 Bradley-Terry MLE 解算 Elo、对手均分 SOS 与 Fisher 信息量标准误差 `±SE`；支持随时增量追加 +4 轮）以及全量循环赛。
+   - `RoundRobinLeagueEngine` 提供 $O(N \log N)$ **瑞士轮天梯**（默认每组 **2 局 = 1 先 1 后**，消除先后手偏差且以同等总耗时提供 **3 倍轮数与对手覆盖面**，例如 10~14 人默认 18 轮可实现 100% 全员交手 + 相近名次决胜加赛；采用**全局最小权完美匹配** `pairRoundGloballyOptimal` 同步压低重赛与实际 `|Elo_i - Elo_j|` 差，消除贪心尾效应；同日期固定 AI 卡组种子；全局贝叶斯 Bradley-Terry MLE 解算 Elo、对手均分 SOS 与 Fisher 信息量标准误差 `±SE`；支持随时增量追加 +4 轮）以及全量循环赛，并支持玩家勾选**当前卡组与多套已保存卡组**共同参与当期天梯排位。
    - **动态 S/A/B/C/D 分档（Fisher-Jenks 一维自然断点 DP）**：天梯与 AI 对战均通过 `RoundRobinLeagueEngine.computeDynamicTiers` 对当期 Elo 分布求一维最优聚类切分（最小化档内方差之和 SSE），而非写死固定 Elo 阈值或仅取最大相邻差（避免底部长尾把前排全部挤进 S 档）；同时强制**同分锁档**、极端长尾（`<950`）归 D、小样本相近前排（差值 `<60` Elo）合并保档。
    - **实测驱动奖金校准与经济区间约束**：AI 对战奖金不再靠主观估算——每当扩展新年代、增补或修改 AI 卡组、或大幅迭代 AI 策略后，用同源 `ocgcore` 引擎跑一次各里程碑节点的高精度循环赛，将实测 Elo 写入 `EraBountyCalibrator`，**单场胜利奖金严格控制在 `120 ~ 300` 代币之间**（前期如 `120~220`，随年代平滑递增至年末 `120~300`，以 5 代币为步长，平局约 `43%`、败北约 `25%`），确保同一时间点内**AI 实测越强奖金越高**，且 `RpgEnginesTest` 强制校验全里程碑 Elo-奖金严格单调与 `[120, 300]` 区间边界。
-5. **产品体验与打包约束**
-   - 组卡页不提供劣质「智能一键组卡」，坚持玩家自主构筑 + 卡组管理/导入导出 + 严格时间轴/拥有数/禁限表校验。
+5. **产品体验、日志调试与打包约束**
+   - 组卡页不提供劣质「智能一键组卡」，坚持玩家自主构筑 + 严格时间轴/拥有数/禁限表校验；保存卡组支持新建命名或直接选取已有保存卡组覆盖（自动记录上次读取的卡组并默认选中），且支持为每套卡组单独覆盖 AI 策略（自动/手动指定）。
+   - **全对局回放与一键复制日志 + 横向结算栏**：战后结算弹窗采用紧凑横向按钮栏（`回放` / `日志` / `完成`），**无论 AI 对决还是玩家手打实战**均自动保存回放与完整元数据，在结算页与「🎬 对战回放」列表均支持一键复制双方 AI 策略（或手动）、完整主/额外卡组及逐回合操作日志，便于持续打磨 AI 策略。
    - RPG 独立共存包名固定为 `cn.garymb.ygomobile.CN.rpg`，并持续沿用同一 Release 签名（SHA-256 `81:CC:69:4D:93:A2:47:98:A5:89:BF:D1:40:F0:9F:0C:EB:18:2E:47:FD:4A:93:9B:BE:32:86:59:14:29:C9:7C`），保证每次更新可直接覆盖安装且存档无损。
 
 ---
