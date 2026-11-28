@@ -50,6 +50,7 @@ class DuelEndReplayHandler {
      *  对战方（含人机局）的 MSG 尾段是有限量，按统一 20s 截止兜底。两端都必须在 MSG 队列与动画排空后才弹保存录像，
      *  对齐 gframe：C++ 的 STOC_REPLAY 处理挂在 EndDuel 后、而 EndDuel 只在消息队列耗尽（dInfo.curMsg == -1）时才执行 */
     boolean duelEndedAsSpectator = false;
+    String lastSavedReplayPath = null;
     final Runnable duelEndReplayProcessor = new Runnable() {
         @Override
         public void run() {
@@ -67,16 +68,26 @@ class DuelEndReplayHandler {
         return duelEndHandling;
     }
 
-    /** 决斗结束提示框：仅显示「确定」按钮（TYPE_MESSAGE），弹窗时机在通讯录像全部确认保存或取消之后（见 processPendingReplays），点确定后隐藏决斗 UI 并重新显示 LanModeDialog */
+    /** 决斗结束提示框：录像已落盘时同时提供「复制日志」与「确定」，点确定后隐藏决斗 UI 并返回 */
     private void showDuelEndDialog() {
         if (activity.isFinishing() || activity.isDestroyed()) return;
+        final String replayPath = lastSavedReplayPath;
         YesOrNoDialog dialog = new YesOrNoDialog(activity);
         dialog.setMessage(activity.mStringManager.getSystemString(1500, "決斗结束。"))
-                .setType(YesOrNoDialog.TYPE_MESSAGE)
                 .setPositiveButtonText(activity.mStringManager.getSystemString(1211, "确定"))
                 .setPositiveButton(v -> activity.returnToLanMain(null))
                 .setCenterInView(activity.layoutGameRight)
                 .setCancelable(false);
+        if (replayPath != null && !replayPath.isEmpty()) {
+            dialog.setType(YesOrNoDialog.TYPE_YES_NO)
+                    .setNegativeButtonText("复制日志")
+                    .setNegativeButton(v -> {
+                        cn.garymb.ygomobile.rpg.RpgIntegration.copyReplayLogToClipboard(activity, replayPath);
+                        activity.returnToLanMain(null);
+                    });
+        } else {
+            dialog.setType(YesOrNoDialog.TYPE_MESSAGE);
+        }
         dialog.show();
     }
 
@@ -207,6 +218,7 @@ class DuelEndReplayHandler {
                 fos.close();
             }
             Log.i(TAG, "Replay saved: " + file.getAbsolutePath());
+            lastSavedReplayPath = file.getAbsolutePath();
             cn.garymb.ygomobile.rpg.RpgIntegration.onReplayFileSaved(file);
             if (autoSave) {
                 // 对齐 gframe 自動保存提示（系统字符串 1367「リプレイ自動保存 %ls.yrp」）：将 %ls 占位替换为实际保存的录像文件名
@@ -236,6 +248,7 @@ class DuelEndReplayHandler {
                 fos.flush();
             }
             Log.i(TAG, "Last replay saved: " + file.getAbsolutePath());
+            lastSavedReplayPath = file.getAbsolutePath();
             cn.garymb.ygomobile.rpg.RpgIntegration.onReplayFileSaved(file);
         } catch (IOException e) {
             Log.e(TAG, "Failed to save last replay", e);
@@ -256,6 +269,7 @@ class DuelEndReplayHandler {
     void resetDuelEndState() {
         duelEndHandling = false;
         duelEndedAsSpectator = false;
+        lastSavedReplayPath = null;
         animSettleDeadlineMs = 0L;
         animSettleWaitLogged = false;
         pendingReplays.clear();

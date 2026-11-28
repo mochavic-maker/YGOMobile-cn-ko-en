@@ -68,6 +68,7 @@ public final class RpgSessionManager {
         sActiveCanonDuelMode = null;
         sLastSettlement = null;
         sLastDuelWasTournament = false;
+        sLastLiveReplay = null;
     }
 
     public static synchronized void beginRpgCanonDuel(AiOpponent opponent,
@@ -81,6 +82,7 @@ public final class RpgSessionManager {
         sActiveCanonDuelMode = canonMode;
         sLastSettlement = null;
         sLastDuelWasTournament = false;
+        sLastLiveReplay = null;
     }
 
     public static synchronized boolean hasActiveRpgDuel() {
@@ -168,6 +170,39 @@ public final class RpgSessionManager {
         DuelRewardEngine.RewardSettlement s = sLastSettlement;
         sLastSettlement = null;
         return s;
+    }
+
+    public static class SavedLiveReplay {
+        public final String replayFilePath;
+        public final String player0Name;
+        public final String player1Name;
+        public final int returnTab;
+
+        public SavedLiveReplay(String replayFilePath, String player0Name, String player1Name, int returnTab) {
+            this.replayFilePath = replayFilePath;
+            this.player0Name = player0Name;
+            this.player1Name = player1Name;
+            this.returnTab = returnTab;
+        }
+    }
+
+    private static volatile SavedLiveReplay sLastLiveReplay;
+
+    public static synchronized void setLastLiveReplay(String replayFilePath,
+                                                      String player0Name,
+                                                      String player1Name,
+                                                      int returnTab) {
+        if (replayFilePath == null || replayFilePath.isEmpty()) {
+            sLastLiveReplay = null;
+        } else {
+            sLastLiveReplay = new SavedLiveReplay(replayFilePath, player0Name, player1Name, returnTab);
+        }
+    }
+
+    public static synchronized SavedLiveReplay consumeLastLiveReplay() {
+        SavedLiveReplay r = sLastLiveReplay;
+        sLastLiveReplay = null;
+        return r;
     }
 
     public static synchronized Boolean consumeTournamentDuelOutcome() {

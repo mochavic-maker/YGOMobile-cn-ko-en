@@ -536,17 +536,27 @@ public class RpgHomeActivity extends AppCompatActivity {
             }
             selectTabById(TAB_TOURNAMENT);
         }
+        final RpgSessionManager.SavedLiveReplay liveReplay = RpgSessionManager.consumeLastLiveReplay();
         if (settlement != null) {
             String extraMsg = (tournamentOutcome != null && activeBracket != null && activeBracket.finished)
                     ? ("\n\n🏆 锦标赛完赛：" + activeBracket.playerPlacementLabel
                     + "（额外奖金 +" + activeBracket.rewardTokens + " 代币）")
                     : "";
-            new AlertDialog.Builder(this)
-                    .setTitle("RPG 决斗结算 · " + settlement.outcomeLabel)
-                    .setMessage("获得代币：+" + settlement.tokensEarned
-                            + "\n当前代币余额：" + profile.tokens + extraMsg)
-                    .setPositiveButton("收下奖励", null)
-                    .show();
+            String bodyMsg = "获得代币：+" + settlement.tokensEarned
+                    + "\n当前代币余额：" + profile.tokens + extraMsg
+                    + (liveReplay != null ? "\n\n（已保存本局录像，可直接点下方「回放」或「日志」）" : "");
+            Runnable onReplay = liveReplay != null ? () -> launchLiveReplay(liveReplay) : null;
+            Runnable onCopyLog = liveReplay != null ? () -> copyReplayFileLog(liveReplay.replayFilePath) : null;
+            showDuelSettlementDialog("RPG 决斗结算 · " + settlement.outcomeLabel, bodyMsg, onReplay, onCopyLog);
+        } else if (liveReplay != null) {
+            String pInfo = (liveReplay.player0Name != null && liveReplay.player1Name != null)
+                    ? (liveReplay.player0Name + " vs " + liveReplay.player1Name + "\n")
+                    : "";
+            showDuelSettlementDialog(
+                    "🎬 对局录像已保存",
+                    pInfo + "可直接点下方「回放」重温本局，或点「日志」一键复制双方策略、卡组与完整操作日志。",
+                    () -> launchLiveReplay(liveReplay),
+                    () -> copyReplayFileLog(liveReplay.replayFilePath));
         }
         if (catalog != null) {
             refreshAll();
@@ -2318,14 +2328,11 @@ public class RpgHomeActivity extends AppCompatActivity {
                         + (bracket.finished
                         ? ("\n🏆 锦标赛结束！" + bracket.playerPlacementLabel + " · 额外奖金 +" + prize + " 代币")
                         : (pWin ? "\n✅ 你已晋级下一轮！同轮 AI 比赛已按真引擎同步结算。" : "\n❌ 你止步本轮，可点击真引擎决出冠军并领奖。"));
-                new AlertDialog.Builder(this)
-                        .setTitle("🏆 锦标赛赛果 · " + bracket.getRoundTitle(match.roundIndex))
-                        .setMessage(msg)
-                        .setNeutralButton("🎬 3D回放本局", (d, w) -> launchNative3dReplay(report, TAB_TOURNAMENT))
-                        .setNegativeButton("📋 复制完整日志", (d, w) -> copyDuelReplayLog(
-                                report, profile.activeDeckMain, profile.activeDeckExtra, opp.deckMain, opp.deckExtra))
-                        .setPositiveButton("查看对阵表", null)
-                        .show();
+                showDuelSettlementDialog(
+                        "🏆 锦标赛赛果 · " + bracket.getRoundTitle(match.roundIndex),
+                        msg,
+                        report.replayFilePath != null ? () -> launchNative3dReplay(report, TAB_TOURNAMENT) : null,
+                        () -> copyDuelReplayLog(report, profile.activeDeckMain, profile.activeDeckExtra, opp.deckMain, opp.deckExtra));
             });
         }, "RpgTourneyQuickMatch").start();
     }
@@ -2363,17 +2370,15 @@ public class RpgHomeActivity extends AppCompatActivity {
         for (int i = 0; i < limit; i++) {
             sb.append(m.logs.get(i)).append("\n");
         }
-        AlertDialog.Builder dlg = new AlertDialog.Builder(this)
-                .setTitle("📜 锦标赛战报")
-                .setMessage(sb.toString())
-                .setPositiveButton("关闭", null);
-        if (m.replayReport != null) {
-            dlg.setNeutralButton("📋 复制完整日志", (d, w) -> copyDuelReplayLog(
-                    m.replayReport,
-                    m.p1 != null ? m.p1.deckMain : null, m.p1 != null ? m.p1.deckExtra : null,
-                    m.p2 != null ? m.p2.deckMain : null, m.p2 != null ? m.p2.deckExtra : null));
-        }
-        dlg.show();
+        Runnable onReplay = (m.replayReport != null && m.replayReport.replayFilePath != null)
+                ? () -> launchNative3dReplay(m.replayReport, TAB_TOURNAMENT) : null;
+        Runnable onCopy = m.replayReport != null
+                ? () -> copyDuelReplayLog(
+                m.replayReport,
+                m.p1 != null ? m.p1.deckMain : null, m.p1 != null ? m.p1.deckExtra : null,
+                m.p2 != null ? m.p2.deckMain : null, m.p2 != null ? m.p2.deckExtra : null)
+                : null;
+        showDuelSettlementDialog("📜 锦标赛战报", sb.toString().trim(), onReplay, onCopy);
     }
 
     // ==================== TAB 6: OFFICIAL OCG ERRATA ARCHIVE ====================
@@ -2609,16 +2614,109 @@ public class RpgHomeActivity extends AppCompatActivity {
                 for (int i = 0; i < limit; i++) {
                     sb.append(report.logs.get(i)).append("\n");
                 }
-                new AlertDialog.Builder(this)
-                        .setTitle("⚡ AI 托管快战结算 · " + settlement.outcomeLabel)
-                        .setMessage(sb.toString())
-                        .setNeutralButton("🎬 3D回放本局", (d, w) -> launchNative3dReplay(report, TAB_AI_DUEL))
-                        .setNegativeButton("📋 复制完整日志", (d, w) -> copyDuelReplayLog(
-                                report, profile.activeDeckMain, profile.activeDeckExtra, aiDeck.main, aiDeck.extra))
-                        .setPositiveButton("收下代币", null)
-                        .show();
+                showDuelSettlementDialog(
+                        "⚡ AI 托管快战 · " + settlement.outcomeLabel,
+                        sb.toString().trim(),
+                        report.replayFilePath != null ? () -> launchNative3dReplay(report, TAB_AI_DUEL) : null,
+                        () -> copyDuelReplayLog(report, profile.activeDeckMain, profile.activeDeckExtra, aiDeck.main, aiDeck.extra));
             });
         }, "RpgQuickDuelOcg").start();
+    }
+
+    /**
+     * Unified post-duel settlement dialog with a fixed-height scrollable summary body and a
+     * guaranteed single horizontal button row (回放 | 日志 | 完成) — never stacks vertically or
+     * requires scrolling to reach the buttons. Tapping「日志」copies without dismissing the dialog.
+     */
+    private void showDuelSettlementDialog(String title,
+                                          String bodyText,
+                                          final Runnable onReplay,
+                                          final Runnable onCopyLog) {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.parseColor("#0F172A"));
+        root.setPadding(dp(14), dp(12), dp(14), dp(12));
+
+        ScrollView scroll = new ScrollView(this);
+        int maxBodyHeight = (bodyText != null && bodyText.length() > 180)
+                ? dp(240)
+                : LinearLayout.LayoutParams.WRAP_CONTENT;
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, maxBodyHeight);
+        scroll.setLayoutParams(slp);
+
+        TextView tvBody = new TextView(this);
+        tvBody.setText(bodyText != null ? bodyText : "");
+        tvBody.setTextColor(Color.parseColor("#E2E8F0"));
+        tvBody.setTextSize(12.5f);
+        tvBody.setLineSpacing(dp(2), 1.0f);
+        tvBody.setPadding(dp(2), dp(2), dp(2), dp(4));
+        scroll.addView(tvBody);
+        root.addView(scroll);
+
+        final AlertDialog dlg = new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(root)
+                .create();
+
+        Button btnReplay = null;
+        if (onReplay != null) {
+            btnReplay = makeActionButton("回放", "#0284C7");
+            btnReplay.setOnClickListener(v -> {
+                dlg.dismiss();
+                onReplay.run();
+            });
+        }
+        Button btnCopy = null;
+        if (onCopyLog != null) {
+            btnCopy = makeActionButton("日志", "#475569");
+            btnCopy.setOnClickListener(v -> onCopyLog.run());
+        }
+        Button btnDone = makeActionButton("完成", "#059669");
+        btnDone.setOnClickListener(v -> dlg.dismiss());
+
+        root.addView(makeEqualWeightButtonRow(12, btnReplay, btnCopy, btnDone));
+        dlg.show();
+    }
+
+    private void copyReplayFileLog(String replayFilePath) {
+        if (replayFilePath == null || replayFilePath.isEmpty()) {
+            Toast.makeText(this, "暂无可复制的对局录像文件", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        String text = bridge != null ? bridge.buildReplayLogText(replayFilePath) : null;
+        if (text == null || text.isEmpty()) {
+            Toast.makeText(this, "无法解析本局录像日志（文件可能已被清理）", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (cm != null) {
+            cm.setPrimaryClip(ClipData.newPlainText("YGOMobile RPG Replay Log", text));
+            Toast.makeText(this, "已复制对战回放日志到剪贴板（含双方策略、卡组与操作日志）", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void launchLiveReplay(RpgSessionManager.SavedLiveReplay liveReplay) {
+        if (liveReplay == null || liveReplay.replayFilePath == null || liveReplay.replayFilePath.isEmpty()) {
+            Toast.makeText(this, "本局暂无可播放的 3D 录像文件", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        File replayFile = new File(liveReplay.replayFilePath);
+        if (!replayFile.exists() || replayFile.length() <= 0L) {
+            Toast.makeText(this, "录像文件不存在或已被清理", Toast.LENGTH_LONG).show();
+            return;
+        }
+        RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未连接到 YGOMobile 主程序", Toast.LENGTH_LONG).show();
+            return;
+        }
+        RpgDiagLog.log("Home", "launchLiveReplay file=" + replayFile.getName()
+                + " size=" + replayFile.length() + " returnTab=" + liveReplay.returnTab);
+        bridge.startRpgReplay(this, liveReplay.replayFilePath,
+                liveReplay.player0Name, liveReplay.player1Name, liveReplay.returnTab);
+        finish();
     }
 
     /**

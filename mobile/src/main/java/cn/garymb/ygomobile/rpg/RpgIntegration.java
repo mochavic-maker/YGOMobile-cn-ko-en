@@ -188,6 +188,22 @@ public final class RpgIntegration {
         cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta meta = sLastRpgDuelMeta;
         if (yrpFile == null || meta == null) return;
         cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.saveSidecar(yrpFile, meta);
+
+        String p0 = null;
+        String p1 = null;
+        try {
+            cn.garymb.ygomobile.game.replay.ReplayReader.ReplayData data =
+                    cn.garymb.ygomobile.game.replay.ReplayReader.loadReplay(yrpFile.getAbsolutePath());
+            if (data != null && data.playerNames != null) {
+                if (data.playerNames.size() > 0) p0 = data.playerNames.get(0);
+                if (data.playerNames.size() > 1) p1 = data.playerNames.get(1);
+            }
+        } catch (Throwable ignored) {
+        }
+        int returnTab = "RPG_SPECTATE".equals(meta.source)
+                ? sSpectateReturnTab
+                : RpgSessionManager.getLastDuelReturnTab();
+        RpgSessionManager.setLastLiveReplay(yrpFile.getAbsolutePath(), p0, p1, returnTab);
     }
 
     /**
