@@ -64,6 +64,32 @@ public final class TimelineEngine {
         return available;
     }
 
+    /** Returns ONLY OCG promo/giveaway events scheduled on the exact {@code currentDate}. */
+    public static List<OcgEvent> getEventsOnDate(RpgCatalog catalog, String currentDate) {
+        List<OcgEvent> matched = new ArrayList<>();
+        if (catalog == null || catalog.events == null || currentDate == null || currentDate.isEmpty()) {
+            return matched;
+        }
+        for (OcgEvent ev : catalog.events) {
+            if (ev != null && currentDate.equals(ev.releaseDate)) {
+                matched.add(ev);
+            }
+        }
+        return matched;
+    }
+
+    /** Returns the sorted set of timeline dates that contain at least one OCG promo event. */
+    public static Set<String> getEventDates(RpgCatalog catalog) {
+        Set<String> dates = new TreeSet<>();
+        if (catalog == null || catalog.events == null) return dates;
+        for (OcgEvent ev : catalog.events) {
+            if (ev != null && ev.releaseDate != null && !ev.releaseDate.isEmpty()) {
+                dates.add(ev.releaseDate);
+            }
+        }
+        return dates;
+    }
+
     /** Returns all canon duels unlocked on or before currentDate. */
     public static List<OcgCanonDuel> getAvailableCanonDuels(RpgCatalog catalog, String currentDate) {
         List<OcgCanonDuel> available = new ArrayList<>();

@@ -1743,4 +1743,18 @@ public class RpgEnginesTest {
         assertEquals("C", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_weekend_challenger", "1999-11-18").getTierLabel());
         assertEquals("D", cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve("ai_shop_regular", "1999-11-18").getTierLabel());
     }
+
+    @Test
+    public void eventsOnDateReturnsOnlyExactDayEvents() {
+        java.util.Set<String> eventDates = TimelineEngine.getEventDates(catalog);
+        assertFalse("Should discover 1999 OCG event dates", eventDates.isEmpty());
+        assertTrue("1999-08-26 Tokyo Dome should have events", eventDates.contains("1999-08-26"));
+        List<OcgEvent> domeEvents = TimelineEngine.getEventsOnDate(catalog, "1999-08-26");
+        assertEquals("1999-08-26 should return exactly its 2 Tokyo Dome events", 2, domeEvents.size());
+        for (OcgEvent ev : domeEvents) {
+            assertEquals("1999-08-26", ev.releaseDate);
+        }
+        assertTrue("Non-event date 1999-02-04 should return 0 exact-day events",
+                TimelineEngine.getEventsOnDate(catalog, "1999-02-04").isEmpty());
+    }
 }

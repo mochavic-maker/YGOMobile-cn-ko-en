@@ -14,7 +14,7 @@
 4. **纯 Java 专属战术 AI、全环境瑞士轮天梯与实测 Elo 奖金校准**：
    - 彻底脱离 WindBot 随机脚本与近似模拟器，由真实 `ocgcore` + [`RpgAiStrategy`](src/main/java/cn/garymb/ygomobile/rpg/ai/RpgAiStrategy.java)（含第 5 格魔陷留空与防冗余占场纪律、玩家自选卡组自动流派识别与**手动策略覆盖**）驱动人机对战、AI 托管快战、锦标赛、3D 观战及全环境天梯赛。
    - 内置 [`RoundRobinLeagueEngine`](src/main/java/cn/garymb/ygomobile/rpg/engine/RoundRobinLeagueEngine.java)（$O(N \log N)$ 每组 2 局均衡先后手瑞士轮 + 全局最小权完美匹配 + 全局贝叶斯 Bradley-Terry Elo / `±SE` / 对手均分 SOS + **Fisher-Jenks 一维自然断点动态 S/A/B/C/D 分档**，支持将玩家当前卡组与**多套已保存卡组**共同勾选加入天梯排位）。
-   - [`EraBountyCalibrator`](src/main/java/cn/garymb/ygomobile/rpg/engine/EraBountyCalibrator.java) 基于真实 `ocgcore` 全年代基准实测 Elo 校准每个时期的 AI 对战奖金（单胜严格控制在 **`120 ~ 300`** 代币），保证强弱与收益严格单调一致。
+   - [`EraBountyCalibrator`](src/main/java/cn/garymb/ygomobile/rpg/engine/EraBountyCalibrator.java) 基于真实 `ocgcore` 全年代基准实测 Elo 校准每个时期的 AI 对战奖金（单胜严格控制在 **`120 ~ 300`** 代币），AI 对战页按奖金**由高到低**排列对手并在顶部提供「⚡ 全员快战 ×5」一键领奖，特典活动页仅展示当日特典并支持日期快捷跳转。
 5. **开包、分解合成、多套卡组覆盖保存与全对局日志一键复制**：
    - 按 OCG 第 1 期规则开包与保底，支持一键分解多余卡、按时间轴合法范围合成单卡、严格拥有数/发售日/禁限表校验。
    - 保存卡组支持新建命名或直接选取已有保存卡组覆盖（自动记忆并默认选中上次读取的卡组），并可为每套卡组单独指定 AI 托管策略。

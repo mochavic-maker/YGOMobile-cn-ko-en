@@ -1385,32 +1385,55 @@ public class RpgHomeActivity extends AppCompatActivity {
         RpgPackVisualDialogs.showPackOpeningSimulator(this, catalog, profile, pack, count, res, this::doOpenPack);
     }
 
-    // ==================== TAB 1: 1999 SPECIAL PROMO EVENTS ====================
+    // ==================== TAB 1: 1999 SPECIAL PROMO EVENTS (EXACT DATE ONLY) ====================
     private void renderEventsTab() {
         String curDate = profile.currentTimelineDate;
-        List<OcgEvent> visibleEvents = new ArrayList<>();
-        if (catalog.events != null) {
+        List<OcgEvent> visibleEvents = TimelineEngine.getEventsOnDate(catalog, curDate);
+        int totalEvents = catalog.events != null ? catalog.events.size() : 0;
+        int totalClaimed = 0;
+        if (catalog.events != null && profile.claimedEventIds != null) {
             for (OcgEvent ev : catalog.events) {
-                if (ev != null && TimelineEngine.isReleasedOnOrBefore(ev.releaseDate, curDate)) {
-                    visibleEvents.add(ev);
+                if (ev != null && profile.claimedEventIds.contains(ev.id)) {
+                    totalClaimed++;
                 }
             }
         }
-        // Sort descending by releaseDate (newest event first)
-        visibleEvents.sort((a, b) -> {
-            String da = a.releaseDate != null ? a.releaseDate : "";
-            String db = b.releaseDate != null ? b.releaseDate : "";
-            return db.compareTo(da);
-        });
 
-        TextView hint = makeSubtleText("截至 " + curDate + " 已开启 " + visibleEvents.size()
-                + " 项 OCG 特典/大会/攻略本赠送活动（按时间降序）");
+        TextView hint = makeSubtleText("🎁 当日（" + curDate + "）OCG 特典活动：" + visibleEvents.size()
+                + " 项（累计已领取 " + totalClaimed + "/" + totalEvents + " 项）");
         layoutTabActions.addView(hint);
 
         if (visibleEvents.isEmpty()) {
             LinearLayout emptyCard = makeCardContainer();
-            emptyCard.addView(makeTitleText("📅 截至 " + curDate + " 暂无已开启的特典活动"));
-            emptyCard.addView(makeSubtleText("推进时间轴即可解锁对应日期的真实 OCG 期间特典与大会纪念卡活动。"));
+            emptyCard.addView(makeTitleText("📅 " + curDate + " 当日暂无特典活动"));
+            emptyCard.addView(makeSubtleText("特典活动页仅展示当前时间点当日开启的 OCG 特典/大会/攻略本赠送活动。可点击下方按钮快速跳转至任意特典日期："));
+
+            Button calBtn = makeActionButton("📅 打开时间轴日历", "#0284C7");
+            calBtn.setOnClickListener(v -> openDatePicker());
+            LinearLayout calRow = new LinearLayout(this);
+            calRow.setOrientation(LinearLayout.HORIZONTAL);
+            calRow.setPadding(0, dp(8), 0, dp(4));
+            calBtn.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(36)));
+            calRow.addView(calBtn);
+            emptyCard.addView(calRow);
+
+            List<String> eventDates = new ArrayList<>(TimelineEngine.getEventDates(catalog));
+            for (int i = 0; i < eventDates.size(); i += 2) {
+                Button b1 = makeEventDateJumpButton(eventDates.get(i));
+                if (i + 1 < eventDates.size()) {
+                    Button b2 = makeEventDateJumpButton(eventDates.get(i + 1));
+                    emptyCard.addView(makeEqualWeightButtonRow(6, b1, b2));
+                } else {
+                    LinearLayout singleRow = new LinearLayout(this);
+                    singleRow.setOrientation(LinearLayout.HORIZONTAL);
+                    singleRow.setPadding(0, dp(6), 0, 0);
+                    b1.setLayoutParams(new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, dp(36)));
+                    singleRow.addView(b1);
+                    emptyCard.addView(singleRow);
+                }
+            }
             layoutContent.addView(emptyCard);
             return;
         }
@@ -1491,6 +1514,22 @@ public class RpgHomeActivity extends AppCompatActivity {
             card.addView(bottomRow);
             layoutContent.addView(card);
         }
+    }
+
+    private Button makeEventDateJumpButton(final String dateStr) {
+        List<OcgEvent> dayEvents = TimelineEngine.getEventsOnDate(catalog, dateStr);
+        int claimed = 0;
+        for (OcgEvent ev : dayEvents) {
+            if (ev != null && profile.claimedEventIds != null && profile.claimedEventIds.contains(ev.id)) {
+                claimed++;
+            }
+        }
+        boolean allClaimed = !dayEvents.isEmpty() && claimed >= dayEvents.size();
+        String label = "🎁 " + dateStr + " (" + dayEvents.size() + "项"
+                + (allClaimed ? " ✅" : (" · 待领" + (dayEvents.size() - claimed))) + ")";
+        Button btn = makeActionButton(label, allClaimed ? "#065F46" : "#4C1D95");
+        btn.setOnClickListener(v -> selectTimelineDate(dateStr));
+        return btn;
     }
 
     // ==================== TAB 2: CARD CRAFTING (CRAFT-ONLY, HIDES >= 3 OWNED) ====================
@@ -1987,7 +2026,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                 AiDeckGenerator.getDemoOpponents(), profile.currentTimelineDate));
         final String curDate = profile.currentTimelineDate;
         Collections.sort(opponents, (a, b) -> {
-            int cmp = Integer.compare(a.getWinRewardTokens(curDate), b.getWinRewardTokens(curDate));
+            int cmp = Integer.compare(b.getWinRewardTokens(curDate), a.getWinRewardTokens(curDate));
             if (cmp != 0) return cmp;
             cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.RewardTriple ca =
                     cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(a.id, curDate);
@@ -1995,12 +2034,27 @@ public class RpgHomeActivity extends AppCompatActivity {
                     cn.garymb.ygomobile.rpg.engine.EraBountyCalibrator.resolve(b.id, curDate);
             int ea = ca != null ? ca.benchmarkElo : 1500;
             int eb = cb != null ? cb.benchmarkElo : 1500;
-            cmp = Integer.compare(ea, eb);
+            cmp = Integer.compare(eb, ea);
             if (cmp != 0) return cmp;
             return a.unlockDate.compareTo(b.unlockDate);
         });
         layoutTabActions.addView(makeSubtleText("战绩：" + profile.wins + " 胜 " + profile.losses + " 负 " + profile.draws
-                + " 平 · 当前时间轴已解锁 " + opponents.size() + " 位对手（按当前环境实测天梯 Elo 与奖金由低到高排列）"));
+                + " 平 · 当前已解锁 " + opponents.size() + " 位对手（按奖金由高到低排列）"));
+
+        if (!opponents.isEmpty()) {
+            final int gamesPerOpp = 5;
+            final int totalGames = opponents.size() * gamesPerOpp;
+            final List<AiOpponent> batchTargets = new ArrayList<>(opponents);
+            Button batchBtn = makeActionButton(
+                    "⚡ 全员快战 ×" + gamesPerOpp + "（共 " + totalGames + " 局并领奖）", "#059669");
+            batchBtn.setTextSize(13f);
+            LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(42));
+            blp.bottomMargin = dp(10);
+            batchBtn.setLayoutParams(blp);
+            batchBtn.setOnClickListener(v -> runBatchQuickDuelAllOpponents(batchTargets, gamesPerOpp));
+            layoutContent.addView(batchBtn);
+        }
 
         for (final AiOpponent opp : opponents) {
             AiOpponent.EraDeckProfile activeDeck = opp.getActiveDeckProfile(profile.currentTimelineDate);
@@ -2653,6 +2707,182 @@ public class RpgHomeActivity extends AppCompatActivity {
                         () -> copyDuelReplayLog(report, profile.activeDeckMain, profile.activeDeckExtra, aiDeck.main, aiDeck.extra));
             });
         }, "RpgQuickDuelOcg").start();
+    }
+
+    private void runBatchQuickDuelAllOpponents(final List<AiOpponent> opponents, final int gamesPerOpponent) {
+        if (opponents == null || opponents.isEmpty() || gamesPerOpponent <= 0) return;
+        DeckValidator.ValidationResult val = DeckValidator.validatePlayerDeck(profile, catalog);
+        if (!val.valid) {
+            new AlertDialog.Builder(this)
+                    .setTitle("RPG 卡组未通过校验")
+                    .setMessage(android.text.TextUtils.join("\n", val.errors))
+                    .setPositiveButton("去组卡", (d, w) -> selectTabById(TAB_DECK))
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+        final RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge == null) {
+            Toast.makeText(this, "未注册 YGOMobile 决斗引擎桥接器", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final String curDate = profile.currentTimelineDate;
+        final OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, curDate);
+        final List<Integer> playerMainSnapshot = new ArrayList<>(profile.activeDeckMain);
+        final List<Integer> playerExtraSnapshot = new ArrayList<>(profile.activeDeckExtra);
+        final String playerStyle = RpgAiStrategy.resolveStyleForDeck(
+                profile.activeDeckAiStyle, playerMainSnapshot, playerExtraSnapshot, activeRule);
+        final int totalGames = opponents.size() * gamesPerOpponent;
+        final java.util.concurrent.atomic.AtomicBoolean stopRequested =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        final TextView progressTv = new TextView(this);
+        progressTv.setBackgroundColor(Color.parseColor("#0F172A"));
+        progressTv.setTextColor(Color.parseColor("#E2E8F0"));
+        progressTv.setTextSize(13f);
+        progressTv.setPadding(dp(20), dp(14), dp(20), dp(12));
+        progressTv.setText("正在启动真实 ocgcore 批量快战…\n我方 AI 策略："
+                + RpgAiStrategy.getStyleDisplayName(playerStyle)
+                + "\n进度：0 / " + totalGames + " 局");
+
+        final AlertDialog waitDlg = new AlertDialog.Builder(this)
+                .setTitle("⚡ 全员快战 ×" + gamesPerOpponent + " 进行中…")
+                .setView(progressTv)
+                .setCancelable(false)
+                .setNegativeButton("⏹ 提前停止并结算", (d, w) -> stopRequested.set(true))
+                .show();
+
+        new Thread(() -> {
+            final Random rng = new Random();
+            final List<AiOpponent> settledOpps = new ArrayList<>();
+            final List<Boolean> settledWins = new ArrayList<>();
+            final List<Boolean> settledDraws = new ArrayList<>();
+            final int[] oppWins = new int[opponents.size()];
+            final int[] oppLosses = new int[opponents.size()];
+            final int[] oppDraws = new int[opponents.size()];
+            final int[] oppTokensEst = new int[opponents.size()];
+            int completed = 0;
+            int runningTokens = 0;
+            boolean engineMissing = false;
+
+            outer:
+            for (int oi = 0; oi < opponents.size(); oi++) {
+                final AiOpponent opp = opponents.get(oi);
+                final boolean startFirst = rng.nextBoolean();
+                for (int g = 0; g < gamesPerOpponent; g++) {
+                    if (stopRequested.get()) break outer;
+                    final AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
+                            catalog, opp, curDate, rng);
+                    final String aiStyle = (aiDeck.appliedProfile != null && aiDeck.appliedProfile.fillStyle != null)
+                            ? aiDeck.appliedProfile.fillStyle
+                            : RpgAiStrategy.inferStyleFromDeck(aiDeck.main, aiDeck.extra, activeRule);
+                    final boolean sideAGoesFirst = (g % 2 == 0) == startFirst;
+
+                    final RpgAiAutoDuelModels.DuelResult report = bridge.runHeadlessOcgDuel(
+                            catalog,
+                            "你", playerMainSnapshot, playerExtraSnapshot, playerStyle,
+                            opp.name, aiDeck.main, aiDeck.extra, aiStyle,
+                            activeRule, curDate, sideAGoesFirst, false, rng);
+                    if (report == null) {
+                        engineMissing = true;
+                        break outer;
+                    }
+                    settledOpps.add(opp);
+                    settledWins.add(report.sideAWon);
+                    settledDraws.add(report.isDraw);
+                    int reward;
+                    if (report.isDraw) {
+                        oppDraws[oi]++;
+                        reward = opp.getDrawRewardTokens(curDate);
+                    } else if (report.sideAWon) {
+                        oppWins[oi]++;
+                        reward = opp.getWinRewardTokens(curDate);
+                    } else {
+                        oppLosses[oi]++;
+                        reward = opp.getLossRewardTokens(curDate);
+                    }
+                    oppTokensEst[oi] += reward;
+                    runningTokens += reward;
+                    completed++;
+
+                    final int doneCount = completed;
+                    final int tokSoFar = runningTokens;
+                    final String curOppName = opp.name;
+                    final int curGameNum = g + 1;
+                    runOnUiThread(() -> {
+                        if (waitDlg.isShowing()) {
+                            progressTv.setText("我方 AI 策略：" + RpgAiStrategy.getStyleDisplayName(playerStyle)
+                                    + "\n当前对手：" + curOppName + "（第 " + curGameNum + "/" + gamesPerOpponent + " 局）"
+                                    + "\n总进度：" + doneCount + " / " + totalGames + " 局"
+                                    + "\n已累计奖金：+" + tokSoFar + " 代币");
+                        }
+                    });
+                }
+            }
+
+            final boolean missingEngineFinal = engineMissing;
+            final boolean stoppedEarly = stopRequested.get();
+            runOnUiThread(() -> {
+                if (waitDlg.isShowing()) waitDlg.dismiss();
+                if (missingEngineFinal && settledOpps.isEmpty()) {
+                    Toast.makeText(this, "ocgcore 引擎未就绪，请稍后再试", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                int totalEarned = 0;
+                int totalW = 0;
+                int totalL = 0;
+                int totalD = 0;
+                for (int i = 0; i < settledOpps.size(); i++) {
+                    boolean w = settledWins.get(i);
+                    boolean d = settledDraws.get(i);
+                    DuelRewardEngine.RewardSettlement st =
+                            DuelRewardEngine.settle(profile, settledOpps.get(i), w, d);
+                    totalEarned += st.tokensEarned;
+                    if (d) totalD++;
+                    else if (w) totalW++;
+                    else totalL++;
+                }
+                saveProfileSafe();
+                refreshAll();
+
+                int totalPlayed = settledOpps.size();
+                double wr = totalPlayed > 0 ? (100.0 * totalW / totalPlayed) : 0.0;
+                StringBuilder sb = new StringBuilder();
+                sb.append("我方 AI 策略：").append(RpgAiStrategy.getStyleDisplayName(playerStyle)).append("\n");
+                sb.append(String.format(Locale.US, "总战绩：%d 胜 %d 负 %d 平 / 共 %d 局（胜率 %.1f%%）\n",
+                        totalW, totalL, totalD, totalPlayed, wr));
+                sb.append("共领取奖金：+").append(totalEarned).append(" 代币\n");
+                sb.append("当前代币余额：").append(profile.tokens).append("\n\n");
+                sb.append("--- 各对手明细（按奖金高→低）---\n");
+                for (int oi = 0; oi < opponents.size(); oi++) {
+                    int played = oppWins[oi] + oppLosses[oi] + oppDraws[oi];
+                    if (played == 0) continue;
+                    String drawTxt = oppDraws[oi] > 0 ? (" " + oppDraws[oi] + "平") : "";
+                    sb.append("• ").append(opponents.get(oi).name)
+                            .append("：").append(oppWins[oi]).append("胜 ")
+                            .append(oppLosses[oi]).append("负").append(drawTxt)
+                            .append("（+").append(oppTokensEst[oi]).append(" 代币）\n");
+                }
+
+                ScrollView sv = new ScrollView(this);
+                sv.setBackgroundColor(Color.parseColor("#0F172A"));
+                TextView resTv = new TextView(this);
+                resTv.setText(sb.toString().trim());
+                resTv.setTextColor(Color.parseColor("#E2E8F0"));
+                resTv.setTextSize(13f);
+                resTv.setLineSpacing(dp(2), 1.15f);
+                resTv.setPadding(dp(18), dp(14), dp(18), dp(10));
+                sv.addView(resTv);
+
+                new AlertDialog.Builder(this)
+                        .setTitle(stoppedEarly
+                                ? ("⚡ 全员快战（已提前结算 · +" + totalEarned + " 代币）")
+                                : ("⚡ 全员快战 ×" + gamesPerOpponent + " 完赛 · +" + totalEarned + " 代币"))
+                        .setView(sv)
+                        .setPositiveButton("✔ 收下全部奖金", null)
+                        .show();
+            });
+        }, "RpgBatchQuickDuelAll").start();
     }
 
     /**
