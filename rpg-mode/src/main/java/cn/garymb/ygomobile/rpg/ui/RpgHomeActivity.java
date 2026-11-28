@@ -1389,24 +1389,46 @@ public class RpgHomeActivity extends AppCompatActivity {
     private void renderEventsTab() {
         String curDate = profile.currentTimelineDate;
         List<OcgEvent> visibleEvents = TimelineEngine.getEventsOnDate(catalog, curDate);
-        int totalEvents = catalog.events != null ? catalog.events.size() : 0;
-        int totalClaimed = 0;
-        if (catalog.events != null && profile.claimedEventIds != null) {
-            for (OcgEvent ev : catalog.events) {
-                if (ev != null && profile.claimedEventIds.contains(ev.id)) {
-                    totalClaimed++;
-                }
+        List<OcgEvent> availableUpToToday = TimelineEngine.getAvailableEvents(catalog, curDate);
+        int unlockedCount = availableUpToToday.size();
+        int unlockedClaimed = 0;
+        for (OcgEvent ev : availableUpToToday) {
+            if (ev != null && profile.claimedEventIds != null && profile.claimedEventIds.contains(ev.id)) {
+                unlockedClaimed++;
             }
         }
 
         TextView hint = makeSubtleText("🎁 当日（" + curDate + "）OCG 特典活动：" + visibleEvents.size()
-                + " 项（累计已领取 " + totalClaimed + "/" + totalEvents + " 项）");
+                + " 项（截至当日已领取 " + unlockedClaimed + "/" + unlockedCount + " 项）");
         layoutTabActions.addView(hint);
 
         if (visibleEvents.isEmpty()) {
             LinearLayout emptyCard = makeCardContainer();
             emptyCard.addView(makeTitleText("📅 " + curDate + " 当日暂无特典活动"));
-            emptyCard.addView(makeSubtleText("特典活动页仅展示当前时间点当日开启的 OCG 特典/大会/攻略本赠送活动。可点击下方按钮快速跳转至任意特典日期："));
+
+            List<String> unclaimedPastDates = new ArrayList<>();
+            for (String d : TimelineEngine.getEventDates(catalog)) {
+                if (d.compareTo(curDate) >= 0) continue;
+                List<OcgEvent> dayEvs = TimelineEngine.getEventsOnDate(catalog, d);
+                boolean hasUnclaimed = false;
+                for (OcgEvent ev : dayEvs) {
+                    if (ev != null && (profile.claimedEventIds == null || !profile.claimedEventIds.contains(ev.id))) {
+                        hasUnclaimed = true;
+                        break;
+                    }
+                }
+                if (hasUnclaimed) {
+                    unclaimedPastDates.add(d);
+                }
+            }
+
+            if (unclaimedPastDates.isEmpty()) {
+                TextView allDoneTv = makeSubtleText("✓ 当前时间点及之前的特典活动已全部领取完毕，推进时间轴可解锁后续新特典。");
+                allDoneTv.setTextColor(Color.parseColor("#34D399"));
+                emptyCard.addView(allDoneTv);
+            } else {
+                emptyCard.addView(makeSubtleText("以下为当前时间点之前尚未领取的往期特典日期，点击即可快速跳转补领："));
+            }
 
             Button calBtn = makeActionButton("📅 打开时间轴日历", "#0284C7");
             calBtn.setOnClickListener(v -> openDatePicker());
@@ -1418,11 +1440,10 @@ public class RpgHomeActivity extends AppCompatActivity {
             calRow.addView(calBtn);
             emptyCard.addView(calRow);
 
-            List<String> eventDates = new ArrayList<>(TimelineEngine.getEventDates(catalog));
-            for (int i = 0; i < eventDates.size(); i += 2) {
-                Button b1 = makeEventDateJumpButton(eventDates.get(i));
-                if (i + 1 < eventDates.size()) {
-                    Button b2 = makeEventDateJumpButton(eventDates.get(i + 1));
+            for (int i = 0; i < unclaimedPastDates.size(); i += 2) {
+                Button b1 = makeEventDateJumpButton(unclaimedPastDates.get(i));
+                if (i + 1 < unclaimedPastDates.size()) {
+                    Button b2 = makeEventDateJumpButton(unclaimedPastDates.get(i + 1));
                     emptyCard.addView(makeEqualWeightButtonRow(6, b1, b2));
                 } else {
                     LinearLayout singleRow = new LinearLayout(this);
