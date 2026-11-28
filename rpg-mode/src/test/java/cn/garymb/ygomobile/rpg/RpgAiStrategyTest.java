@@ -1374,6 +1374,50 @@ public class RpgAiStrategyTest {
                 0 << 16, strategy.chooseIdleCmd(pVanillaOnly));
     }
 
+    @Test
+    public void manualAiStyleOverrideAppliesToLadderParticipantsAndPersistsInProfile() {
+        // 6 Flip monsters (3 Man-Eater Bug + 3 Magician of Faith) auto-infer as FLIP_CONTROL
+        List<Integer> goodStuffWith6Flips = Arrays.asList(
+                RpgAiCardKnowledge.MAN_EATER_BUG, RpgAiCardKnowledge.MAN_EATER_BUG, RpgAiCardKnowledge.MAN_EATER_BUG,
+                RpgAiCardKnowledge.MAGICIAN_OF_FAITH, RpgAiCardKnowledge.MAGICIAN_OF_FAITH, RpgAiCardKnowledge.MAGICIAN_OF_FAITH,
+                RpgAiCardKnowledge.SUMMONED_SKULL, RpgAiCardKnowledge.POT_OF_GREED);
+        assertEquals("FLIP_CONTROL",
+                RpgAiStrategy.resolveStyleForDeck(null, goodStuffWith6Flips, Collections.<Integer>emptyList(), tributeRule));
+        assertEquals("GOOD_STUFF",
+                RpgAiStrategy.resolveStyleForDeck("GOOD_STUFF", goodStuffWith6Flips, Collections.<Integer>emptyList(), tributeRule));
+        assertEquals("Unknown override should gracefully fall back to auto inference",
+                "FLIP_CONTROL",
+                RpgAiStrategy.resolveStyleForDeck("NON_EXISTENT_STYLE", goodStuffWith6Flips, Collections.<Integer>emptyList(), tributeRule));
+
+        // Ladder buildParticipants honors per-deck aiStyleOverride
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.PlayerDeckEntry> entries = Arrays.asList(
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.PlayerDeckEntry(
+                        "p_auto", "自组自动", "GS", goodStuffWith6Flips, Collections.<Integer>emptyList(), null),
+                new cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.PlayerDeckEntry(
+                        "p_manual", "自组手动", "GS", goodStuffWith6Flips, Collections.<Integer>emptyList(), "GOOD_STUFF")
+        );
+        List<cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.Participant> participants =
+                cn.garymb.ygomobile.rpg.engine.RoundRobinLeagueEngine.buildParticipants(
+                        catalog, "1999-11-18", tributeRule, entries, new java.util.Random(42));
+        assertEquals("FLIP_CONTROL", participants.get(0).style);
+        assertEquals("GOOD_STUFF", participants.get(1).style);
+
+        // RpgProfile syncs activeDeckAiStyle <-> SavedDeck.aiStyleOverride across save / overwrite / load
+        cn.garymb.ygomobile.rpg.model.RpgProfile prof = new cn.garymb.ygomobile.rpg.model.RpgProfile();
+        prof.activeDeckMain = new java.util.ArrayList<>(goodStuffWith6Flips);
+        prof.activeDeckAiStyle = "GOOD_STUFF";
+        cn.garymb.ygomobile.rpg.model.RpgProfile.SavedDeck saved = prof.saveCurrentDeck("我的好卡");
+        assertEquals("GOOD_STUFF", saved.aiStyleOverride);
+
+        prof.activeDeckAiStyle = "DARK_VIRUS";
+        assertTrue(prof.overwriteSavedDeck(saved.id));
+        assertEquals("DARK_VIRUS", saved.aiStyleOverride);
+
+        prof.activeDeckAiStyle = null;
+        assertTrue(prof.loadSavedDeck(saved.id));
+        assertEquals("DARK_VIRUS", prof.activeDeckAiStyle);
+    }
+
     private static void sendPacket(OutputStream out, int proto, byte[] body) throws Exception {
         int len = 1 + body.length;
         ByteBuffer b = ByteBuffer.allocate(2 + len).order(ByteOrder.LITTLE_ENDIAN);

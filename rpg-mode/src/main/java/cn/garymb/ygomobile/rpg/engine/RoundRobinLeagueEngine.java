@@ -245,14 +245,24 @@ public final class RoundRobinLeagueEngine {
         public final String deckName;
         public final List<Integer> main;
         public final List<Integer> extra;
+        /** Optional manual AI strategy override (null/empty = auto-infer from deck). */
+        public final String aiStyleOverride;
 
         public PlayerDeckEntry(String id, String name, String deckName,
                                List<Integer> main, List<Integer> extra) {
+            this(id, name, deckName, main, extra, null);
+        }
+
+        public PlayerDeckEntry(String id, String name, String deckName,
+                               List<Integer> main, List<Integer> extra,
+                               String aiStyleOverride) {
             this.id = id != null && !id.trim().isEmpty() ? id.trim() : "player_deck";
             this.name = name != null && !name.trim().isEmpty() ? name.trim() : "我的卡组";
             this.deckName = deckName != null ? deckName.trim() : "";
             this.main = main != null ? new ArrayList<>(main) : new ArrayList<>();
             this.extra = extra != null ? new ArrayList<>(extra) : new ArrayList<>();
+            this.aiStyleOverride = (aiStyleOverride != null && !aiStyleOverride.trim().isEmpty())
+                    ? aiStyleOverride.trim() : null;
         }
     }
 
@@ -302,7 +312,8 @@ public final class RoundRobinLeagueEngine {
                     uniqueId = entry.id + "_" + (suffix++);
                 }
                 seenIds.add(uniqueId);
-                String playerStyle = RpgAiStrategy.inferStyleFromDeck(entry.main, entry.extra, ruleSet);
+                String playerStyle = RpgAiStrategy.resolveStyleForDeck(
+                        entry.aiStyleOverride, entry.main, entry.extra, ruleSet);
                 list.add(new Participant(
                         uniqueId,
                         entry.name,

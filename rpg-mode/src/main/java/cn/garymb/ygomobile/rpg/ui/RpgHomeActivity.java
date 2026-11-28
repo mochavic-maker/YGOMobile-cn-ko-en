@@ -2273,8 +2273,8 @@ public class RpgHomeActivity extends AppCompatActivity {
             return;
         }
         final OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, bracket.timelineDate);
-        final String playerStyle = RpgAiStrategy.inferStyleFromDeck(
-                profile.activeDeckMain, profile.activeDeckExtra, activeRule);
+        final String playerStyle = RpgAiStrategy.resolveStyleForDeck(
+                profile.activeDeckAiStyle, profile.activeDeckMain, profile.activeDeckExtra, activeRule);
         final String oppStyle = (opp.fillStyle != null && !opp.fillStyle.isEmpty())
                 ? opp.fillStyle
                 : RpgAiStrategy.inferStyleFromDeck(opp.deckMain, opp.deckExtra, activeRule);
@@ -2563,8 +2563,8 @@ public class RpgHomeActivity extends AppCompatActivity {
         final OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
         final AiDeckGenerator.GeneratedAiDeck aiDeck = AiDeckGenerator.generateDeck(
                 catalog, opponent, profile.currentTimelineDate, new Random());
-        final String playerStyle = RpgAiStrategy.inferStyleFromDeck(
-                profile.activeDeckMain, profile.activeDeckExtra, activeRule);
+        final String playerStyle = RpgAiStrategy.resolveStyleForDeck(
+                profile.activeDeckAiStyle, profile.activeDeckMain, profile.activeDeckExtra, activeRule);
         final String aiStyle = (aiDeck.appliedProfile != null && aiDeck.appliedProfile.fillStyle != null)
                 ? aiDeck.appliedProfile.fillStyle
                 : RpgAiStrategy.inferStyleFromDeck(aiDeck.main, aiDeck.extra, activeRule);
@@ -3319,12 +3319,16 @@ public class RpgHomeActivity extends AppCompatActivity {
     private List<ShowdownDeckChoice> buildShowdownChoices() {
         List<ShowdownDeckChoice> list = new ArrayList<>();
         OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
-        String curStyle = RpgAiStrategy.inferStyleFromDeck(profile.activeDeckMain, profile.activeDeckExtra, activeRule);
+        String curStyle = RpgAiStrategy.resolveStyleForDeck(
+                profile.activeDeckAiStyle, profile.activeDeckMain, profile.activeDeckExtra, activeRule);
+        String curStyleTag = (profile.activeDeckAiStyle != null && !profile.activeDeckAiStyle.trim().isEmpty())
+                ? ("手动:" + RpgAiStrategy.getStyleDisplayName(curStyle))
+                : ("自动:" + RpgAiStrategy.getStyleDisplayName(curStyle));
         list.add(new ShowdownDeckChoice(
                 "current",
                 "当前卡组",
                 "[当前卡组] 当前编辑中的 RPG 卡组（主 " + profile.activeDeckMain.size()
-                        + " / 额外 " + profile.activeDeckExtra.size() + " · AI策略:" + RpgAiStrategy.getStyleDisplayName(curStyle) + "）",
+                        + " / 额外 " + profile.activeDeckExtra.size() + " · AI策略 " + curStyleTag + "）",
                 "玩家自构AI",
                 curStyle,
                 profile.activeDeckMain,
@@ -3335,12 +3339,15 @@ public class RpgHomeActivity extends AppCompatActivity {
                 if (sd == null) continue;
                 int m = sd.main != null ? sd.main.size() : 0;
                 int e = sd.extra != null ? sd.extra.size() : 0;
-                String st = RpgAiStrategy.inferStyleFromDeck(sd.main, sd.extra, activeRule);
+                String st = RpgAiStrategy.resolveStyleForDeck(sd.aiStyleOverride, sd.main, sd.extra, activeRule);
+                String stTag = (sd.aiStyleOverride != null && !sd.aiStyleOverride.trim().isEmpty())
+                        ? ("手动:" + RpgAiStrategy.getStyleDisplayName(st))
+                        : ("自动:" + RpgAiStrategy.getStyleDisplayName(st));
                 list.add(new ShowdownDeckChoice(
                         "saved:" + sd.id,
                         "已保存卡组",
                         "[已保存] " + sd.name + "（主 " + m + " / 额外 " + e
-                                + " · AI策略:" + RpgAiStrategy.getStyleDisplayName(st) + "）",
+                                + " · AI策略 " + stTag + "）",
                         sd.name,
                         st,
                         sd.main,
@@ -3596,13 +3603,17 @@ public class RpgHomeActivity extends AppCompatActivity {
         int rrPairs = contestantCount * (contestantCount - 1) / 2;
         int rrGames = rrPairs * RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR;
 
+        OcgRuleSet ladderRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
         String playerDeckSummary;
         if (selectedPlayerDecks.isEmpty()) {
-            playerDeckSummary = "（未勾选合规自组卡组，仅 AI 参赛 · 可点下方选择已存卡组）";
+            playerDeckSummary = "（未勾选合规自组卡组，仅 AI 参赛 · 可点下方选择自组卡组与AI策略）";
         } else {
             List<String> names = new ArrayList<>();
             for (RoundRobinLeagueEngine.PlayerDeckEntry e : selectedPlayerDecks) {
-                names.add(e.name + (!e.deckName.isEmpty() && !"已存卡组".equals(e.deckName) ? "(" + e.deckName + ")" : ""));
+                String effSt = RpgAiStrategy.resolveStyleForDeck(e.aiStyleOverride, e.main, e.extra, ladderRule);
+                String deckSuffix = (!e.deckName.isEmpty() && !"已存卡组".equals(e.deckName))
+                        ? ("(" + e.deckName + ")") : "";
+                names.add(e.name + deckSuffix + "[" + RpgAiStrategy.getStyleDisplayName(effSt) + "]");
             }
             playerDeckSummary = " + " + selectedPlayerDecks.size() + " 套自组【" + TextUtils.join("、", names) + "】";
         }
@@ -3623,7 +3634,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                 RoundRobinLeagueEngine.DEFAULT_GAMES_PER_PAIR, rrPairs, rrGames)));
 
         Button selectDecksBtn = makeActionButton(
-                "📋 选择参赛卡组（已选 " + selectedPlayerDecks.size() + " 套自组 · 已存 " + savedTotalCount + " 套）",
+                "📋 选择参赛卡组与 AI 策略（已选 " + selectedPlayerDecks.size() + " 套自组 · 已存 " + savedTotalCount + " 套）",
                 "#2563EB");
         LinearLayout.LayoutParams selLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -3671,7 +3682,8 @@ public class RpgHomeActivity extends AppCompatActivity {
                         "我的卡组",
                         playerDeckLabel,
                         profile.activeDeckMain,
-                        profile.activeDeckExtra));
+                        profile.activeDeckExtra,
+                        profile.activeDeckAiStyle));
             }
         }
         if (profile.savedDecks != null) {
@@ -3687,11 +3699,51 @@ public class RpgHomeActivity extends AppCompatActivity {
                             "自组 · " + deckTitle,
                             "已存卡组",
                             saved.main,
-                            saved.extra));
+                            saved.extra,
+                            saved.aiStyleOverride));
                 }
             }
         }
         return entries;
+    }
+
+    private String formatAiStrategyButtonLabel(String styleOverride, String inferredStyle) {
+        if (styleOverride != null && !styleOverride.trim().isEmpty()
+                && RpgAiStrategy.SUPPORTED_STYLES.contains(styleOverride.trim())) {
+            return "🧠 AI策略：手动指定 · " + RpgAiStrategy.getStyleDisplayName(styleOverride.trim()) + "  ▾";
+        }
+        return "🧠 AI策略：自动识别（" + RpgAiStrategy.getStyleDisplayName(inferredStyle) + "）  ▾";
+    }
+
+    private void openAiStylePickerDialog(String deckTitle,
+                                         String currentOverride,
+                                         String inferredStyle,
+                                         final java.util.function.Consumer<String> onPicked) {
+        final List<String> codes = new ArrayList<>();
+        final List<String> labels = new ArrayList<>();
+        codes.add(null);
+        labels.add("🤖 自动识别（当前识别：" + RpgAiStrategy.getStyleDisplayName(inferredStyle) + "）");
+        int checkedIdx = 0;
+        String curNorm = currentOverride != null ? currentOverride.trim() : "";
+        for (String styleCode : RpgAiStrategy.PLAYER_SELECTABLE_STYLES) {
+            codes.add(styleCode);
+            labels.add(RpgAiStrategy.getStyleDisplayName(styleCode) + "（" + styleCode + "）");
+            if (styleCode.equals(curNorm)) {
+                checkedIdx = codes.size() - 1;
+            }
+        }
+        final int[] chosen = new int[]{checkedIdx};
+        new AlertDialog.Builder(this)
+                .setTitle("🧠 选择 AI 策略 · " + deckTitle)
+                .setSingleChoiceItems(labels.toArray(new String[0]), checkedIdx, (d, which) -> {
+                    chosen[0] = which;
+                    if (onPicked != null && which >= 0 && which < codes.size()) {
+                        onPicked.accept(codes.get(which));
+                    }
+                    d.dismiss();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void openLadderDeckSelectorDialog() {
@@ -3702,6 +3754,15 @@ public class RpgHomeActivity extends AppCompatActivity {
 
         final boolean[] tempIncludeActive = new boolean[]{ladderIncludeActiveDeck && activeVal.valid};
         final java.util.Set<String> tempSavedIds = new java.util.LinkedHashSet<>(selectedLadderSavedDeckIds);
+        final String[] tempActiveStyle = new String[]{profile.activeDeckAiStyle};
+        final Map<String, String> tempSavedStyles = new java.util.LinkedHashMap<>();
+        if (profile.savedDecks != null) {
+            for (RpgProfile.SavedDeck sd : profile.savedDecks) {
+                if (sd != null && sd.id != null) {
+                    tempSavedStyles.put(sd.id, sd.aiStyleOverride);
+                }
+            }
+        }
 
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         scroll.setBackgroundColor(Color.parseColor("#0F172A"));
@@ -3711,7 +3772,7 @@ public class RpgHomeActivity extends AppCompatActivity {
         scroll.addView(body);
 
         TextView intro = makeSubtleText("勾选要加入 " + profile.currentTimelineDate
-                + " 天梯排位的自组卡组（均须通过当期卡池、禁限表与拥有数校验，可多套同台竞技）：");
+                + " 天梯排位的自组卡组，并可为每套卡组单独指定 AI 策略（保存后同步作用于天梯、1v1 对决与托管快战）：");
         intro.setTextColor(Color.parseColor("#CBD5E1"));
         body.addView(intro);
 
@@ -3750,12 +3811,12 @@ public class RpgHomeActivity extends AppCompatActivity {
         cbActive.setOnCheckedChangeListener((btn, checked) -> tempIncludeActive[0] = checked);
         activeBox.addView(cbActive);
 
+        final String activeInferred = RpgAiStrategy.inferStyleFromDeck(
+                profile.activeDeckMain, profile.activeDeckExtra, activeRule);
         String activeSub;
         if (activeVal.valid) {
-            String st = RpgAiStrategy.inferStyleFromDeck(profile.activeDeckMain, profile.activeDeckExtra, activeRule);
             activeSub = "主卡组 " + profile.activeDeckMain.size() + " 张"
-                    + (profile.activeDeckExtra.isEmpty() ? "" : (" · 额外 " + profile.activeDeckExtra.size() + " 张"))
-                    + " · 识别流派：" + RpgAiStrategy.getStyleDisplayName(st);
+                    + (profile.activeDeckExtra.isEmpty() ? "" : (" · 额外 " + profile.activeDeckExtra.size() + " 张"));
         } else {
             activeSub = "⚠ 未通过当期校验：" + (activeVal.errors.isEmpty() ? "卡组不合规" : activeVal.errors.get(0));
         }
@@ -3763,6 +3824,28 @@ public class RpgHomeActivity extends AppCompatActivity {
         tvActiveSub.setTextColor(Color.parseColor(activeVal.valid ? "#86EFAC" : "#FCA5A5"));
         tvActiveSub.setPadding(dp(28), dp(2), 0, 0);
         activeBox.addView(tvActiveSub);
+
+        if (activeVal.valid) {
+            final Button btnActiveStyle = makeActionButton(
+                    formatAiStrategyButtonLabel(tempActiveStyle[0], activeInferred),
+                    tempActiveStyle[0] != null && !tempActiveStyle[0].isEmpty() ? "#7C3AED" : "#334155");
+            LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(34));
+            slp.topMargin = dp(6);
+            slp.leftMargin = dp(24);
+            btnActiveStyle.setLayoutParams(slp);
+            btnActiveStyle.setTextSize(11.5f);
+            btnActiveStyle.setOnClickListener(v -> openAiStylePickerDialog(
+                    activeLabel, tempActiveStyle[0], activeInferred, picked -> {
+                        tempActiveStyle[0] = picked;
+                        btnActiveStyle.setText(formatAiStrategyButtonLabel(picked, activeInferred));
+                        GradientDrawable dBg = new GradientDrawable();
+                        dBg.setColor(Color.parseColor(picked != null ? "#7C3AED" : "#334155"));
+                        dBg.setCornerRadius(dp(6));
+                        btnActiveStyle.setBackground(dBg);
+                    }));
+            activeBox.addView(btnActiveStyle);
+        }
         body.addView(activeBox);
 
         // Section 2: Saved Decks
@@ -3803,8 +3886,9 @@ public class RpgHomeActivity extends AppCompatActivity {
                 itemBox.setLayoutParams(ilp);
 
                 android.widget.CheckBox cb = new android.widget.CheckBox(this);
-                String title = (saved.name != null && !saved.name.trim().isEmpty() ? saved.name.trim() : "未命名卡组")
-                        + (isMirror ? "（与当前卡组内容一致）" : "");
+                final String deckDisplayName = saved.name != null && !saved.name.trim().isEmpty()
+                        ? saved.name.trim() : "未命名卡组";
+                String title = deckDisplayName + (isMirror ? "（与当前卡组内容一致）" : "");
                 cb.setText(title);
                 cb.setTextColor(Color.parseColor(sval.valid ? "#F8FAFC" : "#64748B"));
                 cb.setTextSize(13f);
@@ -3817,14 +3901,13 @@ public class RpgHomeActivity extends AppCompatActivity {
                 savedCheckboxes.put(saved.id, cb);
                 itemBox.addView(cb);
 
+                final String savedInferred = RpgAiStrategy.inferStyleFromDeck(saved.main, saved.extra, activeRule);
                 String sub;
                 if (sval.valid) {
-                    String st = RpgAiStrategy.inferStyleFromDeck(saved.main, saved.extra, activeRule);
                     int mSz = saved.main != null ? saved.main.size() : 0;
                     int eSz = saved.extra != null ? saved.extra.size() : 0;
                     sub = "主卡组 " + mSz + " 张"
                             + (eSz > 0 ? (" · 额外 " + eSz + " 张") : "")
-                            + " · 识别流派：" + RpgAiStrategy.getStyleDisplayName(st)
                             + (saved.savedAtDate != null ? (" · 存自 " + saved.savedAtDate) : "");
                 } else {
                     sub = "⚠ 当期不可参赛：" + (sval.errors.isEmpty() ? "卡组不合规" : sval.errors.get(0));
@@ -3833,6 +3916,29 @@ public class RpgHomeActivity extends AppCompatActivity {
                 tvSub.setTextColor(Color.parseColor(sval.valid ? "#93C5FD" : "#FCA5A5"));
                 tvSub.setPadding(dp(28), dp(2), 0, 0);
                 itemBox.addView(tvSub);
+
+                if (sval.valid) {
+                    String curOv = tempSavedStyles.get(saved.id);
+                    final Button btnSavedStyle = makeActionButton(
+                            formatAiStrategyButtonLabel(curOv, savedInferred),
+                            curOv != null && !curOv.isEmpty() ? "#7C3AED" : "#334155");
+                    LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, dp(34));
+                    slp.topMargin = dp(6);
+                    slp.leftMargin = dp(24);
+                    btnSavedStyle.setLayoutParams(slp);
+                    btnSavedStyle.setTextSize(11.5f);
+                    btnSavedStyle.setOnClickListener(v -> openAiStylePickerDialog(
+                            deckDisplayName, tempSavedStyles.get(saved.id), savedInferred, picked -> {
+                                tempSavedStyles.put(saved.id, picked);
+                                btnSavedStyle.setText(formatAiStrategyButtonLabel(picked, savedInferred));
+                                GradientDrawable dBg = new GradientDrawable();
+                                dBg.setColor(Color.parseColor(picked != null ? "#7C3AED" : "#334155"));
+                                dBg.setCornerRadius(dp(6));
+                                btnSavedStyle.setBackground(dBg);
+                            }));
+                    itemBox.addView(btnSavedStyle);
+                }
                 body.addView(itemBox);
             }
         }
@@ -3864,12 +3970,21 @@ public class RpgHomeActivity extends AppCompatActivity {
         });
 
         new AlertDialog.Builder(this)
-                .setTitle("📋 选择参与天梯排位的自组卡组")
+                .setTitle("📋 选择参赛卡组与 AI 策略")
                 .setView(scroll)
                 .setPositiveButton("确定", (d, w) -> {
                     ladderIncludeActiveDeck = tempIncludeActive[0];
                     selectedLadderSavedDeckIds.clear();
                     selectedLadderSavedDeckIds.addAll(tempSavedIds);
+                    profile.activeDeckAiStyle = tempActiveStyle[0];
+                    if (profile.savedDecks != null) {
+                        for (RpgProfile.SavedDeck sd : profile.savedDecks) {
+                            if (sd != null && sd.id != null && tempSavedStyles.containsKey(sd.id)) {
+                                sd.aiStyleOverride = tempSavedStyles.get(sd.id);
+                            }
+                        }
+                    }
+                    saveProfileSafe();
                     renderCurrentTab();
                 })
                 .setNegativeButton("取消", null)

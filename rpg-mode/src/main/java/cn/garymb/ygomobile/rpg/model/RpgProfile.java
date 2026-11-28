@@ -50,6 +50,8 @@ public class RpgProfile {
     public List<SavedDeck> savedDecks = new ArrayList<>();
     /** Optional ID of the saved deck currently loaded in the editor. */
     public String activeDeckId = null;
+    /** Optional manual AI strategy override for the active deck (null/empty = auto infer). */
+    public String activeDeckAiStyle = null;
 
     /** User-customized navigation tab order (stores logical TAB_* IDs). */
     public List<Integer> tabOrder = new ArrayList<>();
@@ -127,6 +129,8 @@ public class RpgProfile {
         public List<Integer> extra = new ArrayList<>();
         public String savedAtDate;
         public long updatedAt;
+        /** Optional manual AI strategy override (null/empty = auto infer). */
+        public String aiStyleOverride;
 
         public SavedDeck() {
         }
@@ -169,6 +173,7 @@ public class RpgProfile {
                 existing.extra = new ArrayList<>(activeDeckExtra != null ? activeDeckExtra : new ArrayList<>());
                 existing.savedAtDate = currentTimelineDate;
                 existing.updatedAt = now;
+                existing.aiStyleOverride = activeDeckAiStyle;
                 activeDeckId = existing.id;
                 return existing;
             }
@@ -182,6 +187,7 @@ public class RpgProfile {
                 currentTimelineDate,
                 now
         );
+        created.aiStyleOverride = activeDeckAiStyle;
         savedDecks.add(created);
         activeDeckId = created.id;
         return created;
@@ -195,6 +201,7 @@ public class RpgProfile {
         target.extra = new ArrayList<>(activeDeckExtra != null ? activeDeckExtra : new ArrayList<>());
         target.savedAtDate = currentTimelineDate;
         target.updatedAt = System.currentTimeMillis();
+        target.aiStyleOverride = activeDeckAiStyle;
         activeDeckId = target.id;
         return true;
     }
@@ -206,6 +213,7 @@ public class RpgProfile {
         activeDeckMain = new ArrayList<>(target.main != null ? target.main : new ArrayList<>());
         activeDeckExtra = new ArrayList<>(target.extra != null ? target.extra : new ArrayList<>());
         activeDeckId = target.id;
+        activeDeckAiStyle = target.aiStyleOverride;
         return true;
     }
 

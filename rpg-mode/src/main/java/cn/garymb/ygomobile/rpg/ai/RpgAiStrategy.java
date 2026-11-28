@@ -42,6 +42,20 @@ public class RpgAiStrategy {
             "FUSION_COMBO"
     )));
 
+    /** Ordered AI strategies exposed to the player when manually assigning a strategy to custom decks. */
+    public static final List<String> PLAYER_SELECTABLE_STYLES = Collections.unmodifiableList(java.util.Arrays.asList(
+            "GOOD_STUFF",
+            "NO_TRIBUTE_BEAT",
+            "FLIP_CONTROL",
+            "DARK_VIRUS",
+            "EXODIA_DRAW",
+            "FUSION_COMBO",
+            "BURN_WALL",
+            "MILL_MORPHING",
+            "EQUIP_LIGHT_EARTH",
+            "LOWER_BEAT"
+    ));
+
     // ===== Parsed Command DTOs =====
 
     public static class CmdEntry {
@@ -153,6 +167,22 @@ public class RpgAiStrategy {
 
     public String getStyle() {
         return style;
+    }
+
+    /**
+     * Resolves the effective AI strategy for a player-authored deck: honors a valid manual
+     * {@code styleOverride} if provided, otherwise falls back to {@link #inferStyleFromDeck}.
+     */
+    public static String resolveStyleForDeck(String styleOverride,
+                                             List<Integer> main, List<Integer> extra,
+                                             cn.garymb.ygomobile.rpg.model.OcgRuleSet ruleSet) {
+        if (styleOverride != null) {
+            String trimmed = styleOverride.trim();
+            if (!trimmed.isEmpty() && SUPPORTED_STYLES.contains(trimmed)) {
+                return trimmed;
+            }
+        }
+        return inferStyleFromDeck(main, extra, ruleSet);
     }
 
     /**
