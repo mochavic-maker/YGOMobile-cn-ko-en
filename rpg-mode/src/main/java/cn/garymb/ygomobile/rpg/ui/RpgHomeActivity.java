@@ -546,7 +546,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     : "";
             String bodyMsg = "获得代币：+" + settlement.tokensEarned
                     + "\n当前代币余额：" + profile.tokens + extraMsg
-                    + (liveReplay != null ? "\n\n（可直接点下方「回放」重温本局，或点「日志」一键复制策略与操作日志）" : "");
+                    + (liveReplay != null ? "\n\n（可直接点下方「回放」重温本局，或点「日志」将策略与操作日志保存到 Download 目录）" : "");
             Runnable onReplay = liveReplay != null ? () -> launchLiveReplay(liveReplay) : null;
             Runnable onCopyLog = liveReplay != null ? () -> copyReplayFileLog(liveReplay.replayFilePath) : null;
             String titleStr = "RPG 决斗结算 · " + settlement.outcomeLabel;
@@ -557,7 +557,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     : "";
             showSettlementPopup = () -> showDuelSettlementDialog(
                     "🎬 本局结算",
-                    pInfo + "可直接点下方「回放」重温本局，或点「日志」一键复制双方策略、卡组与完整操作日志。",
+                    pInfo + "可直接点下方「回放」重温本局，或点「日志」将双方策略、卡组与完整操作日志保存到 Download 目录。",
                     () -> launchLiveReplay(liveReplay),
                     () -> copyReplayFileLog(liveReplay.replayFilePath));
         }
@@ -2964,7 +2964,7 @@ public class RpgHomeActivity extends AppCompatActivity {
 
     private void copyReplayFileLog(String replayFilePath) {
         if (replayFilePath == null || replayFilePath.isEmpty()) {
-            Toast.makeText(this, "暂无可复制的对局录像文件", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "暂无可导出的对局录像文件", Toast.LENGTH_SHORT).show();
             return;
         }
         RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
@@ -2973,10 +2973,12 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "无法解析本局录像日志（文件可能已被清理）", Toast.LENGTH_SHORT).show();
             return;
         }
-        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        if (cm != null) {
-            cm.setPrimaryClip(ClipData.newPlainText("YGOMobile RPG Replay Log", text));
-            Toast.makeText(this, "已复制对战回放日志到剪贴板（含双方策略、卡组与操作日志）", Toast.LENGTH_LONG).show();
+        cn.garymb.ygomobile.rpg.util.RpgLogFileExporter.ExportResult res =
+                cn.garymb.ygomobile.rpg.util.RpgLogFileExporter.saveDuelLogToDownloads(this, text);
+        if (res.success) {
+            Toast.makeText(this, "已保存对战日志至 " + res.displayPath, Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "保存日志失败：" + res.errorMessage, Toast.LENGTH_LONG).show();
         }
     }
 
@@ -3003,14 +3005,14 @@ public class RpgHomeActivity extends AppCompatActivity {
     }
 
     /**
-     * Copies the full duel log (strategies / manual mode, both Main+Extra decklists, and turn-by-turn
-     * engine action log) to the system clipboard for AI strategy review and tuning.
+     * Exports the full duel log (strategies / manual mode, both Main+Extra decklists, and turn-by-turn
+     * engine action log) as a .txt file into the device Download/ folder for easy file sharing.
      */
     private void copyDuelReplayLog(RpgAiAutoDuelModels.DuelResult report,
                                    List<Integer> mainA, List<Integer> extraA,
                                    List<Integer> mainB, List<Integer> extraB) {
         if (report == null) {
-            Toast.makeText(this, "暂无可复制的对局日志", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "暂无可导出的对局日志", Toast.LENGTH_SHORT).show();
             return;
         }
         String text = null;
@@ -3027,10 +3029,12 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "生成对局日志失败", Toast.LENGTH_SHORT).show();
             return;
         }
-        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        if (cm != null) {
-            cm.setPrimaryClip(ClipData.newPlainText("YGOMobile RPG Replay Log", text));
-            Toast.makeText(this, "已复制对战回放日志到剪贴板（含双方策略、卡组与操作日志）", Toast.LENGTH_LONG).show();
+        cn.garymb.ygomobile.rpg.util.RpgLogFileExporter.ExportResult res =
+                cn.garymb.ygomobile.rpg.util.RpgLogFileExporter.saveDuelLogToDownloads(this, text);
+        if (res.success) {
+            Toast.makeText(this, "已保存对战日志至 " + res.displayPath, Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "保存日志失败：" + res.errorMessage, Toast.LENGTH_LONG).show();
         }
     }
 
@@ -3972,7 +3976,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     sampleBtn = makeActionButton("🎬 3D回放样本(第" + r.totalGames + "局)", "#0284C7");
                     sampleBtn.setOnClickListener(v -> launchNative3dReplay(r.sampleLastResult, TAB_AI_SHOWDOWN));
                 }
-                Button copySampleLogBtn = makeActionButton("📋 复制样本日志", "#475569");
+                Button copySampleLogBtn = makeActionButton("💾 导出样本日志", "#475569");
                 copySampleLogBtn.setOnClickListener(v -> copyDuelReplayLog(
                         r.sampleLastResult, null, null, null, null));
                 resCard.addView(makeEqualWeightButtonRow(8, sampleBtn, copySampleLogBtn));

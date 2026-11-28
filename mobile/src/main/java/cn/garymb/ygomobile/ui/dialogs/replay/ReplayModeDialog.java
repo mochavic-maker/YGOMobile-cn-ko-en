@@ -255,7 +255,7 @@ public class ReplayModeDialog {
         if (tvStartTurn != null) tvStartTurn.setText(sm.getSystemString(1353, "播放起始于回合："));
         if (btnShareReplay != null) btnShareReplay.setText(sm.getSystemString(1368, "分享录像"));
         if (btnExtractDeck != null) btnExtractDeck.setText(sm.getSystemString(1369, "提取卡组"));
-        if (btnCopyReplayLog != null) btnCopyReplayLog.setText("复制日志");
+        if (btnCopyReplayLog != null) btnCopyReplayLog.setText("导出日志");
         if (btnDeleteReplay != null) btnDeleteReplay.setText(sm.getSystemString(1361, "删除录像"));
         if (btnLoadReplay != null) btnLoadReplay.setText(sm.getSystemString(1348, "载入录像"));
         if (btnRenameReplay != null) btnRenameReplay.setText(sm.getSystemString(1362, "重命名"));

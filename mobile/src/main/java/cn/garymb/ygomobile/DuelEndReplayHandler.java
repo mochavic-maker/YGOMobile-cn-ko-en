@@ -84,7 +84,7 @@ class DuelEndReplayHandler {
                 .setCancelable(false);
         if (replayPath != null && !replayPath.isEmpty()) {
             dialog.setType(YesOrNoDialog.TYPE_YES_NO)
-                    .setNegativeButtonText("复制日志")
+                    .setNegativeButtonText("导出日志")
                     .setNegativeButton(v -> {
                         cn.garymb.ygomobile.rpg.RpgIntegration.copyReplayLogToClipboard(activity, replayPath);
                         activity.returnToLanMain(null);

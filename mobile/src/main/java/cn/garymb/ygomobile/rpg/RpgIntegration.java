@@ -267,7 +267,8 @@ public final class RpgIntegration {
     }
 
     /**
-     * Formats and copies a .yrp replay's full strategy/deck/action log to the system clipboard.
+     * Formats and exports a .yrp replay's full strategy/deck/action log as a .txt file
+     * into the device Download/ directory for convenient file sharing.
      */
     public static boolean copyReplayLogToClipboard(Context context, String replayFilePath) {
         if (context == null || replayFilePath == null || replayFilePath.isEmpty()) return false;
@@ -276,13 +277,13 @@ public final class RpgIntegration {
             Toast.makeText(context, "无法解析该录像的日志信息", Toast.LENGTH_SHORT).show();
             return false;
         }
-        android.content.ClipboardManager cm =
-                (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-        if (cm != null) {
-            cm.setPrimaryClip(android.content.ClipData.newPlainText("YGOMobile Replay Log", logText));
-            Toast.makeText(context, "已复制对战回放日志到剪贴板（含双方策略、卡组与操作日志）", Toast.LENGTH_LONG).show();
+        cn.garymb.ygomobile.rpg.util.RpgLogFileExporter.ExportResult res =
+                cn.garymb.ygomobile.rpg.util.RpgLogFileExporter.saveDuelLogToDownloads(context, logText);
+        if (res.success) {
+            Toast.makeText(context, "已保存对战日志至 " + res.displayPath, Toast.LENGTH_LONG).show();
             return true;
         }
+        Toast.makeText(context, "保存日志失败：" + res.errorMessage, Toast.LENGTH_LONG).show();
         return false;
     }
 
@@ -1437,7 +1438,7 @@ public final class RpgIntegration {
                                         .setType(cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog.TYPE_YES_NO)
                                         .setPositiveButtonText("返回 RPG 模式")
                                         .setPositiveButton(v -> returnToRpgFromReplay(activity, returnTab))
-                                        .setNegativeButtonText("复制日志并返回")
+                                        .setNegativeButtonText("导出日志并返回")
                                         .setNegativeButton(v -> {
                                             copyReplayLogToClipboard(activity, replayPath);
                                             returnToRpgFromReplay(activity, returnTab);
