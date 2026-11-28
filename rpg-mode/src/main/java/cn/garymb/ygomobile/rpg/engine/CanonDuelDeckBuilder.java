@@ -191,7 +191,23 @@ public final class CanonDuelDeckBuilder {
             }
         }
 
-        // Step A: Collect & score monster candidates first (excluding rival aces & unsafe Nomi/Ritual bricks)
+        // Step A: Calibrate event-date era power benchmarks directly from the pool released <= poolDate
+        // so non-canon/non-synergy filler cards match the event date's actual metagame strength
+        // (e.g. 1800-1900 ATK beaters / 2000 DEF walls in 1999-08-26, never obsolete sub-1000 vanillas!).
+        int eraTopLowerAtk = 1200;
+        int eraTopLowerDef = 1300;
+        for (RpgCard c : pool) {
+            if (c == null || !c.isMonster() || c.isExtraDeckCard()) continue;
+            if (banlist.getMaxCopies(c.id) <= 0) continue;
+            if (c.level <= 4) {
+                if (c.atk > eraTopLowerAtk) eraTopLowerAtk = c.atk;
+                if (c.def > eraTopLowerDef) eraTopLowerDef = c.def;
+            }
+        }
+        final int finalEraTopLowerAtk = eraTopLowerAtk;
+        final int finalEraTopLowerDef = eraTopLowerDef;
+
+        // Collect & score monster candidates first (excluding rival aces & unsafe Nomi/Ritual bricks)
         List<RpgCard> monsters = new ArrayList<>();
         for (RpgCard c : pool) {
             if (c == null || !c.isMonster() || c.isExtraDeckCard()) continue;
@@ -202,8 +218,10 @@ public final class CanonDuelDeckBuilder {
             monsters.add(c);
         }
         Collections.sort(monsters, (a, b) -> {
-            int sa = scoreMonster(a, style, prefRaces, prefAttrs, tributeEnabled, charCanonPool, coreMain, extra, catalog);
-            int sb = scoreMonster(b, style, prefRaces, prefAttrs, tributeEnabled, charCanonPool, coreMain, extra, catalog);
+            int sa = scoreMonster(a, style, prefRaces, prefAttrs, tributeEnabled,
+                    finalEraTopLowerAtk, finalEraTopLowerDef, charCanonPool, coreMain, extra, catalog);
+            int sb = scoreMonster(b, style, prefRaces, prefAttrs, tributeEnabled,
+                    finalEraTopLowerAtk, finalEraTopLowerDef, charCanonPool, coreMain, extra, catalog);
             if (sb != sa) return Integer.compare(sb, sa);
             return Integer.compare(a.id, b.id);
         });
@@ -338,47 +356,125 @@ public final class CanonDuelDeckBuilder {
         return added;
     }
 
+    /**
+     * Scores a candidate padding monster in strict 3-tier priority:
+     * 1) Authentic character canon cards from the event date's card pool (that remain era-viable or have real effects),
+     * 2) Cards directly synergistic with the duel's canon core cards (fusion materials, combo pieces, virus fodder),
+     * 3) Era-competitive cards calibrated to the event date's card pool strength (avoiding obsolete sub-era vanillas).
+     */
     private static int scoreMonster(RpgCard c, String style,
                                     Set<String> prefRaces, Set<String> prefAttrs,
                                     boolean tributeEnabled,
+                                    int eraTopLowerAtk, int eraTopLowerDef,
                                     Set<Integer> charCanonPool,
                                     List<Integer> coreMain, List<Integer> coreExtra,
                                     RpgCatalog catalog) {
         int score = 0;
-        // 1) Highest priority: cards authentically used by this character in the original work
-        if (charCanonPool != null && charCanonPool.contains(c.id)) {
-            score += 1600;
-        }
-        // 2) Direct mechanical / thematic synergy with this duel's canon core cards
-        score += CanonCharacterCardRegistry.getCoreSynergyBonus(c, coreMain, coreExtra, catalog);
-
-        // 3) Theme race & attribute affinity
-        String race = c.race != null ? c.race.toLowerCase() : "";
-        String attr = c.attribute != null ? c.attribute.toLowerCase() : "";
-        if (prefRaces.contains(race)) score += 900;
-        if (prefAttrs.contains(attr)) score += 350;
-
         int atk = Math.max(0, c.atk);
         int def = Math.max(0, c.def);
-        if ("EXODIA_DRAW".equals(style) || "FLIP_CONTROL".equals(style)) {
-            if (RpgAiCardKnowledge.SEARCHER_MONSTERS.contains(c.id)) score += 1200;
-            if (RpgAiCardKnowledge.FLIP_MONSTERS.contains(c.id)) score += 800;
-            score += Math.max(def, atk) / 4;
+        boolean isPlainNormal = "normal".equalsIgnoreCase(c.frameType);
+        boolean isUtilityEffect = RpgAiCardKnowledge.SEARCHER_MONSTERS.contains(c.id)
+                || RpgAiCardKnowledge.FLIP_MONSTERS.contains(c.id)
+                || c.id == RpgAiCardKnowledge.WALL_OF_ILLUSION
+                || c.id == RpgAiCardKnowledge.CANNON_SOLDIER
+                || c.id == RpgAiCardKnowledge.CYBER_STEIN
+                || c.id == RpgAiCardKnowledge.LORD_OF_D
+                || RpgAiCardKnowledge.FUSION_SUBS.contains(c.id);
+
+        // Event-date era power thresholds (automatically scales from 1999-02-04 Vol.1 to 1999-08-26+ & 2000+)
+        int eraAtkFloor = Math.max(800, eraTopLowerAtk - 400);
+        int eraDefFloor = Math.max(1000, eraTopLowerDef - 300);
+        int eraTributeAtkFloor = eraTopLowerAtk + 400;
+
+        boolean meetsEraStats;
+        if (c.level <= 4) {
+            meetsEraStats = (atk >= eraAtkFloor) || (def >= eraDefFloor);
+        } else if (tributeEnabled) {
+            meetsEraStats = (atk >= eraTributeAtkFloor) || (def >= Math.max(2000, eraTopLowerDef));
         } else {
-            if (tributeEnabled && c.level >= 5) {
-                score -= (c.level >= 7 ? 500 : 250);
+            meetsEraStats = (atk >= eraAtkFloor) || (def >= eraDefFloor);
+        }
+
+        boolean inCharPool = charCanonPool != null && charCanonPool.contains(c.id);
+        int synergyBonus = CanonCharacterCardRegistry.getCoreSynergyBonus(c, coreMain, coreExtra, catalog);
+        boolean hasDirectSynergy = CanonCharacterCardRegistry.isDirectMechanicalSynergy(c, coreMain, coreExtra);
+
+        // 1) Authentic character canon cards: top priority when effect/synergistic or era-viable;
+        //    obsolete early-manga weak vanillas get scaled down so later-era decks pick strong character cards first.
+        if (inCharPool) {
+            if (!isPlainNormal || meetsEraStats || hasDirectSynergy) {
+                score += 1350;
+            } else if (Math.max(atk, def) >= Math.max(1100, eraAtkFloor - 250)) {
+                score += 250;
+            } else {
+                // Outdated sub-1000 character vanilla in a 1800+ era -> defer behind era-viable cards
+                score -= 900;
+            }
+        }
+
+        // 2) Direct mechanical / thematic synergy with this duel's canon core cards
+        score += synergyBonus;
+
+        // 3) Hard obsolescence guard: NEVER pad non-canon, non-synergy, out-of-era plain normal monsters
+        //    (e.g. sub-1000..1400 vanillas in an 1800-1900 ATK environment)!
+        if (!inCharPool && !hasDirectSynergy && isPlainNormal && !meetsEraStats) {
+            score -= 2600;
+        }
+
+        // 4) Theme race & attribute affinity — only boosts era-viable / effect / synergistic cards
+        //    so a weak matching-race vanilla can NEVER beat an era-competitive beater or wall!
+        String race = c.race != null ? c.race.toLowerCase() : "";
+        String attr = c.attribute != null ? c.attribute.toLowerCase() : "";
+        if (meetsEraStats || !isPlainNormal || hasDirectSynergy) {
+            if (prefRaces.contains(race)) score += 320;
+            if (prefAttrs.contains(attr)) score += 140;
+        }
+
+        // 5) Style- & era-calibrated combat/role value
+        if ("EXODIA_DRAW".equals(style) || "FLIP_CONTROL".equals(style)) {
+            if (RpgAiCardKnowledge.SEARCHER_MONSTERS.contains(c.id)) {
+                score += 1600;
+            } else if (RpgAiCardKnowledge.FLIP_MONSTERS.contains(c.id)) {
+                score += 1200;
+            } else if (c.id == RpgAiCardKnowledge.WALL_OF_ILLUSION) {
+                score += 1100;
+            } else if (c.level <= 4 && def >= eraDefFloor) {
+                score += 850 + def / 3;
+            } else if (c.level <= 4 && atk >= eraAtkFloor) {
+                score += 400 + atk / 3;
+            } else if (isPlainNormal) {
+                score -= 1400;
+            } else {
+                score += Math.max(def, atk) / 4;
+            }
+        } else {
+            if (isUtilityEffect) {
+                score += 650;
             }
             if (c.level <= 4) {
-                score += atk / 2 + def / 8;
+                score += (int) (atk * 0.85) + def / 6;
+                if (atk >= eraTopLowerAtk - 100) {
+                    score += 250;
+                } else if (def >= eraTopLowerDef) {
+                    score += 350;
+                }
+            } else if (tributeEnabled) {
+                if (atk >= eraTributeAtkFloor) {
+                    score += atk / 2 - (c.level >= 7 ? 280 : 80);
+                } else if (!hasDirectSynergy) {
+                    // Weak tribute brick (e.g. Lv5 1500-1700 ATK in an 1850 Lv4 environment)
+                    score -= 1300;
+                }
             } else {
-                score += atk / 3;
+                score += (int) (atk * 0.85) + def / 6;
             }
         }
-        if ("DARK_VIRUS".equals(style) && "dark".equals(attr) && atk <= 1000 && def >= 1200) {
-            score += 450;
+        if ("DARK_VIRUS".equals(style) && "dark".equals(attr) && atk <= 1000
+                && (!isPlainNormal || def >= 1400)) {
+            score += 650;
         }
         if ("FUSION_COMBO".equals(style) && RpgAiCardKnowledge.FUSION_SUBS.contains(c.id)) {
-            score += 700;
+            score += 750;
         }
         return score;
     }
@@ -393,60 +489,70 @@ public final class CanonDuelDeckBuilder {
         int score = 100;
         // 1) Highest priority: spells/traps authentically used by this character in the original work
         if (charCanonPool != null && charCanonPool.contains(id)) {
-            score += 1600;
+            score += 1500;
         }
         // 2) Direct mechanical / thematic synergy with this duel's canon core & monster lineup
         score += CanonCharacterCardRegistry.getCoreSynergyBonus(c, curMain, coreExtra, catalog);
 
-        // 3) Universal era staples (moderate weight so character-canon & core-synergy cards come first)
-        if (id == RpgAiCardKnowledge.POT_OF_GREED) score += 750;
-        else if (id == RpgAiCardKnowledge.GRACEFUL_CHARITY) score += 720;
-        else if (id == RpgAiCardKnowledge.MONSTER_REBORN) score += 720;
-        else if (id == RpgAiCardKnowledge.RAIGEKI) score += 700;
-        else if (id == RpgAiCardKnowledge.DARK_HOLE) score += 700;
-        else if (id == RpgAiCardKnowledge.CHANGE_OF_HEART) score += 680;
-        else if (id == RpgAiCardKnowledge.HARPIES_FEATHER_DUSTER) score += 660;
-        else if (id == RpgAiCardKnowledge.MIRROR_FORCE) score += 680;
-        else if (id == RpgAiCardKnowledge.TRAP_HOLE) score += 660;
-        else if (id == RpgAiCardKnowledge.FISSURE) score += 650;
-        else if (id == RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT) score += 640;
-        else if (id == RpgAiCardKnowledge.KUNAI_WITH_CHAIN) score += 620;
-        else if (id == RpgAiCardKnowledge.WABOKU) score += 600;
-        else if (id == RpgAiCardKnowledge.HEAVY_STORM) score += 560;
-        else if (id == RpgAiCardKnowledge.SOLEMN_JUDGMENT) score += 560;
-        else if (id == RpgAiCardKnowledge.TRIBUTE_TO_THE_DOOMED) score += 560;
-        else if (id == RpgAiCardKnowledge.REINFORCEMENTS) score += 540;
-        else if (id == RpgAiCardKnowledge.DE_SPELL || id == RpgAiCardKnowledge.REMOVE_TRAP) score += 420;
+        // 3) Universal era staples matching event-date power level
+        if (id == RpgAiCardKnowledge.POT_OF_GREED) score += 980;
+        else if (id == RpgAiCardKnowledge.GRACEFUL_CHARITY) score += 950;
+        else if (id == RpgAiCardKnowledge.MONSTER_REBORN) score += 940;
+        else if (id == RpgAiCardKnowledge.RAIGEKI) score += 920;
+        else if (id == RpgAiCardKnowledge.DARK_HOLE) score += 900;
+        else if (id == RpgAiCardKnowledge.CHANGE_OF_HEART) score += 880;
+        else if (id == RpgAiCardKnowledge.HARPIES_FEATHER_DUSTER) score += 860;
+        else if (id == RpgAiCardKnowledge.MIRROR_FORCE) score += 880;
+        else if (id == RpgAiCardKnowledge.TRAP_HOLE) score += 840;
+        else if (id == RpgAiCardKnowledge.FISSURE) score += 820;
+        else if (id == RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT) score += 820;
+        else if (id == RpgAiCardKnowledge.KUNAI_WITH_CHAIN) score += 760;
+        else if (id == RpgAiCardKnowledge.WABOKU) score += 760;
+        else if (id == RpgAiCardKnowledge.HEAVY_STORM) score += 700;
+        else if (id == RpgAiCardKnowledge.SOLEMN_JUDGMENT) score += 720;
+        else if (id == RpgAiCardKnowledge.TRIBUTE_TO_THE_DOOMED) score += 700;
+        else if (id == RpgAiCardKnowledge.REINFORCEMENTS) score += 620;
+        else if (id == RpgAiCardKnowledge.DE_SPELL || id == RpgAiCardKnowledge.REMOVE_TRAP) score += 480;
+
+        if ("EXODIA_DRAW".equals(style)) {
+            if (id == RpgAiCardKnowledge.POT_OF_GREED || id == RpgAiCardKnowledge.GRACEFUL_CHARITY
+                    || id == RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT
+                    || id == RpgAiCardKnowledge.WABOKU || id == RpgAiCardKnowledge.MIRROR_FORCE
+                    || id == RpgAiCardKnowledge.DARK_HOLE || id == RpgAiCardKnowledge.RAIGEKI
+                    || id == RpgAiCardKnowledge.SOLEMN_JUDGMENT) {
+                score += 350;
+            }
+        }
 
         if (hasExtraFusions && (id == RpgAiCardKnowledge.POLYMERIZATION || id == RpgAiCardKnowledge.FUSION_SAGE)) {
-            score += 850;
+            score += 950;
         }
         // Theme-matched equips & field spells
-        if (id == RpgAiCardKnowledge.DARK_ENERGY && prefRaces.contains("fiend")) score += 650;
-        if (id == RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS && prefRaces.contains("spellcaster")) score += 650;
-        if (id == RpgAiCardKnowledge.LEGENDARY_SWORD && prefRaces.contains("warrior")) score += 650;
-        if (id == RpgAiCardKnowledge.DRAGON_TREASURE && prefRaces.contains("dragon")) score += 650;
-        if (id == RpgAiCardKnowledge.FOLLOW_WIND && prefRaces.contains("winged beast")) score += 650;
-        if (id == RpgAiCardKnowledge.LASER_CANNON_ARMOR && prefRaces.contains("insect")) score += 650;
-        if (id == RpgAiCardKnowledge.INSECT_ARMOR_WITH_LASER_CANNON && prefRaces.contains("insect")) score += 700;
-        if (id == RpgAiCardKnowledge.RAISE_BODY_HEAT && prefRaces.contains("dinosaur")) score += 650;
-        if (id == RpgAiCardKnowledge.VIOLET_CRYSTAL && prefRaces.contains("zombie")) score += 650;
-        if (id == RpgAiCardKnowledge.MACHINE_CONVERSION_FACTORY && prefRaces.contains("machine")) score += 650;
-        if (id == RpgAiCardKnowledge.POWER_OF_KAISHIN && prefRaces.contains("aqua")) score += 650;
-        if (id == RpgAiCardKnowledge.SWORD_OF_DARK_DESTRUCTION && prefAttrs.contains("dark")) score += 540;
-        if (id == RpgAiCardKnowledge.ELFS_LIGHT && prefAttrs.contains("light")) score += 540;
-        if (id == RpgAiCardKnowledge.INVIGORATION && prefAttrs.contains("earth")) score += 540;
-        if (id == RpgAiCardKnowledge.GUST_FAN && prefAttrs.contains("wind")) score += 540;
-        if (id == RpgAiCardKnowledge.STEEL_SHELL && prefAttrs.contains("water")) score += 540;
+        if (id == RpgAiCardKnowledge.DARK_ENERGY && prefRaces.contains("fiend")) score += 520;
+        if (id == RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS && prefRaces.contains("spellcaster")) score += 520;
+        if (id == RpgAiCardKnowledge.LEGENDARY_SWORD && prefRaces.contains("warrior")) score += 520;
+        if (id == RpgAiCardKnowledge.DRAGON_TREASURE && prefRaces.contains("dragon")) score += 520;
+        if (id == RpgAiCardKnowledge.FOLLOW_WIND && prefRaces.contains("winged beast")) score += 520;
+        if (id == RpgAiCardKnowledge.LASER_CANNON_ARMOR && prefRaces.contains("insect")) score += 520;
+        if (id == RpgAiCardKnowledge.INSECT_ARMOR_WITH_LASER_CANNON && prefRaces.contains("insect")) score += 580;
+        if (id == RpgAiCardKnowledge.RAISE_BODY_HEAT && prefRaces.contains("dinosaur")) score += 520;
+        if (id == RpgAiCardKnowledge.VIOLET_CRYSTAL && prefRaces.contains("zombie")) score += 520;
+        if (id == RpgAiCardKnowledge.MACHINE_CONVERSION_FACTORY && prefRaces.contains("machine")) score += 520;
+        if (id == RpgAiCardKnowledge.POWER_OF_KAISHIN && prefRaces.contains("aqua")) score += 520;
+        if (id == RpgAiCardKnowledge.SWORD_OF_DARK_DESTRUCTION && prefAttrs.contains("dark")) score += 420;
+        if (id == RpgAiCardKnowledge.ELFS_LIGHT && prefAttrs.contains("light")) score += 420;
+        if (id == RpgAiCardKnowledge.INVIGORATION && prefAttrs.contains("earth")) score += 420;
+        if (id == RpgAiCardKnowledge.GUST_FAN && prefAttrs.contains("wind")) score += 420;
+        if (id == RpgAiCardKnowledge.STEEL_SHELL && prefAttrs.contains("water")) score += 420;
         if (id == RpgAiCardKnowledge.BLACK_PENDANT) score += 560;
 
-        // Avoid weak LP-only cards unless early Vol.1 pool has nothing else
-        if (id == RpgAiCardKnowledge.SPARKS || id == RpgAiCardKnowledge.RAIMEI
-                || id == RpgAiCardKnowledge.BLUE_MEDICINE || id == RpgAiCardKnowledge.RED_MEDICINE) {
-            score -= 40;
+        // Penalize obsolete low-impact burn/heal fillers in non-Burn/non-Mill decks
+        if (!"BURN_WALL".equals(style) && !"MILL_MORPHING".equals(style)
+                && (RpgAiCardKnowledge.getBurnDamage(id) > 0 || RpgAiCardKnowledge.isHealSpell(id))) {
+            score -= 320;
         }
         if ("EQUIP_LIGHT_EARTH".equals(style) && RpgAiCardKnowledge.EQUIP_SPELLS.contains(id)) {
-            score += 220;
+            score += 260;
         }
         return score;
     }

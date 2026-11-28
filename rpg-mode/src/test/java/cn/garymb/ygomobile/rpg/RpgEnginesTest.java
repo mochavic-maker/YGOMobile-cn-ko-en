@@ -1521,6 +1521,85 @@ public class RpgEnginesTest {
     }
 
     @Test
+    public void canonDuelPaddingMatchesEventDateCardPoolStrength() {
+        boolean checkedDeathTYugi = false;
+        boolean checkedDeathTKaiba = false;
+        for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel duel : catalog.canonDuels) {
+            List<RpgCard> pool = TimelineEngine.getReleasedCards(catalog, duel.timelineDate);
+            OcgBanlist banlist = TimelineEngine.getActiveBanlist(catalog, duel.timelineDate);
+            int eraTopLowerAtk = 1200;
+            int eraTopLowerDef = 1300;
+            for (RpgCard c : pool) {
+                if (c == null || !c.isMonster() || c.isExtraDeckCard()) continue;
+                if (banlist.getMaxCopies(c.id) <= 0) continue;
+                if (c.level <= 4) {
+                    if (c.atk > eraTopLowerAtk) eraTopLowerAtk = c.atk;
+                    if (c.def > eraTopLowerDef) eraTopLowerDef = c.def;
+                }
+            }
+            int eraAtkFloor = Math.max(800, eraTopLowerAtk - 400);
+            int eraDefFloor = Math.max(1000, eraTopLowerDef - 300);
+
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide side
+                    : new cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide[]{duel.sideA, duel.sideB}) {
+                cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.BuiltCanonDeck built =
+                        cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.buildDeck(catalog, duel, side, duel.timelineDate);
+                assertEquals(40, built.main.size());
+
+                java.util.Set<Integer> charCanonPool =
+                        cn.garymb.ygomobile.rpg.engine.CanonCharacterCardRegistry.getCharacterCanonPool(side.characterId, catalog);
+                for (int id : built.main) {
+                    if (built.canonCardIds.contains(id)) continue; // explicit canon cards preserved 100%
+                    RpgCard c = catalog.findCardOrCanon(id);
+                    assertNotNull(c);
+                    if (!c.isMonster() || !"normal".equalsIgnoreCase(c.frameType)) continue;
+                    boolean directSynergy = cn.garymb.ygomobile.rpg.engine.CanonCharacterCardRegistry
+                            .isDirectMechanicalSynergy(c, side.canonCardIds, side.canonExtraIds);
+                    if (directSynergy) continue; // direct mechanical combo piece (e.g. Petit Moth, Fusion material)
+
+                    boolean isCharCanon = charCanonPool.contains(id);
+                    if (eraTopLowerAtk >= 1400) {
+                        assertFalse("Canon duel " + duel.id + " (" + duel.timelineDate + ") / " + side.characterName
+                                        + " must NOT pad obsolete sub-1000 normal monster "
+                                        + c.nameCn + " (" + c.atk + "/" + c.def + ") in a " + eraTopLowerAtk + " ATK era",
+                                c.atk < 1000 && c.def < 1000);
+                    }
+                    if (!isCharCanon && eraTopLowerAtk >= 1800) {
+                        boolean meetsEra = (c.level <= 4 && (c.atk >= eraAtkFloor || c.def >= eraDefFloor))
+                                || (c.level >= 5 && (c.atk >= eraTopLowerAtk + 400 || c.def >= eraTopLowerDef));
+                        assertTrue("Canon duel " + duel.id + " (" + duel.timelineDate + ") / " + side.characterName
+                                        + " padded out-of-era non-canon normal monster " + c.nameCn
+                                        + " (Lv" + c.level + " " + c.atk + "/" + c.def
+                                        + ", expected ATK>=" + eraAtkFloor + " or DEF>=" + eraDefFloor + ")",
+                                meetsEra);
+                    }
+                    if ("canon_1997_07_01_manga_yugi_kaiba_deatht".equals(duel.id)) {
+                        assertTrue("Death-T 终战 (" + side.characterName + ") padded normal monster must match 1999-08-26 era strength: "
+                                        + c.nameCn + " (" + c.atk + "/" + c.def + ")",
+                                c.atk >= eraAtkFloor || c.def >= eraDefFloor);
+                    }
+                }
+
+                if ("canon_1997_07_01_manga_yugi_kaiba_deatht".equals(duel.id)) {
+                    assertEquals("1999-08-26", duel.timelineDate);
+                    if ("seto_kaiba".equals(side.characterId)) {
+                        checkedDeathTKaiba = true;
+                        assertTrue("Death-T Kaiba (1999-08-26) should include Mechanicalchaser (7359741) or La Jinn (97590747)",
+                                built.main.contains(7359741) || built.main.contains(97590747));
+                    } else if ("yami_yugi".equals(side.characterId)) {
+                        checkedDeathTYugi = true;
+                        assertTrue("Death-T Yugi (1999-08-26) should include era-viable walls/flips/searchers",
+                                built.main.contains(13039848) || built.main.contains(15025844)
+                                        || built.main.contains(54652250) || built.main.contains(31560081)
+                                        || built.main.contains(26202165));
+                    }
+                }
+            }
+        }
+        assertTrue("Death-T Yugi & Kaiba must both be present and verified", checkedDeathTYugi && checkedDeathTKaiba);
+    }
+
+    @Test
     public void dynamicJenksTieringSeparatesNaturalClustersAndLocksTies() {
         // 1) 1999-11-18 real field: Jenks Natural Breaks cleanly partitions S/A/B/C/D
         //    instead of wasting 3 cuts on the sparse bottom decks like naive Top-4-Gaps.

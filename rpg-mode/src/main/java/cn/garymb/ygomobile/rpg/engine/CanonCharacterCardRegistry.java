@@ -133,31 +133,29 @@ public final class CanonCharacterCardRegistry {
     static {
         Map<String, Set<Integer>> map = new HashMap<>();
 
-        // 暗游戏 (Manga + Toei + DM + EX Yugi Starter Deck)
+        // 暗游戏 (Manga + Toei + DM + EX Yugi authentic canon cards only; excludes non-canon pack fillers)
         map.put(CHAR_YAMI_YUGI, setOf(
                 // Monsters
                 46986414, 6368038, 28279543, 70781052, 91152256, 15025844, 13039848,
                 40374923, 90357090, 75889523, 41392891, 32452818, 87796900, 67724379,
                 32274490, 87564352, 53829412, 69669405, 5405694, 50930991, 13945283,
-                87557188, 86325596, 13723605, 49218300, 93221206, 54652250, 7089711,
-                31560081, 26202165, 78010363, 22026707, 36304921, 63308047, 41218256,
-                89494469, 41949033, 16972957, 66672569, 91939608, 31122090, 90963488,
-                15507080, 15401633,
+                87557188, 86325596, 13723605, 54652250, 7089711,
+                31560081, 26202165, 78010363,
+                16972957, 66672569, 91939608, 31122090,
                 // Spells & Traps
                 72302403, 83764718, 53129443, 4206964, 66788016, 91595718, 59197169,
                 36607978, 37120512, 24094653, 4031928, 55144522, 79571449, 12607053,
                 85602018, 19159413, 51482758, 50045299, 77622396, 61854111
         ));
 
-        // 海马濑人 (Manga + Toei + DM + Starter Box + EX Kaiba Starter Deck)
+        // 海马濑人 (Manga + Toei + DM + EX Kaiba authentic canon cards only; excludes non-canon Starter/Booster fillers)
         map.put(CHAR_SETO_KAIBA, setOf(
                 // Monsters
                 89631139, 76184692, 15303296, 24611934, 5053103, 68516705, 50005633,
                 97590747, 26378150, 30113682, 6285791, 24311372, 7359741, 17985575,
-                47060154, 45121025, 73481154, 21263083, 81057959, 10202894, 46474915,
-                97360116, 75499502, 54098121, 46461247, 84686841, 98075147, 2863439,
-                62193699, 86421986, 22910685, 98795934, 72299832, 28933734, 72520073,
-                732302, 26202165, 2957055, 76704943, 85639257, 80770678,
+                47060154, 73481154, 21263083, 10202894,
+                54098121, 46461247, 98795934, 72299832, 28933734, 72520073,
+                26202165, 85639257, 80770678,
                 // Spells & Traps
                 4614116, 57728570, 63102017, 43973174, 12580477, 24094653, 1435851,
                 50913601, 83887306, 83764718, 53129443, 66788016, 4206964, 55144522,
@@ -165,48 +163,45 @@ public final class CanonCharacterCardRegistry {
                 51482758, 98374133
         ));
 
-        // 城之内克也 (Manga + DM Warrior/Dragon/Gamble)
+        // 城之内克也 (Manga + DM Warrior/Dragon/Gamble authentic canon cards only)
         map.put(CHAR_JOEY, setOf(
                 // Monsters
                 74677422, 48305365, 88819587, 71625222, 14977074, 1184620, 44287299,
-                34460851, 55550921, 15480588, 49791927, 48365709, 16899564, 28003512,
-                55291359, 78556320, 756652, 15401633, 64511793, 81057959, 55444629,
-                76704943, 2957055, 64271667, 67494157, 62403074, 38942059, 90357090,
-                98818516, 75499502,
+                34460851, 15480588, 49791927, 48365709, 16899564,
+                55291359, 64271667, 67494157,
                 // Spells & Traps
                 37390589, 32268901, 61854111, 86318356, 24094653, 1435851, 17814387,
                 44209392, 68540058, 46009906, 66788016, 83764718, 4206964, 72302403
         ));
 
-        // 昆虫羽蛾
+        // 昆虫羽蛾 (authentic canon insect cards)
         map.put(CHAR_WEEVIL, setOf(
                 58192742, 40240595, 87756343, 14141448, 48579379, 89091579, 88979991,
                 52584282, 15367030, 41762634, 68928540, 80141480, 53606874, 33413638,
-                60802233, 41403766, 28470714, 54652250, 81843628, 88643173, 56283725,
-                70924884, 34536276, 77568553, 16229315, 51228280,
+                28470714, 54652250, 81843628,
+                16229315, 51228280,
                 87430998, 77007920, 3492538, 98374133
         ));
 
-        // 孔雀舞
+        // 孔雀舞 (authentic Harpie / Amazoness / Winged Beast era cards)
         map.put(CHAR_MAI, setOf(
                 76812113, 12206212, 52040216, 41396436, 10202894, 75582395, 47319141,
-                77998771, 3170832, 14037717, 68870276, 72842870, 57405307, 2863439,
+                77998771,
                 90219263, 63224564, 18144506, 98252586, 37820550, 55321970, 50913601
         ));
 
-        // 梶木渔太
+        // 梶木渔太 (authentic Ocean / Water canon cards)
         map.put(CHAR_MAKO, setOf(
                 76634149, 13429800, 77456781, 58831685, 23659124, 85326399, 44073668,
-                81386177, 69572024, 17968114, 75376965, 69750536, 33178416, 29402771,
-                85448931, 94022093, 71746462, 8201910, 36904469, 2483611, 15820147,
-                85639257, 39004808,
+                81386177, 33178416, 29402771,
+                8201910, 36904469, 85639257,
                 22702055, 77027445, 2370081
         ));
 
-        // 恐龙龙崎
+        // 恐龙龙崎 (authentic Dinosaur / Dragon canon cards)
         map.put(CHAR_REX, setOf(
-                74677422, 66516792, 94119974, 38289717, 13069066, 1784619, 42348802,
-                42625254, 89904598, 57305373, 46457856, 67494157, 55444629,
+                74677422, 66516792, 94119974, 38289717, 13069066, 1784619,
+                67494157,
                 23424603, 51267887, 1435851, 98374133
         ));
 
@@ -325,6 +320,52 @@ public final class CanonCharacterCardRegistry {
     }
 
     /**
+     * Returns true ONLY when {@code candidate} has a direct mechanical combo/material synergy with
+     * {@code coreMain} or {@code coreExtra} (e.g., Fusion materials for an Extra Deck boss, Petit Moth
+     * for Cocoon/Great Moth, functional/high-DEF DARK <=1000 fodder for Crush Card Virus).
+     * Plain race/attribute overlap does NOT qualify — preventing obsolete weak vanillas from bypassing
+     * event-date era-strength guards.
+     */
+    public static boolean isDirectMechanicalSynergy(RpgCard candidate,
+                                                    Collection<Integer> coreMain,
+                                                    Collection<Integer> coreExtra) {
+        if (candidate == null) return false;
+        Set<Integer> mainSet = coreMain != null ? new HashSet<>(coreMain) : Collections.emptySet();
+        Set<Integer> extraSet = coreExtra != null ? new HashSet<>(coreExtra) : Collections.emptySet();
+        int id = candidate.id;
+
+        if (!extraSet.isEmpty()) {
+            if (id == RpgAiCardKnowledge.POLYMERIZATION || id == RpgAiCardKnowledge.FUSION_SAGE) return true;
+            if (extraSet.contains(45231177) && (id == 44287299 || id == 34460851)) return true; // 炎之剑士
+            if (extraSet.contains(41462083) && (id == 88819587 || id == 71625222)) return true; // 千年龙
+            if (extraSet.contains(66889139) && (id == 6368038 || id == 28279543)) return true;  // 龙骑士盖亚
+            if (extraSet.contains(90660762) && (id == 74677422 || id == 64271667)) return true; // 流星黑龙
+            if (extraSet.contains(11901678) && (id == 74677422 || id == 70781052)) return true; // 暗黑魔龙
+            if (extraSet.contains(99551425) && (id == 11384280 || id == 8471389)) return true;  // 迷宫的魔战车
+            if (extraSet.contains(94905343) && (id == 5053103 || id == 68516705)) return true;  // 牛头人马兽
+            if (extraSet.contains(23995346) && id == 89631139) return true;                     // 青眼究极龙
+        }
+        if ((mainSet.contains(40240595) || mainSet.contains(14141448) || mainSet.contains(48579379))
+                && id == 58192742) {
+            return true; // 飞蛾宝宝 for 进化之茧 / 大飞蛾
+        }
+        if (mainSet.contains(17985575) && id == 43973174) return true; // 呼龙笛
+        if ((mainSet.contains(76812113) || mainSet.contains(12206212))
+                && (id == 90219263 || id == 63224564 || id == 98252586)) {
+            return true; // Harpie direct support
+        }
+        if (mainSet.contains(57728570)
+                && candidate.isMonster()
+                && "DARK".equalsIgnoreCase(candidate.attribute)
+                && candidate.atk <= 1000
+                && !RpgAiCardKnowledge.EXODIA_PIECES.contains(id)
+                && (!"normal".equalsIgnoreCase(candidate.frameType) || candidate.def >= 1400)) {
+            return true; // Functional/wall DARK <=1000 Crush Card Virus fodder
+        }
+        return false;
+    }
+
+    /**
      * Computes a thematic & mechanical synergy bonus for adding {@code candidate} into a deck
      * that already contains {@code coreMain} and {@code coreExtra}. Used by both
      * {@link CanonDuelDeckBuilder} and {@link AiDeckGenerator} so filler cards actively support
@@ -391,7 +432,11 @@ public final class CanonCharacterCardRegistry {
                 && "DARK".equalsIgnoreCase(candidate.attribute)
                 && candidate.atk <= 1000
                 && !RpgAiCardKnowledge.EXODIA_PIECES.contains(id)) {
-            bonus += 850; // Crush Card Virus DARK <=1000 tribute media
+            boolean strongVirusFodder = !"normal".equalsIgnoreCase(candidate.frameType)
+                    || candidate.def >= 1400;
+            if (strongVirusFodder) {
+                bonus += 950; // Functional/wall DARK <=1000 tribute media (Sangan, Witch, Mask, Wall of Illusion, etc.)
+            }
         }
 
         // 3) High-level boss tribute-fodder / stall support (e.g. Gate Guardian pieces, Chaos Soldier, 2-tribute dragons)
@@ -422,12 +467,16 @@ public final class CanonCharacterCardRegistry {
                 }
             }
 
-            // 4) Predominant core race / attribute synergy (benefits both Canon Duels and themed AIs)
+            // 4) Predominant core race / attribute synergy (only for effect or combat-viable monsters)
             if (candidate.isMonster()) {
-                String cRace = candidate.race != null ? candidate.race.toLowerCase() : "";
-                String cAttr = candidate.attribute != null ? candidate.attribute.toLowerCase() : "";
-                if (raceCounts.getOrDefault(cRace, 0) >= 3) bonus += 350;
-                if (attrCounts.getOrDefault(cAttr, 0) >= 4) bonus += 160;
+                boolean isWeakPlainNormal = "normal".equalsIgnoreCase(candidate.frameType)
+                        && candidate.atk < 1400 && candidate.def < 1600;
+                if (!isWeakPlainNormal) {
+                    String cRace = candidate.race != null ? candidate.race.toLowerCase() : "";
+                    String cAttr = candidate.attribute != null ? candidate.attribute.toLowerCase() : "";
+                    if (raceCounts.getOrDefault(cRace, 0) >= 3) bonus += 220;
+                    if (attrCounts.getOrDefault(cAttr, 0) >= 4) bonus += 100;
+                }
             } else {
                 // Equip spells matching the predominant core race/attribute
                 String req = AiDeckGenerator.getEquipTargetRequirement(id);

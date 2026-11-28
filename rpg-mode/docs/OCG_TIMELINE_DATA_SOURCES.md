@@ -149,11 +149,11 @@
    - 从 Fandom Wiki / Yugipedia 对应集数/话数页面检索双方使用过的全部卡片，核对 `mobile/assets/data/cards.cdb` 密码（凡在 OCG 中属于融合/同调/超量/连接怪兽的卡必须放入 `canonExtraIds`，不可放入主卡组 `canonCardIds`）；
    - **尽量完整保留原著用卡（禁止剔除非核心未来卡）**：原著单局中提及的卡牌数量本来就不多，因此在通过 `coreCardIds` 确定合理的 `timelineDate` 后，**不要剔除该对决中出现的非核心未来卡**（允许保留少量晚于 `timelineDate` 甚至跨年的非核心原著用卡，以最大程度忠实还原原著对决风味）；
    - 对于晚于当前时间轴上限的非核心原著用卡，将其中/日/英文元信息收录进 `ocg_canon_duels.json` 的 `canonCardCatalog`（通过 `RpgCatalog.findCardOrCanon` 仅用于还原卡组展示与 AI 识别，**严禁泄漏进商店/合成/玩家组卡池**；卡图在联网时由 `RpgIntegration.loadCardImageBytes` 自动从萌卡图床拉取并缓存）；
-    - **补位卡原著还原与核心联动优先原则（`CanonCharacterCardRegistry` + `CanonDuelDeckBuilder`）**：
-      - 不足 40 张的**补位卡**严格从该对决 `timelineDate` 对应的当期 OCG 实卡池中挑选，并按严格优先级排序：
-        1. **第一优先（角色原著用卡）**：优先挑选当期 OCG 卡池内**该人物在原著漫画/动画/EX 角色预组中真实用过的卡牌**（由 [`CanonCharacterCardRegistry`](../src/main/java/cn/garymb/ygomobile/rpg/engine/CanonCharacterCardRegistry.java) 统一维护并动态汇总该角色跨集数原著卡池）；
-        2. **第二优先（核心卡高度联动）**：优先挑选与该局 `canonCardIds` / `canonExtraIds` 核心卡高度联动的配套卡（例如：羽蛾带《进化之茧》必优先补《飞蛾宝宝》《森》与昆虫装备；额外含融合怪必优先补《融合》及缺失的正规融合素材如迷宫兄弟的《加农炮兵》《高科技狼》、城之内的《传说的剑豪 正树》《火焰操纵者》；渔太补《海》与水属性鱼/水/海龙族及《波塞冬之力》；龙崎补《荒野》与《体温上升》；孔雀舞补《万华镜》《电子紧身衣》《随风翼》与风属性鸟兽族）；
-        3. **第三优先（种族/属性主题一致）**，最后才回退至当期通用卡；
+    - **补位卡原著还原、核心联动与事件日期环境强度校准原则（`CanonCharacterCardRegistry` + `CanonDuelDeckBuilder`）**：
+      - 不足 40 张的**补位卡**严格参考该对决事件日期（`timelineDate`）的当期 OCG 实卡池，按严格 3 级优先级挑选：
+        1. **第一优先（角色原著用卡）**：优先挑选当期 OCG 卡池内**该人物在原著漫画/动画中真实使用过的卡牌**（由 [`CanonCharacterCardRegistry`](../src/main/java/cn/garymb/ygomobile/rpg/engine/CanonCharacterCardRegistry.java) 统一维护并动态汇总该角色跨集数原著卡池；**严禁将角色未在原著用过的 Vol.1/Starter 弱势凑数白板混入角色卡池**；在 1800+ 打点的后期事件日期中，若角色早期原著白板已严重落后环境，优先选用该角色符合当期强度的原著用卡与效果怪）；
+        2. **第二优先（核心卡高度联动）**：优先挑选与该局 `canonCardIds` / `canonExtraIds` 核心卡高度联动的配套卡（例如：羽蛾带《进化之茧》必优先补《飞蛾宝宝》《森》与昆虫装备；额外含融合怪必优先补《融合》及缺失的正规融合素材如迷宫兄弟的《加农炮兵》《高科技狼》、城之内的《传说的剑豪 正树》《火焰操纵者》；渔太补《海》与水属性鱼/水/海龙族及《波塞冬之力》；龙崎补《荒野》与《体温上升》；孔雀舞补《万华镜》《电子紧身衣》《随风翼》与风属性鸟兽族；《死毒》祭品仅加权暗属性功能效果怪或高防盾墙，不加权低攻防白板）；
+        3. **第三优先（符合事件日期卡池强度的主题与当期泛用卡）**：由 `CanonDuelDeckBuilder` 动态计算 `timelineDate` 当期 OCG 卡池的下级最高攻防（`eraTopLowerAtk` / `eraTopLowerDef`），自动导出当期强度基线（`eraAtkFloor = max(800, eraTopLowerAtk - 400)`、`eraDefFloor = max(1000, eraTopLowerDef - 300)`、高星 `eraTributeAtkFloor = eraTopLowerAtk + 400`）：**所有非原著、非核心联动的其他补位卡必须符合事件日期的卡池强度，严禁塞入落后环境的低攻防通常怪（例如在 1999-08-26 1800~1900 攻环境中塞入攻防 <1000~1400 的凑数白板）或非烧血卡组中的低效烧血/回血凑数魔陷**；种族/属性主题加分仅作用于符合当期强度或具实际效果/联动的卡牌，防止低攻匹配种族白板反超当期强力下级；
       - **严禁敌对/其他角色专属王牌串场**：补位池强制过滤其他原著人物的专属招牌卡（如暗游戏绝不补位《青眼白龙》《灯之魔精》《机械猎手》《死毒》，海马绝不补位《黑魔术师》《暗黑骑士 盖亚》《诅咒之龙》《恶魔召唤》《真红眼黑龙》，城之内/羽蛾/孔雀舞/渔太/龙崎/迷宫兄弟亦严禁混入其他角色的专属王牌；单局显式登记的 `canonCardIds` 仍 100% 忠实保留）。
       - 先补足怪兽、再做魔法/陷阱合理性判定与补位，保证种族/属性装备魔法能准确统计全卡组目标数，既不漏掉原著招牌装备、也不塞入废装备。
 3. **当日限定展示、日历 🎬 特殊标记与四模式通关记录**：
@@ -185,12 +185,12 @@
      - **非艾克佐迪亚卡组的部件泄漏**、**暗属性 ≤1000 祭品不足 6 张时的《死之卡组破坏病毒》**；
      - **卡组内合规目标 < 4 张的种族/属性限定装备魔法**。
    - **自动化守卫**：`RpgEnginesTest#allAiAndCanonDecksHaveZeroUnsummonableNomiOrDeadDependencyFillers` 对全部里程碑日期的所有 AI 与原著对决补位卡做全量扫描，任何违规都会在单测直接失败。
-3. **【强制】原著人物 AI 与对决还原的「角色原著还原度＆主题联动」守卫（`CanonCharacterCardRegistry`）**
+3. **【强制】原著人物 AI 与对决还原的「角色原著还原度、主题联动与事件日期环境强度」守卫（`CanonCharacterCardRegistry` + `CanonDuelDeckBuilder`）**
    - 凡对应漫画/动画原著人物的 AI 对手（如 `ai_vol1_yugi` 初代暗游戏、`ai_starter_kaiba` 社长·海马濑人、`ai_weekend_challenger` 热血城之内风，以及未来新增的贝卡斯、马利克、盗贼基斯、孔雀舞等）与全部「🎬 对决还原」卡组：
-     - 核心配方（`coreMain`/`coreExtra`）与自动补位池**必须优先选用当期 OCG 卡池内该角色原著用过的卡牌或与主题/核心卡高度联动的配套卡**；
+     - 核心配方（`coreMain`/`coreExtra`）与自动补位池**必须参考事件日期（`timelineDate`）的 OCG 卡池，优先选用该角色原著用过的卡牌或与所选原著卡高度联动的配套卡，其余补位卡严格匹配事件日期的卡池强度**（动态参照当期下级最高攻防，禁止塞入落后环境的低攻防非原著凑数白板，例如 1800~1900 环境中的 <1000~1400 白板）；
      - **严禁出现角色王牌串场**（如暗游戏绝不携带青眼白龙/灯之魔精/机械猎手/死毒，海马绝不携带黑魔术师/暗黑骑士盖亚/诅咒之龙/恶魔召唤/圣精灵/真红眼黑龙，城之内绝不携带黑魔术师/青眼白龙/恶魔召唤等）；
      - 非原著角色的纯环境流派 AI（如死毒暗控、装备Beat、反转控制、融合科学怪人、卡组破坏等）在自动补位时同样由 `CanonCharacterCardRegistry.getCoreSynergyBonus` 优先挑选与卡组核心主题高度联动的卡牌。
-   - **自动化守卫**：`RpgEnginesTest#canonCharacterFidelityAndCoreSynergyGuard` 覆盖全部里程碑日期的角色 AI 与全部原著对决，自动拦截任何串场王牌或缺失的核心联动件。
+   - **自动化守卫**：`RpgEnginesTest#canonCharacterFidelityAndCoreSynergyGuard` 与 `RpgEnginesTest#canonDuelPaddingMatchesEventDateCardPoolStrength` 覆盖全部里程碑日期的角色 AI 与全部原著对决，自动拦截任何串场王牌、缺失的核心联动件以及落后于事件日期卡池强度的非原著通常怪补位。
 4. **【强制】全环境 AI 天梯（瑞士轮 + 全局最小权完美匹配 + Bradley-Terry Elo `±SE` + Fisher-Jenks 动态分档）与实测奖金校准（`EraBountyCalibrator`）**
    - `RoundRobinLeagueEngine` 提供 $O(N \log N)$ **瑞士轮天梯**（默认每组 **2 局 = 1 先 1 后**，消除先后手偏差且以同等总耗时提供 **3 倍轮数与对手覆盖面**，例如 10~14 人默认 18 轮可实现 100% 全员交手 + 相近名次决胜加赛；采用**全局最小权完美匹配** `pairRoundGloballyOptimal` 同步压低重赛与实际 `|Elo_i - Elo_j|` 差，消除贪心尾效应；同日期固定 AI 卡组种子；全局贝叶斯 Bradley-Terry MLE 解算 Elo、对手均分 SOS 与 Fisher 信息量标准误差 `±SE`；支持随时增量追加 +4 轮）以及全量循环赛。
    - **动态 S/A/B/C/D 分档（Fisher-Jenks 一维自然断点 DP）**：天梯与 AI 对战均通过 `RoundRobinLeagueEngine.computeDynamicTiers` 对当期 Elo 分布求一维最优聚类切分（最小化档内方差之和 SSE），而非写死固定 Elo 阈值或仅取最大相邻差（避免底部长尾把前排全部挤进 S 档）；同时强制**同分锁档**、极端长尾（`<950`）归 D、小样本相近前排（差值 `<60` Elo）合并保档。
