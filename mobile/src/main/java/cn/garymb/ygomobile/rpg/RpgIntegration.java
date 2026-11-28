@@ -177,6 +177,88 @@ public final class RpgIntegration {
     private static volatile Context sAppContext = null;
     private static volatile String sActiveDuelPlayerAvatarId = null;
     private static volatile String sActiveDuelOpponentAvatarId = null;
+    private static volatile cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta sLastRpgDuelMeta = null;
+
+    /**
+     * Called by {@link cn.garymb.ygomobile.DuelEndReplayHandler} right after a .yrp file is saved.
+     * Persists RPG strategy / manual mode & era metadata as a lightweight sidecar JSON file beside
+     * the replay so the user can later one-tap copy full AI-debugging logs from ReplayModeDialog.
+     */
+    public static void onReplayFileSaved(File yrpFile) {
+        cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta meta = sLastRpgDuelMeta;
+        if (yrpFile == null || meta == null) return;
+        cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.saveSidecar(yrpFile, meta);
+    }
+
+    /**
+     * Parses a recorded .yrp file (plus optional .rpgmeta.json sidecar) into a structured duel log
+     * containing both players' AI strategies / manual mode, complete Main/Extra decklists, and
+     * detailed turn-by-turn engine action log.
+     */
+    public static String buildReplayLogText(File yrpFile) {
+        if (yrpFile == null || !yrpFile.exists()) return null;
+        cn.garymb.ygomobile.game.replay.ReplayReader.ReplayData data =
+                cn.garymb.ygomobile.game.replay.ReplayReader.loadReplay(yrpFile.getAbsolutePath());
+        if (data == null) return null;
+
+        java.util.List<java.util.List<Integer>> mainDecks = new java.util.ArrayList<>();
+        java.util.List<java.util.List<Integer>> extraDecks = new java.util.ArrayList<>();
+        if (data.decks != null) {
+            for (cn.garymb.ygomobile.game.replay.ReplayReader.DeckInfo d : data.decks) {
+                mainDecks.add(d != null ? d.main : Collections.emptyList());
+                extraDecks.add(d != null ? d.extra : Collections.emptyList());
+            }
+        }
+        cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta meta =
+                cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.loadSidecar(yrpFile);
+        final cn.garymb.ygomobile.rpg.model.RpgCatalog catalog = RpgSessionManager.getCachedCatalog();
+        cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.CardNameResolver resolver = code -> {
+            if (catalog != null && code > 0) {
+                cn.garymb.ygomobile.rpg.model.RpgCard rc = catalog.findCard(code);
+                if (rc != null) return rc.getDisplayName();
+            }
+            try {
+                ocgcore.data.Card c = ocgcore.DataManager.get().getCardManager().getCard(code);
+                if (c != null && c.Name != null && !c.Name.isEmpty()) {
+                    return c.Name;
+                }
+            } catch (Throwable ignored) {
+            }
+            return "#" + code;
+        };
+        return cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatReplay(
+                yrpFile.getName(),
+                yrpFile.lastModified(),
+                data.playerNames,
+                data.params.startLp,
+                data.params.startHand,
+                data.params.drawCount,
+                mainDecks,
+                extraDecks,
+                data.msgFrames,
+                meta,
+                resolver);
+    }
+
+    /**
+     * Formats and copies a .yrp replay's full strategy/deck/action log to the system clipboard.
+     */
+    public static boolean copyReplayLogToClipboard(Context context, String replayFilePath) {
+        if (context == null || replayFilePath == null || replayFilePath.isEmpty()) return false;
+        String logText = buildReplayLogText(new File(replayFilePath));
+        if (logText == null || logText.isEmpty()) {
+            Toast.makeText(context, "无法解析该录像的日志信息", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        android.content.ClipboardManager cm =
+                (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm != null) {
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("YGOMobile Replay Log", logText));
+            Toast.makeText(context, "已复制对战回放日志到剪贴板（含双方策略、卡组与操作日志）", Toast.LENGTH_LONG).show();
+            return true;
+        }
+        return false;
+    }
 
     private static void dispatchOnHost(Context callerContext,
                                        cn.garymb.ygomobile.rpg.bridge.RpgHostTransitionCoordinator.ActiveScene scene,
@@ -809,6 +891,27 @@ public final class RpgIntegration {
                                 sActiveDuelPlayerAvatarId = playerAvatarId;
                                 sActiveDuelOpponentAvatarId = opponentAvatarId;
 
+                                String aiStyleCode = "GOOD_STUFF";
+                                if (opponent != null) {
+                                    AiOpponent.EraDeckProfile prof = opponent.getActiveDeckProfile(currentTimelineDate);
+                                    if (prof != null && prof.fillStyle != null && !prof.fillStyle.isEmpty()) {
+                                        aiStyleCode = prof.fillStyle;
+                                    }
+                                }
+                                cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta liveMeta =
+                                        new cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta();
+                                liveMeta.source = (roomTitle != null && roomTitle.contains("原著"))
+                                        ? "RPG_CANON" : "RPG_MANUAL";
+                                liveMeta.timelineDate = currentTimelineDate != null ? currentTimelineDate : "";
+                                liveMeta.ruleName = (activeRuleSet != null && activeRuleSet.name != null)
+                                        ? activeRuleSet.name : "";
+                                liveMeta.putPlayerControl(playerName, "手动");
+                                String oppDisplay = (opponent != null && opponent.name != null && !opponent.name.isEmpty())
+                                        ? opponent.name : "OCG RPG AI";
+                                liveMeta.putPlayerControl(oppDisplay,
+                                        cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatAiStrategyLabel(aiStyleCode));
+                                sLastRpgDuelMeta = liveMeta;
+
                                 syncYdkToNativeDeckDir(playerDeckYdkPath);
 
                                 if (activeRuleSet != null) {
@@ -1133,6 +1236,18 @@ public final class RpgIntegration {
                                 final String effB = (styleB != null && !styleB.isEmpty())
                                         ? styleB : cn.garymb.ygomobile.rpg.ai.RpgAiStrategy.inferStyleFromDeck(mainB, extraB, activeRuleSet);
 
+                                cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta specMeta =
+                                        new cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta();
+                                specMeta.source = "RPG_SPECTATE";
+                                specMeta.timelineDate = currentTimelineDate != null ? currentTimelineDate : "";
+                                specMeta.ruleName = (activeRuleSet != null && activeRuleSet.name != null)
+                                        ? activeRuleSet.name : "";
+                                specMeta.putPlayerControl(sideAName,
+                                        cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatAiStrategyLabel(effA));
+                                specMeta.putPlayerControl(sideBName,
+                                        cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatAiStrategyLabel(effB));
+                                sLastRpgDuelMeta = specMeta;
+
                                 // Move host to observer seat once connected, then launch Seat 0 (A) & Seat 1 (B) AIs
                                 Thread spectateStarter = new Thread(() -> {
                                     long deadline = System.currentTimeMillis() + 6000L;
@@ -1216,6 +1331,12 @@ public final class RpgIntegration {
                             });
                 });
             }
+
+            @Override
+            public String buildReplayLogText(String replayFilePath) {
+                if (replayFilePath == null || replayFilePath.isEmpty()) return null;
+                return RpgIntegration.buildReplayLogText(new File(replayFilePath));
+            }
         });
     }
 
@@ -1280,9 +1401,14 @@ public final class RpgIntegration {
                                         new cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog(activity);
                                 dlg.setTitle(state == cn.garymb.ygomobile.game.replay.ReplayPlayer.State.ERROR ? "回放异常" : "3D 回放结束")
                                         .setMessage(msg)
-                                        .setType(cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog.TYPE_MESSAGE)
+                                        .setType(cn.garymb.ygomobile.ui.dialogs.duel.YesOrNoDialog.TYPE_YES_NO)
                                         .setPositiveButtonText("返回 RPG 模式")
                                         .setPositiveButton(v -> returnToRpgFromReplay(activity, returnTab))
+                                        .setNegativeButtonText("复制日志并返回")
+                                        .setNegativeButton(v -> {
+                                            copyReplayLogToClipboard(activity, replayPath);
+                                            returnToRpgFromReplay(activity, returnTab);
+                                        })
                                         .setCenterInView(activity.findViewById(R.id.layout_game_right))
                                         .setCancelable(false)
                                         .show();

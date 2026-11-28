@@ -149,4 +149,13 @@ public interface RpgDuelHostBridge {
                                 String player0Name, String player1Name, int returnTab) {
         startRpgReplay(context, replayFilePath, returnTab);
     }
+
+    /**
+     * Parses a recorded .yrp replay file (and its optional .rpgmeta.json sidecar) into a structured
+     * duel log containing both players' AI strategies / manual mode, full decklists, and turn-by-turn
+     * engine action log for clipboard copy & AI strategy tuning.
+     */
+    default String buildReplayLogText(String replayFilePath) {
+        return null;
+    }
 }

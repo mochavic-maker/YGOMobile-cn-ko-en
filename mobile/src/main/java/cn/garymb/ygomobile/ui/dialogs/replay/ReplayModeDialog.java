@@ -64,6 +64,7 @@ public class ReplayModeDialog {
     
     private Button btnShareReplay;
     private Button btnExtractDeck;
+    private Button btnCopyReplayLog;
     private Button btnDeleteReplay;
     private Button btnLoadReplay;
     private Button btnRenameReplay;
@@ -95,6 +96,7 @@ public class ReplayModeDialog {
         etStartTurn = customView.findViewById(R.id.et_start_turn);
         btnShareReplay = customView.findViewById(R.id.btn_share_replay);
         btnExtractDeck = customView.findViewById(R.id.btn_extract_deck);
+        btnCopyReplayLog = customView.findViewById(R.id.btn_copy_replay_log);
         btnDeleteReplay = customView.findViewById(R.id.btn_delete_replay);
         btnLoadReplay = customView.findViewById(R.id.btn_load_replay);
         btnRenameReplay = customView.findViewById(R.id.btn_rename_replay);
@@ -200,6 +202,17 @@ public class ReplayModeDialog {
             extractDeck(selectedReplayFile);
         });
 
+        if (btnCopyReplayLog != null) {
+            btnCopyReplayLog.setOnClickListener(v -> {
+                if (selectedReplayFile == null) {
+                    Toast.makeText(context, "请先选择录像", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                cn.garymb.ygomobile.rpg.RpgIntegration.copyReplayLogToClipboard(
+                        context, selectedReplayFile.getAbsolutePath());
+            });
+        }
+
         btnDeleteReplay.setOnClickListener(v -> {
             if (selectedReplayFile == null) {
                 Toast.makeText(context, "请先选择录像", Toast.LENGTH_SHORT).show();
@@ -242,6 +255,7 @@ public class ReplayModeDialog {
         if (tvStartTurn != null) tvStartTurn.setText(sm.getSystemString(1353, "播放起始于回合："));
         if (btnShareReplay != null) btnShareReplay.setText(sm.getSystemString(1368, "分享录像"));
         if (btnExtractDeck != null) btnExtractDeck.setText(sm.getSystemString(1369, "提取卡组"));
+        if (btnCopyReplayLog != null) btnCopyReplayLog.setText("复制日志");
         if (btnDeleteReplay != null) btnDeleteReplay.setText(sm.getSystemString(1361, "删除录像"));
         if (btnLoadReplay != null) btnLoadReplay.setText(sm.getSystemString(1348, "载入录像"));
         if (btnRenameReplay != null) btnRenameReplay.setText(sm.getSystemString(1362, "重命名"));
@@ -279,6 +293,11 @@ public class ReplayModeDialog {
         
         btnExtractDeck.setEnabled(enabled);
         btnExtractDeck.setTextColor(textColor);
+
+        if (btnCopyReplayLog != null) {
+            btnCopyReplayLog.setEnabled(enabled);
+            btnCopyReplayLog.setTextColor(textColor);
+        }
         
         btnDeleteReplay.setEnabled(enabled);
         btnDeleteReplay.setTextColor(textColor);
@@ -494,9 +513,21 @@ public class ReplayModeDialog {
                 sb.append(data.playerNames.get(3)).append("\n");
             } else {
                 // 普通模式
+                cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta meta =
+                        cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.loadSidecar(replayFile);
+                if (meta != null && meta.timelineDate != null && !meta.timelineDate.isEmpty()) {
+                    sb.append("[RPG ").append(meta.timelineDate).append("]\n");
+                }
                 for (int i = 0; i < data.playerNames.size(); i++) {
                     if (i > 0) sb.append("\n===VS===\n");
-                    sb.append(data.playerNames.get(i));
+                    String pName = data.playerNames.get(i);
+                    sb.append(pName);
+                    if (meta != null) {
+                        String ctrl = meta.findControlForPlayer(pName);
+                        if (ctrl != null && !ctrl.isEmpty()) {
+                            sb.append(" (").append(ctrl).append(")");
+                        }
+                    }
                 }
                 sb.append("\n");
             }

@@ -207,6 +207,7 @@ class DuelEndReplayHandler {
                 fos.close();
             }
             Log.i(TAG, "Replay saved: " + file.getAbsolutePath());
+            cn.garymb.ygomobile.rpg.RpgIntegration.onReplayFileSaved(file);
             if (autoSave) {
                 // 对齐 gframe 自動保存提示（系统字符串 1367「リプレイ自動保存 %ls.yrp」）：将 %ls 占位替换为实际保存的录像文件名
                 String template = activity.mStringManager
@@ -235,6 +236,7 @@ class DuelEndReplayHandler {
                 fos.flush();
             }
             Log.i(TAG, "Last replay saved: " + file.getAbsolutePath());
+            cn.garymb.ygomobile.rpg.RpgIntegration.onReplayFileSaved(file);
         } catch (IOException e) {
             Log.e(TAG, "Failed to save last replay", e);
         }

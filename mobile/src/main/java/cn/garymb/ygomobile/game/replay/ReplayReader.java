@@ -352,7 +352,11 @@ public class ReplayReader {
         if (!file.exists()) return false;
         String name = file.getName();
         if (name.contains("/") || name.contains("\\")) return false;
-        return file.delete();
+        boolean ok = file.delete();
+        if (ok) {
+            cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.deleteSidecar(file);
+        }
+        return ok;
     }
 
     public static boolean renameReplay(String oldPath, String newName) {
@@ -368,7 +372,11 @@ public class ReplayReader {
         }
         File parentDir = oldFile.getParentFile();
         File newFile = new File(parentDir, newName);
-        return oldFile.renameTo(newFile);
+        boolean ok = oldFile.renameTo(newFile);
+        if (ok) {
+            cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.renameSidecar(oldFile, newFile);
+        }
+        return ok;
     }
 
     public static boolean saveDeck(ReplayData replayData, int deckIndex, String outputPath) {

@@ -452,7 +452,16 @@ public final class RpgOcgHeadlessDuelRunner {
                         byte[] synthWin = new byte[]{(byte) MSG_WIN, (byte) finalWinProto, (byte) winReason};
                         yrp.writeMessage(synthWin, synthWin.length);
                     }
-                    savedReplayPath = saveYrpReplayFile(yrp);
+                    cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta meta =
+                            new cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta();
+                    meta.source = "RPG_HEADLESS";
+                    meta.timelineDate = currentDate != null ? currentDate : "";
+                    meta.ruleName = (ruleSet != null && ruleSet.name != null) ? ruleSet.name : "";
+                    meta.putPlayerControl(names[0],
+                            cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatAiStrategyLabel(strategies[0].getStyle()));
+                    meta.putPlayerControl(names[1],
+                            cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatAiStrategyLabel(strategies[1].getStyle()));
+                    savedReplayPath = saveYrpReplayFile(yrp, meta);
                 }
 
                 if (recordReplay) {
@@ -536,7 +545,8 @@ public final class RpgOcgHeadlessDuelRunner {
         yrp.writeMessage(frame, frame.length);
     }
 
-    private static String saveYrpReplayFile(YrpWriter yrp) {
+    private static String saveYrpReplayFile(YrpWriter yrp,
+                                            cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta meta) {
         try {
             byte[] yrpBytes = yrp.build();
             if (yrpBytes == null || yrpBytes.length == 0) return null;
@@ -552,12 +562,16 @@ public final class RpgOcgHeadlessDuelRunner {
                 for (int i = 0; i < existing.length - 24; i++) {
                     //noinspection ResultOfMethodCallIgnored
                     existing[i].delete();
+                    cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.deleteSidecar(existing[i]);
                 }
             }
             String fileName = "rpg_" + System.currentTimeMillis() + "_" + sReplaySeq.incrementAndGet() + ".yrp";
             File outFile = new File(dir, fileName);
             try (FileOutputStream fos = new FileOutputStream(outFile)) {
                 fos.write(yrpBytes);
+            }
+            if (meta != null) {
+                cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.saveSidecar(outFile, meta);
             }
             return outFile.getAbsolutePath();
         } catch (Throwable t) {

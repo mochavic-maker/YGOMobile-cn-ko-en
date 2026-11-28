@@ -2322,6 +2322,8 @@ public class RpgHomeActivity extends AppCompatActivity {
                         .setTitle("🏆 锦标赛赛果 · " + bracket.getRoundTitle(match.roundIndex))
                         .setMessage(msg)
                         .setNeutralButton("🎬 3D回放本局", (d, w) -> launchNative3dReplay(report, TAB_TOURNAMENT))
+                        .setNegativeButton("📋 复制完整日志", (d, w) -> copyDuelReplayLog(
+                                report, profile.activeDeckMain, profile.activeDeckExtra, opp.deckMain, opp.deckExtra))
                         .setPositiveButton("查看对阵表", null)
                         .show();
             });
@@ -2361,11 +2363,17 @@ public class RpgHomeActivity extends AppCompatActivity {
         for (int i = 0; i < limit; i++) {
             sb.append(m.logs.get(i)).append("\n");
         }
-        new AlertDialog.Builder(this)
+        AlertDialog.Builder dlg = new AlertDialog.Builder(this)
                 .setTitle("📜 锦标赛战报")
                 .setMessage(sb.toString())
-                .setPositiveButton("关闭", null)
-                .show();
+                .setPositiveButton("关闭", null);
+        if (m.replayReport != null) {
+            dlg.setNeutralButton("📋 复制完整日志", (d, w) -> copyDuelReplayLog(
+                    m.replayReport,
+                    m.p1 != null ? m.p1.deckMain : null, m.p1 != null ? m.p1.deckExtra : null,
+                    m.p2 != null ? m.p2.deckMain : null, m.p2 != null ? m.p2.deckExtra : null));
+        }
+        dlg.show();
     }
 
     // ==================== TAB 6: OFFICIAL OCG ERRATA ARCHIVE ====================
@@ -2605,10 +2613,44 @@ public class RpgHomeActivity extends AppCompatActivity {
                         .setTitle("⚡ AI 托管快战结算 · " + settlement.outcomeLabel)
                         .setMessage(sb.toString())
                         .setNeutralButton("🎬 3D回放本局", (d, w) -> launchNative3dReplay(report, TAB_AI_DUEL))
+                        .setNegativeButton("📋 复制完整日志", (d, w) -> copyDuelReplayLog(
+                                report, profile.activeDeckMain, profile.activeDeckExtra, aiDeck.main, aiDeck.extra))
                         .setPositiveButton("收下代币", null)
                         .show();
             });
         }, "RpgQuickDuelOcg").start();
+    }
+
+    /**
+     * Copies the full duel log (strategies / manual mode, both Main+Extra decklists, and turn-by-turn
+     * engine action log) to the system clipboard for AI strategy review and tuning.
+     */
+    private void copyDuelReplayLog(RpgAiAutoDuelModels.DuelResult report,
+                                   List<Integer> mainA, List<Integer> extraA,
+                                   List<Integer> mainB, List<Integer> extraB) {
+        if (report == null) {
+            Toast.makeText(this, "暂无可复制的对局日志", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String text = null;
+        RpgDuelHostBridge bridge = RpgSessionManager.getHostBridge();
+        if (bridge != null && report.replayFilePath != null && !report.replayFilePath.isEmpty()) {
+            text = bridge.buildReplayLogText(report.replayFilePath);
+        }
+        if (text == null || text.isEmpty()) {
+            text = cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatFallbackFromDuelResult(
+                    report, profile != null ? profile.currentTimelineDate : "",
+                    mainA, extraA, mainB, extraB, catalog);
+        }
+        if (text == null || text.isEmpty()) {
+            Toast.makeText(this, "生成对局日志失败", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (cm != null) {
+            cm.setPrimaryClip(ClipData.newPlainText("YGOMobile RPG Replay Log", text));
+            Toast.makeText(this, "已复制对战回放日志到剪贴板（含双方策略、卡组与操作日志）", Toast.LENGTH_LONG).show();
+        }
     }
 
     /**
@@ -3529,10 +3571,16 @@ public class RpgHomeActivity extends AppCompatActivity {
                     r.getSideASecondWinRate(), r.sideASecondWins, r.sideASecondGames)));
             resCard.addView(makeSubtleText("说明：由真实 ocgcore 引擎 + 专属 OCG AI 实战演算，不计入战绩也不发放代币。"));
 
-            if (r.sampleLastResult != null && r.sampleLastResult.replayFilePath != null) {
-                Button sampleBtn = makeActionButton("🎬 3D回放样本对局(第" + r.totalGames + "局)", "#0284C7");
-                sampleBtn.setOnClickListener(v -> launchNative3dReplay(r.sampleLastResult, TAB_AI_SHOWDOWN));
-                resCard.addView(makeEqualWeightButtonRow(8, sampleBtn));
+            if (r.sampleLastResult != null) {
+                Button sampleBtn = null;
+                if (r.sampleLastResult.replayFilePath != null) {
+                    sampleBtn = makeActionButton("🎬 3D回放样本(第" + r.totalGames + "局)", "#0284C7");
+                    sampleBtn.setOnClickListener(v -> launchNative3dReplay(r.sampleLastResult, TAB_AI_SHOWDOWN));
+                }
+                Button copySampleLogBtn = makeActionButton("📋 复制样本日志", "#475569");
+                copySampleLogBtn.setOnClickListener(v -> copyDuelReplayLog(
+                        r.sampleLastResult, null, null, null, null));
+                resCard.addView(makeEqualWeightButtonRow(8, sampleBtn, copySampleLogBtn));
             }
             layoutContent.addView(resCard);
         }
