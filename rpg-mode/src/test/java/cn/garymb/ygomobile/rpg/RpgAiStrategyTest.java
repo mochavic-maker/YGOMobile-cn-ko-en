@@ -1418,6 +1418,80 @@ public class RpgAiStrategyTest {
         assertEquals("DARK_VIRUS", prof.activeDeckAiStyle);
     }
 
+    @Test
+    public void exodiaAiNeverRebornsMagicianOfFaithOrDiscardsBothDuplicatePieces() {
+        final int DARK_MAGICIAN = 46986414;     // 2500/2100
+        final int SUMMONED_SKULL = 70781052;    // 2500/1200
+        final int MYSTICAL_ELF = 15025844;      // 800/2000
+        final int LEFT_ARM = 7902349;           // 被封印者的左腕
+        final int RIGHT_LEG = 8124921;          // 被封印者的右足
+
+        // 1) Monster Reborn in EXODIA_DRAW: Magician of Faith (Flip 300/400) CANNOT trigger when revived face-up!
+        //    AI must revive opponent's Summoned Skull (index 2, 2500+100) or own Dark Magician (index 1, 2500),
+        //    NEVER Magician of Faith (index 0)!
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-09-23");
+        state.myProtocolPlayer = 0;
+        state.lastActivatingCode = RpgAiCardKnowledge.MONSTER_REBORN;
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "EXODIA_DRAW");
+
+        ByteBuffer rebornBuf = ByteBuffer.allocate(5 + 3 * 8).order(ByteOrder.LITTLE_ENDIAN);
+        rebornBuf.put((byte) 0).put((byte) 0).put((byte) 1).put((byte) 1).put((byte) 3);
+        rebornBuf.putInt(RpgAiCardKnowledge.MAGICIAN_OF_FAITH).put((byte) 0).put((byte) RpgAiDuelState.LOC_GRAVE).put((byte) 0).put((byte) 0);
+        rebornBuf.putInt(DARK_MAGICIAN).put((byte) 0).put((byte) RpgAiDuelState.LOC_GRAVE).put((byte) 1).put((byte) 0);
+        rebornBuf.putInt(SUMMONED_SKULL).put((byte) 1).put((byte) RpgAiDuelState.LOC_GRAVE).put((byte) 0).put((byte) 0);
+        rebornBuf.flip();
+        byte[] rebornResp = strategy.chooseSelectCard(rebornBuf);
+        assertEquals(1, rebornResp[0] & 0xFF);
+        assertEquals("Monster Reborn must steal Summoned Skull (index 2), NOT revive face-up Magician of Faith (index 0)!",
+                2, rebornResp[1] & 0xFF);
+
+        // 2) Graceful Charity 2-card discard while holding TWO copies of Left Arm of the Forbidden One:
+        //    AI should discard at most ONE duplicate Left Arm and keep the remaining copy in hand!
+        RpgAiDuelState gcState = new RpgAiDuelState(catalog, tributeRule, "1999-09-23");
+        gcState.myProtocolPlayer = 0;
+        gcState.lastActivatingCode = RpgAiCardKnowledge.GRACEFUL_CHARITY;
+        gcState.lastSelectHint = 501; // HINTMSG_DISCARD
+        addHandCard(gcState, LEFT_ARM);   // seq 0
+        addHandCard(gcState, LEFT_ARM);   // seq 1
+        addHandCard(gcState, RIGHT_LEG);  // seq 2 (unique — MUST keep!)
+        addHandCard(gcState, MYSTICAL_ELF); // seq 3 (safe filler discard)
+        addHandCard(gcState, RpgAiCardKnowledge.POT_OF_GREED); // seq 4 (power spell — MUST keep!)
+
+        RpgAiStrategy gcStrategy = new RpgAiStrategy(gcState, null, "EXODIA_DRAW");
+        ByteBuffer gcBuf = ByteBuffer.allocate(5 + 5 * 8).order(ByteOrder.LITTLE_ENDIAN);
+        gcBuf.put((byte) 0).put((byte) 0).put((byte) 2).put((byte) 2).put((byte) 5);
+        gcBuf.putInt(LEFT_ARM).put((byte) 0).put((byte) RpgAiDuelState.LOC_HAND).put((byte) 0).put((byte) 0);
+        gcBuf.putInt(LEFT_ARM).put((byte) 0).put((byte) RpgAiDuelState.LOC_HAND).put((byte) 1).put((byte) 0);
+        gcBuf.putInt(RIGHT_LEG).put((byte) 0).put((byte) RpgAiDuelState.LOC_HAND).put((byte) 2).put((byte) 0);
+        gcBuf.putInt(MYSTICAL_ELF).put((byte) 0).put((byte) RpgAiDuelState.LOC_HAND).put((byte) 3).put((byte) 0);
+        gcBuf.putInt(RpgAiCardKnowledge.POT_OF_GREED).put((byte) 0).put((byte) RpgAiDuelState.LOC_HAND).put((byte) 4).put((byte) 0);
+        gcBuf.flip();
+
+        byte[] gcResp = gcStrategy.chooseSelectCard(gcBuf);
+        assertEquals("Graceful Charity must discard 2 cards", 2, gcResp[0] & 0xFF);
+        int d1 = gcResp[1] & 0xFF;
+        int d2 = gcResp[2] & 0xFF;
+        boolean discardedBothLeftArms = (d1 == 0 && d2 == 1) || (d1 == 1 && d2 == 0);
+        assertFalse("AI must NEVER discard BOTH copies of Left Arm of the Forbidden One!", discardedBothLeftArms);
+        assertTrue("AI should discard 1 duplicate Left Arm (index 0 or 1)", d1 == 0 || d1 == 1 || d2 == 0 || d2 == 1);
+        assertTrue("AI should discard Mystical Elf (index 3) as the 2nd discard", d1 == 3 || d2 == 3);
+
+        // 3) Last Will in EXODIA_DRAW: Special Summons FACE-UP from Deck — pick Sangan (index 2), NOT Exodia piece (0) or Magician of Faith (1)!
+        RpgAiDuelState lwState = new RpgAiDuelState(catalog, tributeRule, "1999-09-23");
+        lwState.myProtocolPlayer = 0;
+        lwState.lastActivatingCode = RpgAiCardKnowledge.LAST_WILL;
+        RpgAiStrategy lwStrategy = new RpgAiStrategy(lwState, null, "EXODIA_DRAW");
+        ByteBuffer lwBuf = ByteBuffer.allocate(5 + 3 * 8).order(ByteOrder.LITTLE_ENDIAN);
+        lwBuf.put((byte) 0).put((byte) 0).put((byte) 1).put((byte) 1).put((byte) 3);
+        lwBuf.putInt(LEFT_ARM).put((byte) 0).put((byte) RpgAiDuelState.LOC_DECK).put((byte) 0).put((byte) 0);
+        lwBuf.putInt(RpgAiCardKnowledge.MAGICIAN_OF_FAITH).put((byte) 0).put((byte) RpgAiDuelState.LOC_DECK).put((byte) 1).put((byte) 0);
+        lwBuf.putInt(RpgAiCardKnowledge.SANGAN).put((byte) 0).put((byte) RpgAiDuelState.LOC_DECK).put((byte) 2).put((byte) 0);
+        lwBuf.flip();
+        byte[] lwResp = lwStrategy.chooseSelectCard(lwBuf);
+        assertEquals("Last Will must summon Sangan (index 2), NOT Exodia piece or Flip monster face-up",
+                2, lwResp[1] & 0xFF);
+    }
+
     private static void sendPacket(OutputStream out, int proto, byte[] body) throws Exception {
         int len = 1 + body.length;
         ByteBuffer b = ByteBuffer.allocate(2 + len).order(ByteOrder.LITTLE_ENDIAN);

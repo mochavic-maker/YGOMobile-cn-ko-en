@@ -2375,11 +2375,12 @@ public class RpgAiStrategy {
         }
 
         // 3) Discard from hand (Graceful Charity, Tribute to the Doomed, End Phase discard hint=501/504)
+        //    Pick sequentially while decrementing remaining copy counts so a 2-of Exodia piece can only
+        //    have ONE duplicate discarded and NEVER throws away its last remaining copy!
         if (allMyHand && (hint == 501 || hint == 504
                 || activeCode == RpgAiCardKnowledge.GRACEFUL_CHARITY
                 || activeCode == RpgAiCardKnowledge.TRIBUTE_TO_THE_DOOMED)) {
-            return pickTopN(items, min, (a, b) -> Integer.compare(
-                    scoreDiscardPriority(b), scoreDiscardPriority(a)));
+            return pickDiscardCards(items, min);
         }
 
         // 4) Search / Special Summon from Deck (Sangan, Witch, Last Will, Fusion Sage)
@@ -2458,13 +2459,49 @@ public class RpgAiStrategy {
         return atk + bonus;
     }
 
+    private List<Integer> pickDiscardCards(List<SelectCardItem> items, int count) {
+        List<SelectCardItem> pool = new ArrayList<>(items);
+        java.util.Map<Integer, Integer> remainingCopies = new java.util.HashMap<>();
+        for (SelectCardItem it : items) {
+            int cur = remainingCopies.containsKey(it.code)
+                    ? remainingCopies.get(it.code)
+                    : Math.max(0, state.countInHand(it.code));
+            if (!remainingCopies.containsKey(it.code)) {
+                int inItems = 0;
+                for (SelectCardItem other : items) {
+                    if (other.code == it.code) inItems++;
+                }
+                remainingCopies.put(it.code, Math.max(cur, inItems));
+            }
+        }
+        List<Integer> chosen = new ArrayList<>();
+        int target = Math.min(count, pool.size());
+        for (int step = 0; step < target; step++) {
+            SelectCardItem best = null;
+            int bestScore = Integer.MIN_VALUE;
+            for (SelectCardItem it : pool) {
+                int rem = remainingCopies.containsKey(it.code) ? remainingCopies.get(it.code) : 1;
+                int s = scoreDiscardPriority(it, rem);
+                if (best == null || s > bestScore) {
+                    best = it;
+                    bestScore = s;
+                }
+            }
+            if (best == null) break;
+            chosen.add(best.index);
+            pool.remove(best);
+            int rem = remainingCopies.containsKey(best.code) ? remainingCopies.get(best.code) : 1;
+            remainingCopies.put(best.code, Math.max(0, rem - 1));
+        }
+        return chosen;
+    }
+
     /** Higher score = MORE eager to discard. */
-    private int scoreDiscardPriority(SelectCardItem item) {
+    private int scoreDiscardPriority(SelectCardItem item, int remainingCopiesInHand) {
         int code = item.code;
-        // NEVER discard unique Exodia pieces!
+        // NEVER discard the last remaining copy of any Exodia piece!
         if (RpgAiCardKnowledge.isExodiaPiece(code)) {
-            int copies = state.countInHand(code);
-            return copies >= 2 ? 5000 : -100000;
+            return remainingCopiesInHand >= 2 ? 5000 : -100000;
         }
         // Pre-errata Sangan/Witch discarded by Graceful Charity/Tribute to the Doomed triggers search!
         if (state.isPreErrataSanganEra() && RpgAiCardKnowledge.isSearcherMonster(code)) {
@@ -2494,13 +2531,21 @@ public class RpgAiStrategy {
         }
 
         // Duplicate cards are easier to discard
-        int dupBonus = state.countInHand(code) >= 2 ? 400 : 0;
+        int dupBonus = remainingCopiesInHand >= 2 ? 400 : 0;
         int atk = state.getCardBaseAtk(code);
         return 1000 + dupBonus - atk / 2;
     }
 
     private int scoreDeckSearchTarget(SelectCardItem item, int activeCode) {
         int code = item.code;
+        if (activeCode == RpgAiCardKnowledge.LAST_WILL) {
+            // Special Summon directly FACE-UP to field: NEVER waste on Exodia pieces or face-up Flip monsters!
+            if (RpgAiCardKnowledge.isExodiaPiece(code)) return -50000;
+            if (code == RpgAiCardKnowledge.CYBER_STEIN && state.lp[0] > 5000) return 95000;
+            if (code == RpgAiCardKnowledge.SANGAN || code == RpgAiCardKnowledge.WITCH_OF_BLACK_FOREST) return 9000;
+            int flipPenalty = RpgAiCardKnowledge.isFlipMonster(code) ? -1500 : 0;
+            return 2000 + Math.max(state.getCardBaseAtk(code), state.getCardBaseDef(code) / 2) + flipPenalty;
+        }
         if (isExodiaStyle()) {
             Set<Integer> owned = state.getUniqueExodiaPiecesInHand();
             if (RpgAiCardKnowledge.isExodiaPiece(code)) {
@@ -2526,12 +2571,6 @@ public class RpgAiStrategy {
             if (code == RpgAiCardKnowledge.SANGAN) return 70000;
             if (code == RpgAiCardKnowledge.SUMMONED_SKULL) return 65000;
         }
-        if (activeCode == RpgAiCardKnowledge.LAST_WILL) {
-            // Special Summon directly to field: prefer Cyber-Stein (if LP > 5000) or highest ATK/Sangan/Witch
-            if (code == RpgAiCardKnowledge.CYBER_STEIN && state.lp[0] > 5000) return 95000;
-            if (code == RpgAiCardKnowledge.SANGAN || code == RpgAiCardKnowledge.WITCH_OF_BLACK_FOREST) return 6000;
-            return 2000 + state.getCardBaseAtk(code);
-        }
         // General priority: Magician of Faith, Summoned Skull, Sangan, Witch, Man-Eater Bug, highest ATK
         if (code == RpgAiCardKnowledge.SUMMONED_SKULL) return 5500;
         if (code == RpgAiCardKnowledge.MAGICIAN_OF_FAITH && state.hasGoodSpellInMyGrave()) return 5200;
@@ -2548,10 +2587,11 @@ public class RpgAiStrategy {
         if (activeCode == RpgAiCardKnowledge.MASK_OF_DARKNESS) {
             return RpgAiCardKnowledge.getTrapRecoveryScore(code, style);
         }
-        // Monster Reborn: pick best monster across both graveyards!
+        // Monster Reborn: always Special Summons FACE-UP (ATK or DEF) — Flip monsters like Magician of Faith
+        // CANNOT trigger their FLIP effects when revived face-up!
         if (isExodiaStyle()) {
+            // Sangan/Witch trigger their search when sent from field to GY, so reviving them accelerates Exodia
             if (code == RpgAiCardKnowledge.SANGAN || code == RpgAiCardKnowledge.WITCH_OF_BLACK_FOREST) return 9000;
-            if (code == RpgAiCardKnowledge.MAGICIAN_OF_FAITH) return 8500;
         }
         if (isFusionStyle() && code == RpgAiCardKnowledge.CYBER_STEIN && state.lp[0] > 5000) {
             return 10000;
@@ -2559,7 +2599,8 @@ public class RpgAiStrategy {
         int atk = state.getCardBaseAtk(code);
         int def = state.getCardBaseDef(code);
         int ownerBonus = (item.localCtrl == 1) ? 100 : 0; // slightly prefer stealing opponent's boss!
-        return Math.max(atk, def / 2) + ownerBonus;
+        int flipPenalty = RpgAiCardKnowledge.isFlipMonster(code) ? -1000 : 0;
+        return Math.max(atk, def / 2) + ownerBonus + flipPenalty;
     }
 
     private int scoreEnemyRemovalTarget(SelectCardItem item) {
