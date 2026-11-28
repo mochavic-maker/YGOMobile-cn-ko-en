@@ -1603,11 +1603,22 @@ public class RpgEnginesTest {
     public void canonDuelsHaveLotdBlueprintsThemePureExodiaAndAvgDialogues() {
         int exodiaDecksChecked = 0;
         for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel duel : catalog.canonDuels) {
-            // 1) AVG Dialogue scenes (Legacy of the Duelist style Intro + Outro)
+            // 1) AVG Dialogue scenes (Legacy of the Duelist style Intro + outcome-branching Outros)
             assertNotNull("Missing introDialogue for " + duel.id, duel.introDialogue);
             assertTrue("introDialogue must have >= 3 lines for " + duel.id, duel.introDialogue.size() >= 3);
             assertNotNull("Missing outroDialogue for " + duel.id, duel.outroDialogue);
             assertTrue("outroDialogue must have >= 2 lines for " + duel.id, duel.outroDialogue.size() >= 2);
+            assertTrue("canonWinnerSide must be A or B for " + duel.id,
+                    "A".equals(duel.canonWinnerSide) || "B".equals(duel.canonWinnerSide));
+            if ("canon_1998_11_17_manga_yugi_kaiba_castle".equals(duel.id)
+                    || "canon_1999_11_09_manga_joey_rarehunter".equals(duel.id)) {
+                assertEquals("Canonical winner must be Side B for " + duel.id, "B", duel.canonWinnerSide);
+            }
+            assertNotNull("Missing outroSideAWin for " + duel.id, duel.outroSideAWin);
+            assertTrue("outroSideAWin must have >= 2 lines for " + duel.id, duel.outroSideAWin.size() >= 2);
+            assertNotNull("Missing outroSideBWin for " + duel.id, duel.outroSideBWin);
+            assertTrue("outroSideBWin must have >= 2 lines for " + duel.id, duel.outroSideBWin.size() >= 2);
+
             for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DialogueLine dl : duel.introDialogue) {
                 assertTrue("Invalid speakerSide in intro of " + duel.id,
                         "A".equals(dl.speakerSide) || "B".equals(dl.speakerSide) || "NARRATOR".equals(dl.speakerSide));
@@ -1616,14 +1627,41 @@ public class RpgEnginesTest {
                 assertNotNull(dl.text);
                 assertFalse(dl.text.trim().isEmpty());
             }
-            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DialogueLine dl : duel.outroDialogue) {
-                assertTrue("Invalid speakerSide in outro of " + duel.id,
+
+            List<cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DialogueLine> outroA = duel.getOutroForWinner("A");
+            List<cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DialogueLine> outroB = duel.getOutroForWinner("B");
+            StringBuilder textA = new StringBuilder();
+            StringBuilder textB = new StringBuilder();
+            boolean aBranchHasA = false, aBranchHasB = false;
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DialogueLine dl : outroA) {
+                assertTrue("Invalid speakerSide in outroSideAWin of " + duel.id,
                         "A".equals(dl.speakerSide) || "B".equals(dl.speakerSide) || "NARRATOR".equals(dl.speakerSide));
                 assertNotNull(dl.speakerName);
                 assertFalse(dl.speakerName.trim().isEmpty());
                 assertNotNull(dl.text);
                 assertFalse(dl.text.trim().isEmpty());
+                if ("A".equals(dl.speakerSide)) aBranchHasA = true;
+                if ("B".equals(dl.speakerSide)) aBranchHasB = true;
+                textA.append(dl.speakerSide).append(':').append(dl.text).append('\n');
             }
+            boolean bBranchHasA = false, bBranchHasB = false;
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DialogueLine dl : outroB) {
+                assertTrue("Invalid speakerSide in outroSideBWin of " + duel.id,
+                        "A".equals(dl.speakerSide) || "B".equals(dl.speakerSide) || "NARRATOR".equals(dl.speakerSide));
+                assertNotNull(dl.speakerName);
+                assertFalse(dl.speakerName.trim().isEmpty());
+                assertNotNull(dl.text);
+                assertFalse(dl.text.trim().isEmpty());
+                if ("A".equals(dl.speakerSide)) bBranchHasA = true;
+                if ("B".equals(dl.speakerSide)) bBranchHasB = true;
+                textB.append(dl.speakerSide).append(':').append(dl.text).append('\n');
+            }
+            assertTrue("outroSideAWin must include lines from both A and B for " + duel.id, aBranchHasA && aBranchHasB);
+            assertTrue("outroSideBWin must include lines from both A and B for " + duel.id, bBranchHasA && bBranchHasB);
+            assertFalse("Side A win and Side B win outros must be distinct for " + duel.id,
+                    textA.toString().equals(textB.toString()));
+            assertFalse("First lines of Side A win and Side B win must differ for " + duel.id,
+                    outroA.get(0).text.equals(outroB.get(0).text));
 
             for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide side
                     : new cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide[]{duel.sideA, duel.sideB}) {

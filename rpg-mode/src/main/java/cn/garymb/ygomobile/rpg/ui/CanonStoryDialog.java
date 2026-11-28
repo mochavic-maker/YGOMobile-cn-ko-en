@@ -1,6 +1,7 @@
 package cn.garymb.ygomobile.rpg.ui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -20,11 +21,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.garymb.ygomobile.rpg.model.OcgCanonDuel;
+import cn.garymb.ygomobile.rpg.model.RpgProfile;
 
 /**
  * Legacy of the Duelist-style AVG visual-novel dialogue scene for Canon Duels:
  * displays left/right character portraits with active-speaker spotlighting,
- * speaker nameplate, emotion tinting, tap-to-advance dialogue box, and Skip control.
+ * speaker nameplate, emotion tinting, tap-to-advance dialogue box, Skip control,
+ * and outcome-branching post-duel endings (Side A win / Side B win / Draw).
  */
 public final class CanonStoryDialog {
 
@@ -39,20 +42,158 @@ public final class CanonStoryDialog {
     }
 
     public static void showOutro(Activity activity, OcgCanonDuel duel, Runnable onFinished) {
-        if (duel == null || duel.outroDialogue == null || duel.outroDialogue.isEmpty()) {
+        if (duel == null) {
             if (onFinished != null) onFinished.run();
             return;
         }
-        showDialogue(activity, duel, duel.outroDialogue, "🏆 战后尾声", "#10B981", "✔ 查看战果", onFinished);
+        String canonSide = (duel.canonWinnerSide != null && !duel.canonWinnerSide.isEmpty())
+                ? duel.canonWinnerSide : "A";
+        List<OcgCanonDuel.DialogueLine> lines = duel.getOutroForWinner(canonSide);
+        if (lines == null || lines.isEmpty()) {
+            if (onFinished != null) onFinished.run();
+            return;
+        }
+        showDialogue(activity, duel, lines, "🏆 战后尾声", "#10B981", "✔ 查看战果", onFinished);
+    }
+
+    /**
+     * Plays the outcome-matched post-duel AVG dialogue for ALL Canon Duel results
+     * (Win, Loss, or Draw) across all 4 challenge modes (ROLE_A, ROLE_B, OWN_VS_A, OWN_VS_B).
+     */
+    public static void showOutcomeOutro(Activity activity,
+                                        OcgCanonDuel duel,
+                                        String canonMode,
+                                        boolean playerWon,
+                                        boolean isDraw,
+                                        Runnable onFinished) {
+        if (duel == null) {
+            if (onFinished != null) onFinished.run();
+            return;
+        }
+        String nameA = duel.sideA != null ? duel.sideA.characterName : "角色A";
+        String nameB = duel.sideB != null ? duel.sideB.characterName : "角色B";
+        String canonWinner = "B".equalsIgnoreCase(duel.canonWinnerSide) ? "B" : "A";
+
+        // 1) Draw cutscene
+        if (isDraw) {
+            List<OcgCanonDuel.DialogueLine> drawLines = new ArrayList<>();
+            OcgCanonDuel.DialogueLine d1 = new OcgCanonDuel.DialogueLine();
+            d1.speakerSide = "NARRATOR";
+            d1.speakerName = "平局终场";
+            d1.emotion = "normal";
+            d1.text = "「" + nameA + "」与「" + nameB + "」激战至最后一刻，双方势均力敌、以平局收场！";
+            drawLines.add(d1);
+            OcgCanonDuel.DialogueLine d2 = new OcgCanonDuel.DialogueLine();
+            d2.speakerSide = "NARRATOR";
+            d2.speakerName = "再战预告";
+            d2.emotion = "determined";
+            d2.text = "这场难解难分的名局尚未彻底画上句号——稍作整顿，随时再次一决高下吧！";
+            drawLines.add(d2);
+            showDialogue(activity, duel, drawLines, "⚖ 平局终场", "#64748B", "✔ 查看战果", onFinished);
+            return;
+        }
+
+        // 2) Own-deck challenge modes (filter opponent's matching reaction + narrator wrap-up so absent rival doesn't barge in)
+        if (RpgProfile.CANON_MODE_OWN_VS_A.equals(canonMode) || RpgProfile.CANON_MODE_OWN_VS_B.equals(canonMode)) {
+            String oppSide = RpgProfile.CANON_MODE_OWN_VS_A.equals(canonMode) ? "A" : "B";
+            String oppName = "A".equals(oppSide) ? nameA : nameB;
+            String oppLostWinner = "A".equals(oppSide) ? "B" : "A";
+            List<OcgCanonDuel.DialogueLine> source = duel.getOutroForWinner(playerWon ? oppLostWinner : oppSide);
+            List<OcgCanonDuel.DialogueLine> ownLines = new ArrayList<>();
+            if (source != null) {
+                for (OcgCanonDuel.DialogueLine dl : source) {
+                    if (dl != null && oppSide.equalsIgnoreCase(dl.speakerSide)) {
+                        ownLines.add(dl);
+                    }
+                }
+            }
+            OcgCanonDuel.DialogueLine wrap = new OcgCanonDuel.DialogueLine();
+            wrap.speakerSide = "NARRATOR";
+            wrap.speakerName = playerWon ? "自组制胜" : "惜败收场";
+            wrap.emotion = playerWon ? "victory" : "normal";
+            wrap.text = playerWon
+                    ? ("你凭自组卡组成功击败了「" + oppName + "」！原著强敌在你的构筑与操作面前甘拜下风。")
+                    : ("「" + oppName + "」凭借原著招牌卡组守住了防线。不妨调整当期自组构筑，再度前来挑战！");
+            ownLines.add(wrap);
+
+            String stageLabel = playerWon ? "🏆 自组胜出" : "💔 挑战落败";
+            String stageColor = playerWon ? "#10B981" : "#EF4444";
+            showDialogue(activity, duel, ownLines, stageLabel, stageColor, "✔ 查看战果", onFinished);
+            return;
+        }
+
+        // 3) Role-play modes (ROLE_A or ROLE_B)
+        boolean playingB = RpgProfile.CANON_MODE_ROLE_B.equals(canonMode);
+        String winnerSide = playingB ? (playerWon ? "B" : "A") : (playerWon ? "A" : "B");
+        String winnerName = "A".equals(winnerSide) ? nameA : nameB;
+        List<OcgCanonDuel.DialogueLine> lines = duel.getOutroForWinner(winnerSide);
+        if (lines == null || lines.isEmpty()) {
+            if (onFinished != null) onFinished.run();
+            return;
+        }
+
+        boolean matchesCanon = winnerSide.equalsIgnoreCase(canonWinner);
+        final String stageLabel;
+        final String stageColor;
+        if (playerWon && matchesCanon) {
+            stageLabel = "🏆 正史胜利 · " + winnerName + "胜";
+            stageColor = "#10B981";
+        } else if (playerWon) {
+            stageLabel = "⚡ IF 逆转 · " + winnerName + "胜";
+            stageColor = "#8B5CF6";
+        } else {
+            stageLabel = "💔 战败结局 · " + winnerName + "胜";
+            stageColor = "#EF4444";
+        }
+        showDialogue(activity, duel, lines, stageLabel, stageColor, "✔ 查看战果", onFinished);
     }
 
     public static void showFullStoryReplay(Activity activity, OcgCanonDuel duel) {
-        if (duel == null) return;
+        if (activity == null || activity.isFinishing() || duel == null) return;
+        boolean hasA = duel.outroSideAWin != null && !duel.outroSideAWin.isEmpty();
+        boolean hasB = duel.outroSideBWin != null && !duel.outroSideBWin.isEmpty();
+        if (hasA && hasB) {
+            String nameA = duel.sideA != null ? duel.sideA.characterName : "角色A";
+            String nameB = duel.sideB != null ? duel.sideB.characterName : "角色B";
+            boolean bIsCanon = "B".equalsIgnoreCase(duel.canonWinnerSide);
+            String[] choices = new String[]{
+                    "🎬 战前开场剧情",
+                    (bIsCanon ? "⚡ 结局 A：" : "🏆 结局 A：") + nameA + "胜" + (bIsCanon ? "（IF 逆转）" : "（正史）"),
+                    (bIsCanon ? "🏆 结局 B：" : "⚡ 结局 B：") + nameB + "胜" + (bIsCanon ? "（正史）" : "（IF 逆转）"),
+                    "📖 完整连播（开场 + 正史结局）"
+            };
+            new AlertDialog.Builder(activity)
+                    .setTitle("📖 剧情回放 · " + (duel.title != null ? duel.title : "原著剧情"))
+                    .setItems(choices, (dialog, which) -> {
+                        if (which == 0) {
+                            showDialogue(activity, duel, duel.introDialogue, "🎬 战前剧情", "#F59E0B", "✔ 关闭", null);
+                        } else if (which == 1) {
+                            showDialogue(activity, duel, duel.outroSideAWin,
+                                    (bIsCanon ? "⚡ IF 结局 · " : "🏆 正史结局 · ") + nameA + "胜",
+                                    bIsCanon ? "#8B5CF6" : "#10B981", "✔ 关闭", null);
+                        } else if (which == 2) {
+                            showDialogue(activity, duel, duel.outroSideBWin,
+                                    (bIsCanon ? "🏆 正史结局 · " : "⚡ IF 结局 · ") + nameB + "胜",
+                                    bIsCanon ? "#10B981" : "#8B5CF6", "✔ 关闭", null);
+                        } else {
+                            playCombinedCanonReplay(activity, duel);
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+            return;
+        }
+        playCombinedCanonReplay(activity, duel);
+    }
+
+    private static void playCombinedCanonReplay(Activity activity, OcgCanonDuel duel) {
         List<OcgCanonDuel.DialogueLine> combined = new ArrayList<>();
         if (duel.introDialogue != null) {
             combined.addAll(duel.introDialogue);
         }
-        if (duel.outroDialogue != null && !duel.outroDialogue.isEmpty()) {
+        String canonSide = "B".equalsIgnoreCase(duel.canonWinnerSide) ? "B" : "A";
+        List<OcgCanonDuel.DialogueLine> canonOutro = duel.getOutroForWinner(canonSide);
+        if (canonOutro != null && !canonOutro.isEmpty()) {
             if (!combined.isEmpty()) {
                 OcgCanonDuel.DialogueLine divider = new OcgCanonDuel.DialogueLine();
                 divider.speakerSide = "NARRATOR";
@@ -61,10 +202,10 @@ public final class CanonStoryDialog {
                 divider.text = "—— 历经激烈交锋，这场载入决斗史册的名局终于分出了胜负 ——";
                 combined.add(divider);
             }
-            combined.addAll(duel.outroDialogue);
+            combined.addAll(canonOutro);
         }
         if (combined.isEmpty()) return;
-        showDialogue(activity, duel, combined, "📖 剧情回顾", "#38BDF8", "✔ 关闭", null);
+        showDialogue(activity, duel, combined, "📖 正史回顾", "#38BDF8", "✔ 关闭", null);
     }
 
     private static void showDialogue(Activity activity,

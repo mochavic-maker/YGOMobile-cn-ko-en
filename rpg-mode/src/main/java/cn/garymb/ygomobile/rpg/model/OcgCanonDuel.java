@@ -21,12 +21,28 @@ public class OcgCanonDuel {
     /** Human-readable Chinese note explaining which core card(s) determine timelineDate. */
     public String coreUnlockNote;
     public String summary;
+    /** Which side won in the original manga/anime/film: "A" or "B". */
+    public String canonWinnerSide;
     public DuelSide sideA;
     public DuelSide sideB;
     /** Pre-duel AVG dialogue lines (Legacy of the Duelist style Intro cutscene). */
     public List<DialogueLine> introDialogue = new ArrayList<>();
-    /** Post-duel victory AVG dialogue lines (Legacy of the Duelist style Outro cutscene). */
+    /** Legacy/canonical post-duel AVG dialogue lines (defaults to canonWinnerSide's outro). */
     public List<DialogueLine> outroDialogue = new ArrayList<>();
+    /** Post-duel AVG dialogue lines played when Side A wins the duel. */
+    public List<DialogueLine> outroSideAWin = new ArrayList<>();
+    /** Post-duel AVG dialogue lines played when Side B wins the duel. */
+    public List<DialogueLine> outroSideBWin = new ArrayList<>();
+
+    public List<DialogueLine> getOutroForWinner(String winnerSide) {
+        if ("A".equalsIgnoreCase(winnerSide) && outroSideAWin != null && !outroSideAWin.isEmpty()) {
+            return outroSideAWin;
+        }
+        if ("B".equalsIgnoreCase(winnerSide) && outroSideBWin != null && !outroSideBWin.isEmpty()) {
+            return outroSideBWin;
+        }
+        return outroDialogue;
+    }
 
     public static class DialogueLine {
         /** "A" (sideA portrait), "B" (sideB portrait), or "NARRATOR" (centered narration). */

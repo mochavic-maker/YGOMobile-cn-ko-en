@@ -159,9 +159,9 @@
         3. **第三优先（符合事件日期卡池强度的主题与当期泛用卡）**：由 `CanonDuelDeckBuilder` 动态计算 `timelineDate` 当期 OCG 卡池的下级最高攻防（`eraTopLowerAtk` / `eraTopLowerDef`），自动导出当期强度基线（`eraAtkFloor = max(800, eraTopLowerAtk - 400)`、`eraDefFloor = max(1000, eraTopLowerDef - 300)`、高星 `eraTributeAtkFloor = eraTopLowerAtk + 400`）：**所有非原著、非核心联动的其他补位卡必须符合事件日期的卡池强度，严禁塞入落后环境的低攻防通常怪（例如在 1999-08-26 1800~1900 攻环境中塞入攻防 <1000~1400 的凑数白板）或非烧血卡组中的低效烧血/回血凑数魔陷**；种族/属性主题加分仅作用于符合当期强度或具实际效果/联动的卡牌，防止低攻匹配种族白板反超当期强力下级；
       - **严禁敌对/其他角色专属王牌串场**：补位池强制过滤其他原著人物的专属招牌卡（如暗游戏绝不补位《青眼白龙》《灯之魔精》《机械猎手》《死毒》，海马绝不补位《黑魔术师》《暗黑骑士 盖亚》《诅咒之龙》《恶魔召唤》《真红眼黑龙》，城之内/羽蛾/孔雀舞/渔太/龙崎/迷宫兄弟亦严禁混入其他角色的专属王牌；单局显式登记的 `canonCardIds` 仍 100% 忠实保留）。
       - 先补足怪兽、再做魔法/陷阱合理性判定与补位，保证种族/属性装备魔法能准确统计全卡组目标数，既不漏掉原著招牌装备、也不塞入废装备。
-3. **仿《决斗者遗产》战前/战后 AVG 对话场景（`CanonStoryDialog` + `introDialogue` / `outroDialogue`）**：
-   - 每场原著对决必须在 `ocg_canon_duels.json` 中配置忠实于原作漫画/动画名台词的**战前开场对话（`introDialogue`，≥3 句）**与**战后胜利尾声（`outroDialogue`，≥2 句）**，每句标注 `speakerSide`（`A`/`B`/`NARRATOR`）、`speakerName`、`emotion`（`normal`/`fierce`/`shock`/`smirk`/`determined`/`victory`）与中文台词 `text`；
-   - 演出形式对标《决斗者遗产》：左右角色动画立绘聚焦高亮（说话方放大亮框、倾听方柔和变暗）、情绪边框色调、点击推进 / 上一句 / 一键跳过，战前开打前自动演出、获胜返场时自动演出尾声，且对决卡片提供 **`📖 剧情`** 按钮随时回看完整开场+尾声（由 `RpgEnginesTest#canonDuelsHaveLotdBlueprintsThemePureExodiaAndAvgDialogues` 自动守卫校验）。
+3. **仿《决斗者遗产》战前/战后双结局分支 AVG 对话场景（`CanonStoryDialog` + `introDialogue` / `canonWinnerSide` / `outroSideAWin` / `outroSideBWin`）**：
+   - 每场原著对决必须在 `ocg_canon_duels.json` 中配置忠实于原作漫画/动画名台词的**战前开场对话（`introDialogue`，≥3 句）**、**原著正史胜方标记（`canonWinnerSide`: `"A"` 或 `"B"`）**以及**双分支战后尾声（`outroSideAWin` 与 `outroSideBWin`，均 ≥2 句且各自包含 A、B 双方台词，内容必须彼此独立）**，每句标注 `speakerSide`（`A`/`B`/`NARRATOR`）、`speakerName`、`emotion`（`normal`/`fierce`/`shock`/`smirk`/`determined`/`victory`）与中文台词 `text`；
+   - 演出形式对标《决斗者遗产》：左右角色动画立绘聚焦高亮（说话方放大亮框、倾听方柔和变暗）、情绪边框色调、点击推进 / 上一句 / 一键跳过；战前开打前自动演出开场，**战后无论胜、负还是平局**均经 `CanonStoryDialog.showOutcomeOutro` 自动按实际胜方路由对应结局台词（区分 `🏆 正史胜利`、`⚡ IF 逆转`、`💔 战败结局`、`🏆 自组胜出`、`💔 挑战落败`、`⚖ 平局终场`），且对决卡片提供 **`📖 剧情`** 按钮自由挑选回看开场、A 胜结局、B 胜结局或完整正史连播（由 `RpgEnginesTest#canonDuelsHaveLotdBlueprintsThemePureExodiaAndAvgDialogues` 自动守卫校验）。
 4. **当日限定展示、日历 🎬 特殊标记与四模式通关记录**：
    - 「🎬 对决还原」页**仅显示当前选定日期当日的对决还原**（`TimelineEngine.getCanonDuelsOnDate`，当日多场按原著日期 `originalDate` 升序排列），既避免后期列表冗长难查，也强制保证玩家自组挑战时**只能使用当时环境的卡池与规则/禁限表，无法携带未来卡**；当日无对决还原时提供一键打开日历与全对决日期快捷跳转按钮；
    - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates`、`TimelineEngine.getCanonDuelDates` 与 `TimelineDigest.newCanonDuels`：**时间轴日历弹窗中含对决还原的日期采用专属粉框 + `🎬` 图标背景高亮**（月份下拉菜单同样附带 `🎬` 标识），与普通浅绿圆点 OCG 事件一眼区分；

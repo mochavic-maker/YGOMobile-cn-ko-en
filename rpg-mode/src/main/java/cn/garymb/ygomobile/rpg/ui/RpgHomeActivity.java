@@ -562,19 +562,28 @@ public class RpgHomeActivity extends AppCompatActivity {
                     () -> copyReplayFileLog(liveReplay.replayFilePath));
         }
 
-        OcgCanonDuel wonCanonDuel = null;
-        if (canonOutcome != null && canonOutcome.playerWon && !canonOutcome.isDraw && catalog != null) {
+        OcgCanonDuel finishedCanonDuel = null;
+        if (canonOutcome != null && catalog != null) {
             for (OcgCanonDuel cd : catalog.getCanonDuels()) {
                 if (cd != null && canonOutcome.duelId != null && canonOutcome.duelId.equals(cd.id)) {
-                    if (cd.outroDialogue != null && !cd.outroDialogue.isEmpty()) {
-                        wonCanonDuel = cd;
+                    boolean hasOutro = (cd.outroSideAWin != null && !cd.outroSideAWin.isEmpty())
+                            || (cd.outroSideBWin != null && !cd.outroSideBWin.isEmpty())
+                            || (cd.outroDialogue != null && !cd.outroDialogue.isEmpty());
+                    if (hasOutro || canonOutcome.isDraw) {
+                        finishedCanonDuel = cd;
                     }
                     break;
                 }
             }
         }
-        if (wonCanonDuel != null) {
-            CanonStoryDialog.showOutro(this, wonCanonDuel, showSettlementPopup);
+        if (finishedCanonDuel != null) {
+            CanonStoryDialog.showOutcomeOutro(
+                    this,
+                    finishedCanonDuel,
+                    canonOutcome.canonMode,
+                    canonOutcome.playerWon,
+                    canonOutcome.isDraw,
+                    showSettlementPopup);
         } else if (showSettlementPopup != null) {
             showSettlementPopup.run();
         }
@@ -3069,6 +3078,8 @@ public class RpgHomeActivity extends AppCompatActivity {
                     this, catalog, profile, deckB, duel.episodeLabel));
 
             boolean hasStory = (duel.introDialogue != null && !duel.introDialogue.isEmpty())
+                    || (duel.outroSideAWin != null && !duel.outroSideAWin.isEmpty())
+                    || (duel.outroSideBWin != null && !duel.outroSideBWin.isEmpty())
                     || (duel.outroDialogue != null && !duel.outroDialogue.isEmpty());
             if (hasStory) {
                 Button storyBtn = makeActionButton("📖 剧情", "#B45309");
