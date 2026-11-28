@@ -559,7 +559,9 @@ public class RpgAiStrategy {
             return activateIdle(egotist);
         }
         CmdEntry toonWorld = findActivatable(p, RpgAiCardKnowledge.TOON_WORLD);
-        if (toonWorld != null && state.lp[0] > 1500) {
+        if (toonWorld != null && state.lp[0] > 1500
+                && !state.hasFaceUpCardOnField(0, RpgAiCardKnowledge.TOON_WORLD)
+                && state.getFreeMainSzoneCount(0) >= 2) {
             return activateIdle(toonWorld);
         }
 
@@ -883,6 +885,22 @@ public class RpgAiStrategy {
                 && oppStrongestFaceUpAtk <= Math.max(bestBaitAtk, myStrongestOnField)
                 && (state.lp[0] > 2500 || oppStrongestFaceUpAtk <= bestBaitAtk);
 
+        // 5th Monster Zone discipline: when AI already dominates with 4 monsters on field,
+        // avoid clogging the final monster zone with a non-lethal redundant Normal/Vanilla monster
+        // (keeps the slot open for Flip/utility monsters, Change of Heart / Monster Reborn, and plays around board wipes).
+        int freeMzone = state.getFreeMainMzoneCount(0);
+        boolean reserveLastMonsterZone = (freeMzone == 1) && hasBoardAdvantage;
+        boolean hasSettableFlipOrUtility = false;
+        if (reserveLastMonsterZone) {
+            for (CmdEntry e : p.msetable) {
+                if (RpgAiCardKnowledge.isFlipMonster(e.code)
+                        || RpgAiCardKnowledge.isSearcherMonster(e.code)) {
+                    hasSettableFlipOrUtility = true;
+                    break;
+                }
+            }
+        }
+
         // Evaluate best Normal Summon candidate
         CmdEntry bestSummon = null;
         int bestSummonScore = Integer.MIN_VALUE;
@@ -902,6 +920,24 @@ public class RpgAiStrategy {
                     score += 450;
                 }
             }
+            if (reserveLastMonsterZone && score >= 0) {
+                int atk = state.getCardBaseAtk(e.code);
+                int tributes = state.tributesNeededForLevel(state.getCardLevel(e.code));
+                boolean isLethalSummon = oppBoardEmpty && !state.isMain2() && p.canBattle
+                        && (state.getTotalFaceUpAtk(0) + atk >= state.lp[1]);
+                boolean isKeyEffectMonster = e.code == RpgAiCardKnowledge.CYBER_STEIN
+                        || e.code == RpgAiCardKnowledge.LORD_OF_D
+                        || e.code == RpgAiCardKnowledge.CANNON_SOLDIER
+                        || e.code == RpgAiCardKnowledge.BARREL_DRAGON
+                        || e.code == RpgAiCardKnowledge.TIME_WIZARD;
+                if (tributes == 0 && !isLethalSummon && !isKeyEffectMonster
+                        && !RpgAiCardKnowledge.isFlipMonster(e.code)
+                        && !RpgAiCardKnowledge.isSearcherMonster(e.code)) {
+                    if (hasSettableFlipOrUtility || atk <= myStrongestOnField) {
+                        score = -200;
+                    }
+                }
+            }
             if (score > bestSummonScore) {
                 bestSummonScore = score;
                 bestSummon = e;
@@ -914,6 +950,16 @@ public class RpgAiStrategy {
         for (CmdEntry e : p.msetable) {
             int score = scoreMonsterSet(e, oppStrongest, oppStrongestFaceUpAtk, myStrongestOnField,
                     myBoardEmpty, oppBoardEmpty, hasBoardAdvantage, p.canBattle);
+            if (reserveLastMonsterZone && score >= 0) {
+                boolean isUsefulSet = RpgAiCardKnowledge.isFlipMonster(e.code)
+                        || RpgAiCardKnowledge.isSearcherMonster(e.code)
+                        || e.code == RpgAiCardKnowledge.WALL_OF_ILLUSION
+                        || (isDarkVirusStyle() && !state.hasDarkVirusTributeOnMyField()
+                        && hasCrushCardVirusReady() && isDarkVirusFodder(e.code));
+                if (!isUsefulSet) {
+                    score = -200;
+                }
+            }
             if (score > bestSetScore) {
                 bestSetScore = score;
                 bestSet = e;
@@ -1124,6 +1170,10 @@ public class RpgAiStrategy {
         if (state.isMain2() || !p.canBattle || state.turnCount == 1) {
             return null;
         }
+        int freeSzone = state.getFreeMainSzoneCount(0);
+        if (freeSzone <= 0) {
+            return null;
+        }
         List<RpgAiDuelState.CardSlot> oppMons = state.getMonsters(1);
         int oppBackrow = countFaceDownBackrow(1);
 
@@ -1133,9 +1183,13 @@ public class RpgAiStrategy {
             if (target == null) continue;
 
             int bonus = Math.max(300, RpgAiCardKnowledge.getEquipAtkBonus(e.code));
-            // 1) Secures immediate lethal on an open board
+            // 1) Secures immediate lethal on an open board (allowed even into the 5th S/T zone)
             if (oppMons.isEmpty() && state.getTotalFaceUpAtk(0) + bonus >= state.lp[1]) {
                 return activateIdle(e);
+            }
+            // Reserve the 5th (final) S/T zone so Normal/Quick-Play Spells stay playable!
+            if (freeSzone <= 1) {
+                continue;
             }
             // 2) Flips a losing/tied combat matchup into a clean win (or crosses face-down poke threshold)
             boolean flipsCombat = false;
@@ -1243,9 +1297,11 @@ public class RpgAiStrategy {
                 return true;
             }
         }
-        if (state.getFreeMainSzoneCount(0) > 0) {
+        int freeSzone = state.getFreeMainSzoneCount(0);
+        if (freeSzone > 0) {
             for (RpgAiDuelState.CardSlot h : state.hand[0]) {
-                if (h != null && isBattleTrickCapableOfWinning(h.code, myAtk, oppFaceUpAtk)) {
+                if (h != null && isBattleTrickCapableOfWinning(h.code, myAtk, oppFaceUpAtk)
+                        && (freeSzone >= 2 || isEmergencyLastSzoneTrapAllowed(h.code))) {
                     return true;
                 }
             }
@@ -1267,9 +1323,12 @@ public class RpgAiStrategy {
     }
 
     private Integer tryUtilitySpellsAndEffects(IdleCmdPrompt p) {
-        // Burn spells (hold low-impact Sparks for a 1-card Trap Hole bluff when we have 0 backrow & no real traps;
+        int freeSzone = state.getFreeMainSzoneCount(0);
+        // Burn spells (hold low-impact Sparks for a 1-card Trap Hole bluff when we have 0 backrow,
+        // no real traps, and >= 2 free S/T zones so bluff-setting will not lock the final S/T zone;
         // note lethal Sparks already fired in tryImmediateLethal!)
         boolean wantBluffSparks = !isBurnStyle() && !isExodiaStyle()
+                && freeSzone >= 2
                 && countFaceDownBackrow(0) == 0 && !hasRealTrapInSsetable(p);
         for (CmdEntry e : p.activatable) {
             if (RpgAiCardKnowledge.getBurnDamage(e.code) > 0) {
@@ -1288,7 +1347,8 @@ public class RpgAiStrategy {
         // Swords of Revealing Light: activate when opponent has threats/face-downs, in stall decks,
         // or whenever we are about to pass on an open board with no real protective trap (e.g., after
         // our Normal Summon got hit by Trap Hole or on a bricked hand). Never stack a 2nd copy while
-        // one is already active on our field!
+        // one is already active on our field! When only 1 S/T zone remains, reserve it unless facing
+        // a genuine survival emergency (Swords occupies the zone for 3 opponent turns).
         CmdEntry swords = findActivatable(p, RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT);
         if (swords != null
                 && !state.hasFaceUpCardOnField(0, RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT)) {
@@ -1297,9 +1357,14 @@ public class RpgAiStrategy {
             boolean behind = state.getStrongestThreatValue(1) >= state.getStrongestAtk(0);
             boolean needStall = isExodiaStyle() || isBurnStyle() || isMillStyle() || state.lp[0] <= 3000;
             boolean openAndDefenseless = myBoardEmpty && !hasProtectiveTrapReady(p);
-            if ((oppHasMonsters && (behind || hasFaceDownMonster(1) || needStall))
+            boolean lastZoneEmergency = state.lp[0] <= 2500
+                    || (oppHasMonsters && state.getTotalFaceUpAtk(1) >= state.lp[0])
+                    || (openAndDefenseless && state.getTotalFaceUpAtk(1) >= 1500)
+                    || (isExodiaStyle() && oppHasMonsters);
+            if ((freeSzone >= 2 || lastZoneEmergency)
+                    && ((oppHasMonsters && (behind || hasFaceDownMonster(1) || needStall))
                     || (needStall && myBoardEmpty)
-                    || openAndDefenseless) {
+                    || openAndDefenseless)) {
                 return activateIdle(swords);
             }
         }
@@ -1327,8 +1392,10 @@ public class RpgAiStrategy {
     }
 
     private Integer trySetTraps(IdleCmdPrompt p) {
-        if (p.ssetable.isEmpty() || state.getFreeMainSzoneCount(0) <= 0) return null;
-        // 1) Always prioritize real Traps first
+        int freeSzone = state.getFreeMainSzoneCount(0);
+        if (p.ssetable.isEmpty() || freeSzone <= 0) return null;
+        // 1) Always prioritize real Traps first — but reserve the 5th (final) S/T zone unless
+        //    under an emergency/game-saving condition so Normal/Quick-Play Spells never get locked out!
         for (CmdEntry e : p.ssetable) {
             RpgCard card = state.lookupCard(e.code);
             boolean isTrap = (card != null && "trap".equalsIgnoreCase(card.frameType))
@@ -1338,15 +1405,19 @@ public class RpgAiStrategy {
             if (e.code == RpgAiCardKnowledge.ROYAL_DECREE && isDarkVirusStyle()) {
                 continue;
             }
+            if (freeSzone == 1 && !isEmergencyLastSzoneTrapAllowed(e.code)) {
+                continue;
+            }
             return (e.index << 16) + 4;
         }
 
         // 2) Classic 1999 OCG Bluff Setting ("ブラフ伏せ"):
-        //    If we have 0 face-down backrow and no real Traps, set 1 low-opportunity-cost Spell
-        //    (e.g. unused Equip Spell, Stop Defense, full-LP Heal, or Sparks) to threaten Trap Hole
-        //    and deter opponent from slamming Dark Magician / Gaia / Blue-Eyes!
+        //    If we have 0 face-down backrow, >= 2 free S/T zones (NEVER lock the final S/T zone with a bluff!),
+        //    and no real Traps, set 1 low-opportunity-cost Spell (e.g. unused Equip Spell, Stop Defense,
+        //    full-LP Heal, or Sparks) to threaten Trap Hole and deter opponent from slamming bosses!
         //    NEVER bluff-set core power Spells (Dark Hole, Raigeki, Fissure, Monster Reborn, etc.).
-        if (countFaceDownBackrow(0) == 0
+        if (freeSzone >= 2
+                && countFaceDownBackrow(0) == 0
                 && !isExodiaStyle()
                 && !state.hasCardInHand(RpgAiCardKnowledge.HEAVY_STORM)) {
             CmdEntry bestBluff = null;
@@ -1376,6 +1447,56 @@ public class RpgAiStrategy {
         return null;
     }
 
+    /**
+     * Determines whether occupying the 5th (final) Main Spell/Trap zone with a Set Trap is justified.
+     * By default AI leaves 1 S/T zone open so Normal & Quick-Play Spells (Pot of Greed, Raigeki,
+     * Dark Hole, Fissure, Monster Reborn, Change of Heart, etc.) remain playable.
+     * Filling the 5th slot is only permitted when Royal Decree is not negating traps and either:
+     * - Just Desserts secures immediate lethal burn on opponent's next turn, OR
+     * - Crush Card Virus has live DARK <= 1000 tribute on board against an opponent with cards, OR
+     * - AI currently lacks any protective/negation backrow (or Swords of Revealing Light) and faces
+     *   a genuine survival threat (lethal on board, open board vs >=1500 ATK, or critically low LP).
+     */
+    private boolean isEmergencyLastSzoneTrapAllowed(int trapCode) {
+        if (state.hasFaceUpCardOnField(0, RpgAiCardKnowledge.ROYAL_DECREE)
+                || state.hasFaceUpCardOnField(1, RpgAiCardKnowledge.ROYAL_DECREE)) {
+            return false;
+        }
+        if (trapCode == RpgAiCardKnowledge.JUST_DESSERTS
+                && state.getMonsters(1).size() * 500 >= state.lp[1]) {
+            return true;
+        }
+        if (trapCode == RpgAiCardKnowledge.CRUSH_CARD_VIRUS
+                && state.hasDarkVirusTributeOnMyField()
+                && (!state.getMonsters(1).isEmpty() || state.hand[1].size() >= 3)) {
+            return true;
+        }
+        if (hasProtectiveOrNegationTrapOnField()
+                || state.hasFaceUpCardOnField(0, RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT)) {
+            return false;
+        }
+        if (!isProtectiveTrap(trapCode) && trapCode != RpgAiCardKnowledge.SOLEMN_JUDGMENT) {
+            return false;
+        }
+        int oppTotalAtk = state.getTotalFaceUpAtk(1);
+        int oppStrongest = state.getStrongestAtk(1);
+        int myStrongest = state.getStrongestAtk(0);
+        boolean myBoardEmpty = state.getMonsters(0).isEmpty();
+        return oppTotalAtk >= state.lp[0]
+                || (myBoardEmpty && oppTotalAtk >= 1500)
+                || state.lp[0] <= 2000
+                || (oppStrongest > myStrongest && state.lp[0] <= 2500);
+    }
+
+    private boolean hasProtectiveOrNegationTrapOnField() {
+        for (RpgAiDuelState.CardSlot s : state.getSpellTraps(0)) {
+            if (s != null && (isProtectiveTrap(s.code) || s.code == RpgAiCardKnowledge.SOLEMN_JUDGMENT)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean hasRealTrapInSsetable(IdleCmdPrompt p) {
         for (CmdEntry e : p.ssetable) {
             RpgCard card = state.lookupCard(e.code);
@@ -1400,9 +1521,11 @@ public class RpgAiStrategy {
                 return true;
             }
         }
-        if (state.getFreeMainSzoneCount(0) > 0) {
+        int freeSzone = state.getFreeMainSzoneCount(0);
+        if (freeSzone > 0) {
             for (CmdEntry e : p.ssetable) {
-                if (isProtectiveTrap(e.code)) {
+                if (isProtectiveTrap(e.code)
+                        && (freeSzone >= 2 || isEmergencyLastSzoneTrapAllowed(e.code))) {
                     return true;
                 }
             }
@@ -1428,7 +1551,9 @@ public class RpgAiStrategy {
                 return true;
             }
         }
-        return state.getFreeMainSzoneCount(0) > 0
+        int freeSzone = state.getFreeMainSzoneCount(0);
+        return (freeSzone >= 2
+                || (freeSzone == 1 && isEmergencyLastSzoneTrapAllowed(RpgAiCardKnowledge.CRUSH_CARD_VIRUS)))
                 && state.hasCardInHand(RpgAiCardKnowledge.CRUSH_CARD_VIRUS);
     }
 
@@ -1585,10 +1710,14 @@ public class RpgAiStrategy {
     }
 
     private boolean shouldEnterMain2() {
-        // Check if we have traps in hand to set
-        for (RpgAiDuelState.CardSlot c : state.hand[0]) {
-            if (c != null && (c.isTrap() || isKnownTrap(c.code)) && state.getFreeMainSzoneCount(0) > 0) {
-                return true;
+        // Check if we have traps in hand that we would actually set (respecting 5th S/T zone reservation)
+        int freeSzone = state.getFreeMainSzoneCount(0);
+        if (freeSzone > 0) {
+            for (RpgAiDuelState.CardSlot c : state.hand[0]) {
+                if (c != null && (c.isTrap() || isKnownTrap(c.code))
+                        && (freeSzone >= 2 || isEmergencyLastSzoneTrapAllowed(c.code))) {
+                    return true;
+                }
             }
         }
         // Check if opponent still has a monster after Battle Phase and we hold removal (e.g. kill small monster in BP -> Fissure isolated Boss in M2!)

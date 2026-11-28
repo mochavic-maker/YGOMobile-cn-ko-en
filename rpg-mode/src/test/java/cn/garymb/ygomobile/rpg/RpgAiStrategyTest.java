@@ -1206,6 +1206,174 @@ public class RpgAiStrategyTest {
                 (1 << 16) + 5, strategy.chooseIdleCmd(p4));
     }
 
+    @Test
+    public void reservesFinalSpellTrapZoneAgainstNonEmergencyTrapsAndBluffs() {
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-11-18");
+        state.turnCount = 5;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+
+        // Occupy 4 of 5 Main S/T zones (slots 0..3), leaving only 1 free S/T zone (slot 4)
+        placeSetBackrow(state, 0, 0, RpgAiCardKnowledge.TRAP_HOLE);
+        placeSetBackrow(state, 0, 1, RpgAiCardKnowledge.JUST_DESSERTS);
+        placeSetBackrow(state, 0, 2, RpgAiCardKnowledge.MAGIC_JAMMER);
+        placeSetBackrow(state, 0, 3, RpgAiCardKnowledge.SEVEN_TOOLS);
+        addHandCard(state, RpgAiCardKnowledge.WABOKU);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "GOOD_STUFF");
+        RpgAiStrategy.IdleCmdPrompt p1 = new RpgAiStrategy.IdleCmdPrompt();
+        p1.ssetable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.WABOKU, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        p1.canBattle = false;
+        p1.canEnd = true;
+
+        assertEquals("With 4 S/T zones occupied at 8000 LP, must NOT lock the 5th S/T zone with Waboku",
+                7, strategy.chooseIdleCmd(p1));
+
+        // Even with 4 face-up S/T cards (0 face-down backrow), NEVER bluff-set a Spell into the 5th S/T zone!
+        state.reset();
+        state.turnCount = 5;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        for (int i = 0; i < 4; i++) {
+            RpgAiDuelState.CardSlot eq = new RpgAiDuelState.CardSlot();
+            eq.code = RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS;
+            eq.controller = 0;
+            eq.location = RpgAiDuelState.LOC_SZONE;
+            eq.sequence = i;
+            eq.position = RpgAiDuelState.POS_FACEUP_ATTACK;
+            eq.type = RpgAiDuelState.TYPE_SPELL;
+            state.szone[0][i] = eq;
+        }
+        addHandCard(state, RpgAiCardKnowledge.POWER_OF_KAISHIN);
+        RpgAiStrategy.IdleCmdPrompt pBluff = new RpgAiStrategy.IdleCmdPrompt();
+        pBluff.ssetable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.POWER_OF_KAISHIN, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pBluff.canBattle = false;
+        pBluff.canEnd = true;
+        assertEquals("With 4 face-up S/T zones occupied, must NOT bluff-set into the 5th S/T zone",
+                7, strategy.chooseIdleCmd(pBluff));
+
+        // Genuine emergency: 4 non-protective S/T cards on field, LP 1500, empty board vs opponent's Dark Magician (2500)
+        // -> Mirror Force IS allowed to use the 5th S/T zone to stay alive!
+        state.hand[0].clear();
+        state.lp[0] = 1500;
+        placeMonster(state, 1, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        addHandCard(state, RpgAiCardKnowledge.MIRROR_FORCE);
+        RpgAiStrategy.IdleCmdPrompt pEmerg = new RpgAiStrategy.IdleCmdPrompt();
+        pEmerg.ssetable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.MIRROR_FORCE, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pEmerg.canBattle = false;
+        pEmerg.canEnd = true;
+        assertEquals("In a lethal emergency with no protective backrow, Mirror Force SHOULD set into the 5th S/T zone",
+                4, strategy.chooseIdleCmd(pEmerg));
+
+        // If AI already has a protective trap (Mirror Force) in one of the 4 occupied zones, do NOT lock the 5th zone even at low LP!
+        placeSetBackrow(state, 0, 0, RpgAiCardKnowledge.MIRROR_FORCE);
+        assertEquals("When a protective trap is already set on field, must keep the 5th S/T zone open even at low LP",
+                7, strategy.chooseIdleCmd(pEmerg));
+    }
+
+    @Test
+    public void reservesFinalSpellTrapZoneAgainstNonLethalEquipAndNonEmergencySwords() {
+        RpgAiDuelState state = new RpgAiDuelState(catalog, noTributeRule, "1999-03-18");
+        state.turnCount = 5;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+        for (int i = 0; i < 4; i++) {
+            placeSetBackrow(state, 0, i, RpgAiCardKnowledge.JUST_DESSERTS);
+        }
+        placeMonster(state, 0, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        placeMonster(state, 1, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        addHandCard(state, RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "NO_TRIBUTE_BEAT");
+        RpgAiStrategy.IdleCmdPrompt pEquip = new RpgAiStrategy.IdleCmdPrompt();
+        pEquip.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.BOOK_OF_SECRET_ARTS, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pEquip.canBattle = true;
+        pEquip.canEnd = true;
+
+        // 1) Non-lethal combat flip with only 1 S/T zone left -> hold Equip Spell so Normal Spells stay playable!
+        assertEquals("With 4 S/T zones occupied, must NOT activate non-lethal Equip Spell into the 5th zone",
+                7, strategy.chooseIdleCmd(pEquip));
+
+        // 2) Immediate lethal on open board (Dark Magician 2500 + Book 300 = 2800 >= 2700 LP) -> ALLOW Equip Spell!
+        state.mzone[1][2] = null;
+        state.lp[1] = 2700;
+        assertEquals("With 4 S/T zones occupied, lethal Equip Spell SHOULD still activate into the 5th zone!",
+                (0 << 16) + 5, strategy.chooseIdleCmd(pEquip));
+
+        // 3) Swords of Revealing Light with 4 S/T zones occupied: hold at 8000 LP when we control a monster,
+        //    but activate when facing lethal on an empty board!
+        state.mzone[1][2] = null;
+        state.lp[1] = 8000;
+        state.hand[0].clear();
+        placeMonster(state, 1, 2, 0, RpgAiDuelState.POS_FACEDOWN_DEFENSE, 0, 0);
+        addHandCard(state, RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT);
+        RpgAiStrategy.IdleCmdPrompt pSwords = new RpgAiStrategy.IdleCmdPrompt();
+        pSwords.activatable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pSwords.canBattle = false;
+        pSwords.canEnd = true;
+        assertEquals("With 4 S/T zones occupied at 8000 LP and board presence, must NOT lock 5th zone with Swords",
+                7, strategy.chooseIdleCmd(pSwords));
+
+        state.mzone[0][2] = null;
+        placeMonster(state, 1, 2, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        state.lp[0] = 2000;
+        assertEquals("In a survival emergency with empty board & low LP, Swords SHOULD activate into the 5th zone",
+                (0 << 16) + 5, strategy.chooseIdleCmd(pSwords));
+    }
+
+    @Test
+    public void reservesFinalMonsterZoneForFlipOrLethalInsteadOfRedundantVanilla() {
+        final int MAMMOTH = 40374923; // 1200/800 Lv3
+
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-07-22");
+        state.turnCount = 7;
+        state.turnPlayer = 0;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 8000;
+        state.lp[1] = 8000;
+
+        // AI already dominates with 4 monsters (total 6100 ATK < 8000 LP; 5th 1200 vanilla -> 7300 < 8000 non-lethal)
+        placeMonster(state, 0, 0, RpgAiCardKnowledge.DARK_MAGICIAN, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 2100);
+        placeMonster(state, 0, 1, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        placeMonster(state, 0, 2, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        placeMonster(state, 0, 3, MAMMOTH, RpgAiDuelState.POS_FACEUP_ATTACK, 1200, 800);
+        addHandCard(state, MAMMOTH);
+        addHandCard(state, RpgAiCardKnowledge.MAN_EATER_BUG);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "GOOD_STUFF");
+        RpgAiStrategy.IdleCmdPrompt pWithFlip = new RpgAiStrategy.IdleCmdPrompt();
+        pWithFlip.summonable.add(new RpgAiStrategy.CmdEntry(MAMMOTH, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pWithFlip.summonable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.MAN_EATER_BUG, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 1));
+        pWithFlip.msetable.add(new RpgAiStrategy.CmdEntry(MAMMOTH, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pWithFlip.msetable.add(new RpgAiStrategy.CmdEntry(RpgAiCardKnowledge.MAN_EATER_BUG, 0, 0, RpgAiDuelState.LOC_HAND, 1, 0, 0, 1));
+        pWithFlip.canBattle = true;
+        pWithFlip.canEnd = true;
+
+        // 1) Holding both redundant vanilla (index 0) and Man-Eater Bug (index 1) -> Set Man-Eater Bug into 5th slot!
+        assertEquals("With 4 monsters ahead on board, Set Man-Eater Bug (index 1 -> (1<<16)+3) instead of clogging 5th slot with vanilla",
+                (1 << 16) + 3, strategy.chooseIdleCmd(pWithFlip));
+
+        // 2) Holding ONLY a redundant weaker non-lethal vanilla -> keep 5th monster zone open and enter Battle Phase (6)!
+        RpgAiStrategy.IdleCmdPrompt pVanillaOnly = new RpgAiStrategy.IdleCmdPrompt();
+        pVanillaOnly.summonable.add(new RpgAiStrategy.CmdEntry(MAMMOTH, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pVanillaOnly.msetable.add(new RpgAiStrategy.CmdEntry(MAMMOTH, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        pVanillaOnly.canBattle = true;
+        pVanillaOnly.canEnd = true;
+        assertEquals("With 4 monsters ahead on board, hold non-lethal redundant 5th vanilla and enter Battle Phase (6)",
+                6, strategy.chooseIdleCmd(pVanillaOnly));
+
+        // 3) Positive control: if 5th vanilla secures immediate lethal (6100 + 1200 = 7300 >= 7000 LP) -> SUMMON IT!
+        state.lp[1] = 7000;
+        assertEquals("When 5th vanilla secures immediate lethal, DO Normal Summon it (0 << 16)!",
+                0 << 16, strategy.chooseIdleCmd(pVanillaOnly));
+    }
+
     private static void sendPacket(OutputStream out, int proto, byte[] body) throws Exception {
         int len = 1 + body.length;
         ByteBuffer b = ByteBuffer.allocate(2 + len).order(ByteOrder.LITTLE_ENDIAN);
