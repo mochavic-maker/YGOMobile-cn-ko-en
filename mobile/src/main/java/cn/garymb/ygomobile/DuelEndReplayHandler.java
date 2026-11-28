@@ -68,9 +68,13 @@ class DuelEndReplayHandler {
         return duelEndHandling;
     }
 
-    /** 决斗结束提示框：录像已落盘时同时提供「复制日志」与「确定」，点确定后隐藏决斗 UI 并返回 */
+    /** 决斗结束提示框：录像已落盘时同时提供「复制日志」与「确定」，点确定后隐藏决斗 UI 并返回；RPG 对局直接返回 RPG 统一结算窗 */
     private void showDuelEndDialog() {
         if (activity.isFinishing() || activity.isDestroyed()) return;
+        if (cn.garymb.ygomobile.rpg.RpgIntegration.isActiveRpgLiveDuelSession()) {
+            activity.returnToLanMain(null);
+            return;
+        }
         final String replayPath = lastSavedReplayPath;
         YesOrNoDialog dialog = new YesOrNoDialog(activity);
         dialog.setMessage(activity.mStringManager.getSystemString(1500, "決斗结束。"))
@@ -146,6 +150,12 @@ class DuelEndReplayHandler {
             return;
         }
         final byte[] replayData = pendingReplays.remove(0);
+        // RPG 对局结束后直接跳过「是否保存回放」弹窗（不留存额外命名回放，仅静默写入 _LastReplay.yrp 供 RPG 结算页「回放/日志」使用）
+        if (cn.garymb.ygomobile.rpg.RpgIntegration.isActiveRpgLiveDuelSession()) {
+            saveLastReplay(replayData);
+            activity.mainHandler.post(this::processPendingReplays);
+            return;
+        }
         // 对齐 gframe duelclient.cpp STOC_REPLAY：勾选自动保存录像时不弹窗，直接以录像开始时间命名自动保存（对应提示 1367）
         if (AppsSettings.get().getIntSettings("chkAutoSaveReplay", 0) == 1) {
             saveReplayFile(replayData, getReplayDefaultName(replayData), true);
@@ -273,6 +283,7 @@ class DuelEndReplayHandler {
         animSettleDeadlineMs = 0L;
         animSettleWaitLogged = false;
         pendingReplays.clear();
+        cn.garymb.ygomobile.rpg.RpgIntegration.clearActiveRpgLiveDuelSession();
         if (replaySaveDialog != null) {
             replaySaveDialog.dismiss();
             replaySaveDialog = null;

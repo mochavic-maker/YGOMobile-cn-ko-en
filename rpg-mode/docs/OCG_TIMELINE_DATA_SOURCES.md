@@ -162,11 +162,11 @@
       - 先补足怪兽、再做魔法/陷阱合理性判定与补位，保证种族/属性装备魔法能准确统计全卡组目标数，既不漏掉原著招牌装备、也不塞入废装备。
 3. **仿《决斗者遗产》战前/战后双结局分支 AVG 对话场景（`CanonStoryDialog` + `introDialogue` / `canonWinnerSide` / `outroSideAWin` / `outroSideBWin`）**：
    - 每场原著对决必须在 `ocg_canon_duels.json` 中配置忠实于原作漫画/动画名台词的**战前开场对话（`introDialogue`，≥3 句）**、**原著正史胜方标记（`canonWinnerSide`: `"A"` 或 `"B"`）**以及**双分支战后尾声（`outroSideAWin` 与 `outroSideBWin`，均 ≥2 句且各自包含 A、B 双方台词，内容必须彼此独立）**，每句标注 `speakerSide`（`A`/`B`/`NARRATOR`）、`speakerName`、`emotion`（`normal`/`fierce`/`shock`/`smirk`/`determined`/`victory`）与中文台词 `text`；
-   - 演出形式对标《决斗者遗产》：左右角色动画立绘聚焦高亮（说话方放大亮框、倾听方柔和变暗）、情绪边框色调、点击推进 / 上一句 / 一键跳过；战前开打前自动演出开场，**战后无论胜、负还是平局**均经 `CanonStoryDialog.showOutcomeOutro` 自动按实际胜方路由对应结局台词（区分 `🏆 正史胜利`、`⚡ IF 逆转`、`💔 战败结局`、`🏆 自组胜出`、`💔 挑战落败`、`⚖ 平局终场`），且对决卡片提供 **`📖 剧情`** 按钮自由挑选回看开场、A 胜结局、B 胜结局或完整正史连播（由 `RpgEnginesTest#canonDuelsHaveLotdBlueprintsThemePureExodiaAndAvgDialogues` 自动守卫校验）。
+   - 演出形式对标《决斗者遗产》：左右角色动画立绘聚焦高亮（说话方放大亮框、倾听方柔和变暗）、情绪边框色调、点击推进 / 上一句 / 一键跳过；**仅在扮演一方（`ROLE_A` / `ROLE_B`）挑战时播放**（自组卡组挑战 `OWN_VS_A` / `OWN_VS_B` 不播剧情，卡片上也不放独立剧情按钮），战前自动演出开场，**战后无论胜、负还是平局**均经 `CanonStoryDialog.showOutcomeOutro` 自动按实际胜方路由对应结局台词（区分 `🏆 正史胜利`、`⚡ IF 逆转`、`💔 战败结局`、`⚖ 平局终场`，由 `RpgEnginesTest#canonDuelsHaveLotdBlueprintsThemePureExodiaAndAvgDialogues` 自动守卫校验）。
 4. **当日限定展示、日历 🎬 特殊标记与四模式通关记录**：
    - 「🎬 对决还原」页**仅显示当前选定日期当日的对决还原**（`TimelineEngine.getCanonDuelsOnDate`，当日多场按原著日期 `originalDate` 升序排列），既避免后期列表冗长难查，也强制保证玩家自组挑战时**只能使用当时环境的卡池与规则/禁限表，无法携带未来卡**；当日无对决还原时提供一键打开日历与全对决日期快捷跳转按钮；
    - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates`、`TimelineEngine.getCanonDuelDates` 与 `TimelineDigest.newCanonDuels`：**时间轴日历弹窗中含对决还原的日期采用专属粉框 + `🎬` 图标背景高亮**（月份下拉菜单同样附带 `🎬` 标识），与普通浅绿圆点 OCG 事件一眼区分；
-   - 每场对决提供 4 种挑战模式（`ROLE_A` 扮演 A、`ROLE_B` 扮演 B、`OWN_VS_A` 自组挑战 A、`OWN_VS_B` 自组挑战 B）、`📖 剧情` 回看及与 AI 对战一致的分屏可视化查看卡组弹窗（带 `原著` 筛选徽章与决斗者遗产蓝本标注）；玩家在任意模式下获胜后，通过 `RpgProfile.clearedCanonDuelModes` 持久化记录，并在对应挑战按钮右上角显示绿色 **`✔ 成功`** 标签。
+   - 每场对决提供 4 种挑战模式（`ROLE_A` 扮演 A、`ROLE_B` 扮演 B、`OWN_VS_A` 自组挑战 A、`OWN_VS_B` 自组挑战 B）及与 AI 对战一致的分屏可视化查看卡组弹窗（带 `原著` 筛选徽章与决斗者遗产蓝本标注）；玩家在任意模式下获胜后，通过 `RpgProfile.clearedCanonDuelModes` 持久化记录，并在对应挑战按钮右上角显示绿色 **`✔ 成功`** 标签。
 5. **角色头像复用与新角色补绘**：
    - 同一角色在不同集数的对决中复用同一头像 ID（如 `ai_vol1_yugi`、`ai_starter_kaiba`、`ai_weekend_challenger`、`char_pegasus` 等）；
    - 凡新登场的原著角色，必须为其绘制 1:1 游戏王动画风格头像并压缩为 `256×256` WebP 放入 `rpg-mode/src/main/assets/rpg/avatars/char_<id>.webp`（由 `RpgEnginesTest#canonDuels1999LoadReconstruct40CardsHaveAvatarsAndRegisterTimelineDates` 自动守卫校验）。
@@ -204,7 +204,7 @@
    - **实测驱动奖金校准与经济区间约束**：AI 对战奖金不再靠主观估算——每当扩展新年代、增补或修改 AI 卡组、或大幅迭代 AI 策略后，用同源 `ocgcore` 引擎跑一次各里程碑节点的高精度循环赛，将实测 Elo 写入 `EraBountyCalibrator`，**单场胜利奖金严格控制在 `120 ~ 300` 代币之间**（前期如 `120~220`，随年代平滑递增至年末 `120~300`，以 5 代币为步长，平局约 `43%`、败北约 `25%`），确保同一时间点内**AI 实测越强奖金越高**，且 `RpgEnginesTest` 强制校验全里程碑 Elo-奖金严格单调与 `[120, 300]` 区间边界。
 5. **产品体验、日志调试与打包约束**
    - 组卡页不提供劣质「智能一键组卡」，坚持玩家自主构筑 + 严格时间轴/拥有数/禁限表校验；保存卡组支持新建命名或直接选取已有保存卡组覆盖（自动记录上次读取的卡组并默认选中），且支持为每套卡组单独覆盖 AI 策略（自动/手动指定）。
-   - **全对局回放与一键复制日志 + 横向结算栏**：战后结算弹窗采用紧凑横向按钮栏（`回放` / `日志` / `完成`），**无论 AI 对决还是玩家手打实战**均自动保存回放与完整元数据，在结算页与「🎬 对战回放」列表均支持一键复制双方 AI 策略（或手动）、完整主/额外卡组及逐回合操作日志，便于持续打磨 AI 策略。
+   - **全对局日志一键复制 + 精简战后结算**：RPG 实战结束后自动跳过原生「是否保存回放」弹窗（不留存多余命名录像，仅静默写入 `_LastReplay.yrp`）及决斗内「决斗结束/复制日志」重复弹窗，直达紧凑横向三键结算栏（`回放` / `日志` / `完成`）；在结算页与「🎬 对战回放」列表均支持一键复制双方 AI 策略（或手动）、完整主/额外卡组及逐回合操作日志，便于持续打磨 AI 策略。
    - RPG 独立共存包名固定为 `cn.garymb.ygomobile.CN.rpg`，并持续沿用同一 Release 签名（SHA-256 `81:CC:69:4D:93:A2:47:98:A5:89:BF:D1:40:F0:9F:0C:EB:18:2E:47:FD:4A:93:9B:BE:32:86:59:14:29:C9:7C`），保证每次更新可直接覆盖安装且存档无损。
 
 ---

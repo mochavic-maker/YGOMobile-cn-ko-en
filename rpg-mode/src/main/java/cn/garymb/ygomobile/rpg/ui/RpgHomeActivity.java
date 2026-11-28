@@ -546,7 +546,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     : "";
             String bodyMsg = "获得代币：+" + settlement.tokensEarned
                     + "\n当前代币余额：" + profile.tokens + extraMsg
-                    + (liveReplay != null ? "\n\n（已保存本局录像，可直接点下方「回放」或「日志」）" : "");
+                    + (liveReplay != null ? "\n\n（可直接点下方「回放」重温本局，或点「日志」一键复制策略与操作日志）" : "");
             Runnable onReplay = liveReplay != null ? () -> launchLiveReplay(liveReplay) : null;
             Runnable onCopyLog = liveReplay != null ? () -> copyReplayFileLog(liveReplay.replayFilePath) : null;
             String titleStr = "RPG 决斗结算 · " + settlement.outcomeLabel;
@@ -556,14 +556,17 @@ public class RpgHomeActivity extends AppCompatActivity {
                     ? (liveReplay.player0Name + " vs " + liveReplay.player1Name + "\n")
                     : "";
             showSettlementPopup = () -> showDuelSettlementDialog(
-                    "🎬 对局录像已保存",
+                    "🎬 本局结算",
                     pInfo + "可直接点下方「回放」重温本局，或点「日志」一键复制双方策略、卡组与完整操作日志。",
                     () -> launchLiveReplay(liveReplay),
                     () -> copyReplayFileLog(liveReplay.replayFilePath));
         }
 
         OcgCanonDuel finishedCanonDuel = null;
-        if (canonOutcome != null && catalog != null) {
+        boolean isCanonRolePlay = canonOutcome != null
+                && (RpgProfile.CANON_MODE_ROLE_A.equals(canonOutcome.canonMode)
+                || RpgProfile.CANON_MODE_ROLE_B.equals(canonOutcome.canonMode));
+        if (isCanonRolePlay && catalog != null) {
             for (OcgCanonDuel cd : catalog.getCanonDuels()) {
                 if (cd != null && canonOutcome.duelId != null && canonOutcome.duelId.equals(cd.id)) {
                     boolean hasOutro = (cd.outroSideAWin != null && !cd.outroSideAWin.isEmpty())
@@ -3068,7 +3071,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                     launchCanonDuelWithOwnDeck(duel, deckB, RpgProfile.CANON_MODE_OWN_VS_B));
             card.addView(makeBadgeableButtonRow(6, ownVsABtn, clearedOwnVsA, ownVsBBtn, clearedOwnVsB));
 
-            // Row 3: Inspect both reconstructed decks visually + Replay AVG Story Dialogue anytime
+            // Row 3: Inspect both reconstructed decks visually
             Button viewABtn = makeActionButton("🃏 " + duel.sideA.characterName + " 卡组", "#0284C7");
             viewABtn.setOnClickListener(v -> RpgPackVisualDialogs.showCanonDeckVisualDialog(
                     this, catalog, profile, deckA, duel.episodeLabel));
@@ -3077,17 +3080,7 @@ public class RpgHomeActivity extends AppCompatActivity {
             viewBBtn.setOnClickListener(v -> RpgPackVisualDialogs.showCanonDeckVisualDialog(
                     this, catalog, profile, deckB, duel.episodeLabel));
 
-            boolean hasStory = (duel.introDialogue != null && !duel.introDialogue.isEmpty())
-                    || (duel.outroSideAWin != null && !duel.outroSideAWin.isEmpty())
-                    || (duel.outroSideBWin != null && !duel.outroSideBWin.isEmpty())
-                    || (duel.outroDialogue != null && !duel.outroDialogue.isEmpty());
-            if (hasStory) {
-                Button storyBtn = makeActionButton("📖 剧情", "#B45309");
-                storyBtn.setOnClickListener(v -> CanonStoryDialog.showFullStoryReplay(this, duel));
-                card.addView(makeEqualWeightButtonRow(6, viewABtn, viewBBtn, storyBtn));
-            } else {
-                card.addView(makeEqualWeightButtonRow(6, viewABtn, viewBBtn));
-            }
+            card.addView(makeEqualWeightButtonRow(6, viewABtn, viewBBtn));
 
             layoutContent.addView(card);
         }
@@ -3307,7 +3300,7 @@ public class RpgHomeActivity extends AppCompatActivity {
                 Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         };
-        CanonStoryDialog.showIntro(this, duel, proceed);
+        proceed.run();
     }
 
     private void launchAiDuel(AiOpponent opponent) {

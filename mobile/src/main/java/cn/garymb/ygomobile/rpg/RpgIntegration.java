@@ -178,6 +178,16 @@ public final class RpgIntegration {
     private static volatile String sActiveDuelPlayerAvatarId = null;
     private static volatile String sActiveDuelOpponentAvatarId = null;
     private static volatile cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.ReplayMeta sLastRpgDuelMeta = null;
+    private static volatile boolean sActiveRpgLiveDuelSession = false;
+
+    public static boolean isActiveRpgLiveDuelSession() {
+        return sActiveRpgLiveDuelSession;
+    }
+
+    public static void clearActiveRpgLiveDuelSession() {
+        sActiveRpgLiveDuelSession = false;
+        sLastRpgDuelMeta = null;
+    }
 
     /**
      * Called by {@link cn.garymb.ygomobile.DuelEndReplayHandler} right after a .yrp file is saved.
@@ -927,6 +937,7 @@ public final class RpgIntegration {
                                 liveMeta.putPlayerControl(oppDisplay,
                                         cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatAiStrategyLabel(aiStyleCode));
                                 sLastRpgDuelMeta = liveMeta;
+                                sActiveRpgLiveDuelSession = true;
 
                                 syncYdkToNativeDeckDir(playerDeckYdkPath);
 
@@ -1263,6 +1274,7 @@ public final class RpgIntegration {
                                 specMeta.putPlayerControl(sideBName,
                                         cn.garymb.ygomobile.rpg.util.RpgReplayLogFormatter.formatAiStrategyLabel(effB));
                                 sLastRpgDuelMeta = specMeta;
+                                sActiveRpgLiveDuelSession = true;
 
                                 // Move host to observer seat once connected, then launch Seat 0 (A) & Seat 1 (B) AIs
                                 Thread spectateStarter = new Thread(() -> {
