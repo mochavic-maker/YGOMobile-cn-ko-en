@@ -790,7 +790,9 @@
           70781052,
           83764718
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Classic Yugi (1999蓝本)",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "seto_kaiba",
@@ -813,14 +815,68 @@
           15303296,
           4614116
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Classic Kaiba (1999蓝本)",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         89631139,
         83764718,
         70781052
       ],
-      "coreUnlockNote": "核心卡：青眼白龙、死者苏生、恶魔召唤（Vol.4 首发）"
+      "coreUnlockNote": "核心卡：青眼白龙、死者苏生、恶魔召唤（Vol.4 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "童实野高中教室。海马濑人偷换了武藤双六珍藏的「青眼白龙」，却被武藤游戏识破了伪造的假卡。"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "smirk",
+          "text": "哼，被你发现了么？不过一张卡既然到了我手里，就没有白白还回去的道理。想要回青眼白龙，就用「魔法与巫术」赢过我吧！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "海马，你把饱含爷爷心意的卡片当成炫耀力量的工具……既然如此，我就接受你的挑战，开启黑暗游戏！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "fierce",
+          "text": "来吧，游戏！见识一下世界上只有四张的传说之龙——「青眼白龙」压倒性的破坏力！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "发动魔法卡「死者苏生」！将你墓地里的青眼白龙召唤到我的场上！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "shock",
+          "text": "什么？！青眼白龙竟然……不听我的命令，向我自己发起了攻击？！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "卡片里寄宿着爷爷的心意。不珍惜卡片灵魂的人，是无法驾驭最强之龙的。现在，接受惩罚游戏吧！"
+        },
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "victory",
+          "text": "海马在幻觉中尝到了败北的滋味，暗游戏成功夺回了爷爷的「青眼白龙」。两人的宿命对决由此拉开序幕！"
+        }
+      ]
     },
     {
       "id": "canon_1997_07_01_manga_yugi_kaiba_deatht",
@@ -862,7 +918,35 @@
           72302403,
           83764718
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Exodia Obliterate（1999适配）",
+        "lotdEraPaddingIds": [
+          13039848,
+          13039848,
+          13039848,
+          15025844,
+          15025844,
+          60694662,
+          60694662,
+          60694662,
+          31560081,
+          31560081,
+          54652250,
+          54652250,
+          7089711,
+          55144522,
+          55144522,
+          55144522,
+          79571449,
+          79571449,
+          72302403,
+          72302403,
+          53129443,
+          12580477,
+          66788016,
+          66788016,
+          4206964
+        ]
       },
       "sideB": {
         "characterId": "seto_kaiba",
@@ -892,14 +976,110 @@
           2906250,
           4614116
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Legendary Blue-Eyes（1999适配）",
+        "lotdEraPaddingIds": [
+          97590747,
+          97590747,
+          7359741,
+          7359741,
+          85639257,
+          85639257,
+          80770678,
+          80770678,
+          47060154,
+          47060154,
+          73481154,
+          73481154,
+          10202894,
+          10202894,
+          28933734,
+          28933734,
+          55144522,
+          55144522,
+          79571449,
+          79571449,
+          83764718,
+          83764718,
+          12580477,
+          53129443,
+          66788016,
+          66788016,
+          4206964,
+          17814387,
+          17814387
+        ]
       },
       "coreCardIds": [
         89631139,
         72302403,
         33396948
       ],
-      "coreUnlockNote": "核心卡：青眼白龙、光之护封剑、被封印的艾克佐迪亚（东京巨蛋 PP1 集齐）"
+      "coreUnlockNote": "核心卡：青眼白龙、光之护封剑、被封印的艾克佐迪亚（东京巨蛋 PP1 集齐）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "DEATH-T 死亡主题乐园最终舞台！海马濑人撕毁了双六的青眼白龙，并以三只「青眼白龙」构筑起压倒性的决斗竞技场。"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "smirk",
+          "text": "武藤游戏，我为了这一天专门打造了虚拟立体影像系统。你手里的，不过是你爷爷那副塞满废牌的破烂卡组罢了！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "fierce",
+          "text": "爷爷的卡组里没有一张无用的卡！你不仅伤害了爷爷，还亲手撕碎了寄托着羁绊的青眼白龙——这份傲慢，我绝不原谅！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "fierce",
+          "text": "笑话！就让我用三只「青眼白龙」把你和你的羁绊彻底粉碎！来吧，决斗！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "相信爷爷的卡组，相信与伙伴们的羁绊……一定能呼唤出超越三体青眼的奇迹！决斗！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "smirk",
+          "text": "抽你最后一张无用的卡吧，游戏！下一回合，我的三只青眼白龙就会彻底终结一切！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "我爷爷的卡组里可没有无用的卡——但我抽到了，传说中无人能驾驭的最强怪物……集齐五张封印部件，降临吧！被封印的艾克佐迪亚！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "shock",
+          "text": "艾、艾克佐迪亚？！不可能！！从来没有人能够凑齐那五张卡……！！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "艾克佐迪亚——魔神火炎炮！！破碎吧，海马心中被执念蒙蔽的黑暗！Mind Crush！"
+        },
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "victory",
+          "text": "耀眼的魔神火炎炮瞬间击溃了三只青眼白龙。奇迹的胜利传遍了整个决斗界，也引来了远方「工业幻象」社长贝卡斯的注视……"
+        }
+      ]
     },
     {
       "id": "canon_1998_02_10_manga_yugi_weevil",
@@ -939,7 +1119,9 @@
         ],
         "canonExtraIds": [
           66889139
-        ]
+        ],
+        "lotdDeckName": "The Wasteland（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "weevil",
@@ -967,7 +1149,27 @@
           3492538,
           87430998
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Moth Evolution（1999适配）",
+        "lotdEraPaddingIds": [
+          58192742,
+          58192742,
+          58192742,
+          40240595,
+          40240595,
+          54652250,
+          54652250,
+          87430998,
+          87430998,
+          77007920,
+          77007920,
+          55144522,
+          55144522,
+          79571449,
+          79571449,
+          72302403,
+          72302403
+        ]
       },
       "coreCardIds": [
         66889139,
@@ -977,7 +1179,53 @@
         58192742,
         14141448
       ],
-      "coreUnlockNote": "核心卡：龙骑士 盖亚、恶魔召唤、进化之茧、究极完全态大飞蛾、大飞蛾（Vol.6 首发）"
+      "coreUnlockNote": "核心卡：龙骑士 盖亚、恶魔召唤、进化之茧、究极完全态大飞蛾、大飞蛾（Vol.6 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "决斗者王国第一战！在赴岛邮轮上将游戏的「艾克佐迪亚」扔进大海的全国冠军昆虫羽蛾，将暗游戏引诱进了森林场地。"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "昆虫羽蛾",
+          "emotion": "smirk",
+          "text": "嘻嘻嘻！少了艾克佐迪亚的你，在我的「森」场地里根本不堪一击！只要进化之茧孵化，究极完全态大飞蛾就会把你啃得一干二净！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "fierce",
+          "text": "羽蛾，你竟然用如此卑劣的手段把爷爷托付给我的卡片扔进大海……就让你见识一下，真正的决斗者绝不会被诡计打倒！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "昆虫羽蛾",
+          "emotion": "determined",
+          "text": "少说大话了，全国冠军的昆虫战术可不是盖的！决斗开始！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "发动「燃烧的大地」烧毁整片森林，再用「魔雾雨」配合「恶魔召唤」的雷击彻底击溃大飞蛾！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "昆虫羽蛾",
+          "emotion": "shock",
+          "text": "不、不可能！我的究极完全态大飞蛾和森林场地竟然全都被破解了？！我的星星芯片啊——！！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "只靠耍小聪明和地形优势，是赢不了真正相信卡片之心的决斗者的。这枚星星芯片，我收下了！"
+        }
+      ]
     },
     {
       "id": "canon_1998_02_24_manga_joey_mai",
@@ -1016,7 +1264,9 @@
         "canonExtraIds": [
           41462083,
           45231177
-        ]
+        ],
+        "lotdDeckName": "Thousand Years（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "mai",
@@ -1041,7 +1291,9 @@
           98252586,
           22359980
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Harpie Lady（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         76812113,
@@ -1050,7 +1302,53 @@
         88819587,
         41462083
       ],
-      "coreUnlockNote": "核心卡：鹰身女郎三姐妹、时间魔术师、宝贝龙＆千年龙（Vol.6 首发）"
+      "coreUnlockNote": "核心卡：鹰身女郎三姐妹、时间魔术师、宝贝龙＆千年龙（Vol.6 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "决斗者王国，城之内克也为了筹集妹妹静香的手术费，毅然迎战凭借神秘「香水战术」连胜的孔雀舞。"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "孔雀舞",
+          "emotion": "smirk",
+          "text": "哼，一个连卡组都不会构筑的菜鸟也敢挑战我？我闭着眼睛就能看透下一张卡是什么——鹰身女郎们，给这位小哥一点教训吧！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "城之内克也",
+          "emotion": "fierce",
+          "text": "少看不起人了！我可是背负着静香的手术费、还有游戏送给我的「时间魔术师」在战斗！接招吧！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "孔雀舞",
+          "emotion": "determined",
+          "text": "有意思，那就看看你的运气能撑过几个回合吧。决斗！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "城之内克也",
+          "emotion": "victory",
+          "text": "时间魔术师的效果成功了！宝贝龙穿越千年进化成「千年龙」——把鹰身女郎三姐妹全部吹飞吧！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "孔雀舞",
+          "emotion": "shock",
+          "text": "竟然在一瞬间逆转了我的鹰身女郎三姐妹？！而且……你连我的香水把戏都看穿了……"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "城之内克也",
+          "emotion": "victory",
+          "text": "嘿嘿，这就是真正的决斗者之魂！谢谢你，游戏——时间魔术师真的创造奇迹了！"
+        }
+      ]
     },
     {
       "id": "canon_1998_03_10_manga_yugi_mako",
@@ -1086,7 +1384,9 @@
           27827272,
           83764718
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Attack the Moon（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "mako",
@@ -1113,7 +1413,9 @@
           18605135,
           58831685
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Legendary Ocean（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         13039848,
@@ -1122,7 +1424,53 @@
         22702055,
         76634149
       ],
-      "coreUnlockNote": "核心卡：岩石巨兵、魔性之月、恶魔召唤、海、海龙神（Booster 6 首发）"
+      "coreUnlockNote": "核心卡：岩石巨兵、魔性之月、恶魔召唤、海、海龙神（Booster 6 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "夜幕降临的海岸边，海洋决斗者梶木渔太以「海」场地隐藏水中怪兽，向暗游戏发起了堂堂正正的决斗挑战。"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "梶木渔太",
+          "emotion": "determined",
+          "text": "大海既是生命的摇篮，也是埋葬挑战者的深渊！只要「海」覆盖全场，我的海龙神与要塞鲸就是无敌的！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "很棒的气魄，梶木！但正因为你把一切都托付给了潮汐与月亮——我也找到了破局的关键！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "梶木渔太",
+          "emotion": "fierce",
+          "text": "来吧，游戏！让我们在大海的见证下分出胜负！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "岩石巨兵，破坏天空中的「魔性之月」！潮水退去后，隐藏在海底的怪兽全部暴露无遗了！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "梶木渔太",
+          "emotion": "shock",
+          "text": "竟、竟然把月亮给破坏了导致退潮？！真是一场酣畅淋漓的决斗啊，游戏！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "你是一位值得尊敬的真正决斗者，梶木。祝你早日寻回父亲的踪迹！"
+        }
+      ]
     },
     {
       "id": "canon_1998_04_18_toei_ep03_yugi_kaiba",
@@ -1154,7 +1502,9 @@
           14181608,
           83764718
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Toei Classic Yugi（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "seto_kaiba",
@@ -1179,7 +1529,9 @@
           46986414,
           4614116
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Toei Classic Kaiba（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         46986414,
@@ -1187,7 +1539,41 @@
         83764718,
         70781052
       ],
-      "coreUnlockNote": "核心卡：黑魔术师、青眼白龙、死者苏生、恶魔召唤（Vol.4 首发）"
+      "coreUnlockNote": "核心卡：黑魔术师、青眼白龙、死者苏生、恶魔召唤（Vol.4 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "1998年东映动画第3话《激突！最强的怪兽》。海马濑人潜入龟记游戏店抢夺双六的珍稀卡，在校园内与暗游戏展开初次交锋！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "smirk",
+          "text": "我海马濑人收藏的都是最顶尖的稀有卡，凭你这种平民卡组，连让我认真的资格都没有！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "fierce",
+          "text": "无论卡片多么稀有，只要落入不尊重游戏的人手中就会失去光芒！来吧，海马，这就是黑暗之门开启的时刻！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "胜负已分，海马！依靠「死者苏生」唤回的最强之龙，已经彻底击碎了你的傲慢！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "shock",
+          "text": "可恶……我竟然输给了武藤游戏？！这份屈辱，我一定会百倍奉还！"
+        }
+      ]
     },
     {
       "id": "canon_1998_04_28_manga_joey_rex",
@@ -1225,7 +1611,9 @@
         "canonExtraIds": [
           41462083,
           45231177
-        ]
+        ],
+        "lotdDeckName": "Twin Battleguards（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "rex",
@@ -1252,7 +1640,9 @@
           23424603,
           51267887
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Red-Eyed Dinosaurs（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         74677422,
@@ -1261,7 +1651,47 @@
         88819587,
         41462083
       ],
-      "coreUnlockNote": "核心卡：真红眼黑龙、双头恐龙王、时间魔术师、宝贝龙＆千年龙（Vol.6 首发）"
+      "coreUnlockNote": "核心卡：真红眼黑龙、双头恐龙王、时间魔术师、宝贝龙＆千年龙（Vol.6 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "决斗者王国荒野区域！全国亚军恐龙龙崎拿出压箱底的稀有卡「真红眼黑龙」作为赌注，要与城之内克也的「时间魔术师」一决雌雄！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "恐龙龙崎",
+          "emotion": "smirk",
+          "text": "哈哈哈！把你那张讨厌的时间魔术师押上吧！只要我召唤出「真红眼黑龙」和恐龙军团，你连还手的机会都没有！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "城之内克也",
+          "emotion": "fierce",
+          "text": "正合我意！既然你敢押上真红眼黑龙，那今天我就连你的王牌带星星芯片一起赢过来！决斗！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "城之内克也",
+          "emotion": "victory",
+          "text": "赢了！时间魔术师的奇迹再次显灵，连真红眼黑龙都被我打倒了！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "恐龙龙崎",
+          "emotion": "shock",
+          "text": "呜哇——！我的真红眼黑龙竟然……竟然变成城之内的卡了？！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "城之内克也",
+          "emotion": "victory",
+          "text": "放心吧龙崎，从今天起「真红眼黑龙」就是我最信任的王牌伙伴，我会带着它一直赢到城堡里的！"
+        }
+      ]
     },
     {
       "id": "canon_1998_06_30_manga_kaiba_joey",
@@ -1300,7 +1730,9 @@
         ],
         "canonExtraIds": [
           94905343
-        ]
+        ],
+        "lotdDeckName": "Duel Disk Kaiba（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "joey",
@@ -1328,7 +1760,9 @@
         "canonExtraIds": [
           41462083,
           45231177
-        ]
+        ],
+        "lotdDeckName": "Duelist Kingdom Joey（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         89631139,
@@ -1337,7 +1771,53 @@
         41462083,
         5053103
       ],
-      "coreUnlockNote": "核心卡：青眼白龙、死之卡组破坏病毒、真红眼黑龙、千年龙、牛头人（Booster 6 首发）"
+      "coreUnlockNote": "核心卡：青眼白龙、死之卡组破坏病毒、真红眼黑龙、千年龙、牛头人（Booster 6 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "决斗者王国森林小径。为了拯救弟弟圭平，海马濑人携带最新研发的初代便携式「决斗盘」现身，城之内主动拦住海马发起挑战！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "城之内克也",
+          "emotion": "fierce",
+          "text": "海马！你别太嚣张了，现在的我已经和以前不一样了——让我用赢得的「真红眼黑龙」来试试你有多强！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "海马濑人",
+          "emotion": "smirk",
+          "text": "哼，三流决斗者配三流卡组。正好，就拿你来做我新型决斗盘的实战测试对象吧！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "城之内克也",
+          "emotion": "determined",
+          "text": "少废话，接招吧海马！决斗！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "海马濑人",
+          "emotion": "smirk",
+          "text": "看到了吗，庸才？这才是真正决斗者的力量差距——连「死之卡组破坏病毒」与青眼的锋芒都承受不住！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "城之内克也",
+          "emotion": "shock",
+          "text": "可恶……真红眼黑龙竟然毫无还手之力……但我绝不会在这里停下脚步，总有一天我会超越你的，海马！"
+        },
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "这场惨痛的失利让城之内认清了与顶尖决斗者的差距，也成为了他蜕变为真正强者的起点。"
+        }
+      ]
     },
     {
       "id": "canon_1998_09_12_toei_ep24_yugi_kaiba",
@@ -1374,7 +1854,39 @@
           41392891,
           72302403
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Exodia Obliterate · 东映版（1999适配）",
+        "lotdEraPaddingIds": [
+          13039848,
+          13039848,
+          13039848,
+          15025844,
+          15025844,
+          60694662,
+          60694662,
+          60694662,
+          31560081,
+          31560081,
+          54652250,
+          54652250,
+          7089711,
+          7089711,
+          55144522,
+          55144522,
+          55144522,
+          79571449,
+          79571449,
+          79571449,
+          72302403,
+          72302403,
+          83764718,
+          83764718,
+          53129443,
+          12580477,
+          66788016,
+          66788016,
+          4206964
+        ]
       },
       "sideB": {
         "characterId": "seto_kaiba",
@@ -1399,7 +1911,41 @@
           6285791,
           4614116
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Legendary Blue-Eyes · 东映版（1999适配）",
+        "lotdEraPaddingIds": [
+          97590747,
+          97590747,
+          7359741,
+          7359741,
+          85639257,
+          85639257,
+          80770678,
+          80770678,
+          47060154,
+          47060154,
+          73481154,
+          73481154,
+          10202894,
+          10202894,
+          28933734,
+          28933734,
+          91939608,
+          91939608,
+          55144522,
+          55144522,
+          79571449,
+          79571449,
+          83764718,
+          83764718,
+          12580477,
+          53129443,
+          66788016,
+          66788016,
+          4206964,
+          17814387,
+          17814387
+        ]
       },
       "coreCardIds": [
         89631139,
@@ -1407,7 +1953,41 @@
         72302403,
         33396948
       ],
-      "coreUnlockNote": "核心卡：青眼白龙、守城的翼龙、光之护封剑、被封印的艾克佐迪亚（东京巨蛋 PP1 集齐）"
+      "coreUnlockNote": "核心卡：青眼白龙、守城的翼龙、光之护封剑、被封印的艾克佐迪亚（东京巨蛋 PP1 集齐）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "1998年东映动画第24话《今！决着の時！奇迹的友情》。海马乐园的最终死斗，城之内、杏子与本田将友情之力托付给了游戏！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "fierce",
+          "text": "友情的羁绊？那种虚无缥缈的幻想，在我三只「青眼白龙」的绝对力量面前毫无意义！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "我绝不是一个人在战斗！伙伴们的心意、还有爷爷的卡组，正与我合为一体！来吧，海马，迎接最终决战！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "这就是奇迹的友情所呼唤出的第五张卡——被封印的艾克佐迪亚，将黑暗彻底净化吧！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "shock",
+          "text": "难以置信……三只青眼白龙竟然被一击击溃……难道这就是我所缺少的东西吗……"
+        }
+      ]
     },
     {
       "id": "canon_1998_09_22_manga_yugijoey_paradox",
@@ -1449,7 +2029,9 @@
         "canonExtraIds": [
           11901678,
           45231177
-        ]
+        ],
+        "lotdDeckName": "Yugi & Joey Tag Fusion（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "paradox",
@@ -1483,7 +2065,9 @@
         ],
         "canonExtraIds": [
           99551425
-        ]
+        ],
+        "lotdDeckName": "Gate Guardian Labyrinth（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         25833572,
@@ -1492,7 +2076,53 @@
         98434877,
         11901678
       ],
-      "coreUnlockNote": "核心卡：门之守护神、雷/风/水三魔神、暗黑魔龙（Vol.5 首发）"
+      "coreUnlockNote": "核心卡：门之守护神、雷/风/水三魔神、暗黑魔龙（Vol.5 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "决斗者王国地下迷宫！通往城堡的出口被神秘双胞胎刺客「迷宫兄弟」封锁，暗游戏与城之内携手迎战双打决斗！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "迷宫兄弟（迷＆宫）",
+          "emotion": "smirk",
+          "text": "想走出这座迷宫？哼哼，先尝尝我们「迷宫壁」与雷、风、水三魔神合体而成的「门之守护神」吧！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏＆城之内",
+          "emotion": "determined",
+          "text": "单打独斗或许无法撼动三魔神，但只要我的「恶魔召唤」与城之内的「真红眼黑龙」联手，就没有攻不破的迷宫！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "迷宫兄弟（迷＆宫）",
+          "emotion": "fierce",
+          "text": "狂妄的小鬼！就在绝望的迷宫中化作尘埃吧！决斗！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏＆城之内",
+          "emotion": "victory",
+          "text": "融合召唤——「暗黑魔龙」！乘着伙伴间的羁绊，把门之守护神连同整座迷宫一举击碎吧！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "迷宫兄弟（迷＆宫）",
+          "emotion": "shock",
+          "text": "什、什么？！三魔神合体的门之守护神竟然败给了双人融合？！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏＆城之内",
+          "emotion": "victory",
+          "text": "门已敞开！走吧，城之内，前面就是贝卡斯所在的王国城堡！"
+        }
+      ]
     },
     {
       "id": "canon_1998_11_17_manga_yugi_kaiba_castle",
@@ -1536,7 +2166,9 @@
         ],
         "canonExtraIds": [
           66889139
-        ]
+        ],
+        "lotdDeckName": "Kuriboh Power（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "seto_kaiba",
@@ -1571,7 +2203,9 @@
         ],
         "canonExtraIds": [
           23995346
-        ]
+        ],
+        "lotdDeckName": "The Ultimate Dragon（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         23995346,
@@ -1579,7 +2213,47 @@
         55761792,
         5405694
       ],
-      "coreUnlockNote": "核心卡：青眼究极龙、混沌的仪式、混沌战士（Jump Festa PP2 首发）"
+      "coreUnlockNote": "核心卡：青眼究极龙、混沌的仪式、混沌战士（Jump Festa PP2 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "决斗者王国城堡屋顶！为了凑齐进入城堡救出圭平的最后星星芯片，海马濑人堵在城门前，向暗游戏发起了赌上一切的宿命再战！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "fierce",
+          "text": "游戏，今天的我绝不会重蹈覆辙！我将用「死之卡组破坏病毒」封锁你的卡组，再将三只青眼融合——降临吧，青眼究极龙！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "海马，为了救出各自的亲人，我们谁都没有退路！即便面对攻击力4500的青眼究极龙，我也绝不退缩——决斗！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "用「增殖」的栗子球防线挡下究极龙的猛攻，再以「混沌战士」与「魔法效果之矢」击溃究极龙！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "shock",
+          "text": "青眼究极龙竟然被逼到这种境地……！为了圭平，我绝不能在这里倒下！"
+        },
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "这场载入史册的城堡屋顶决战惊心动魄，双方为了守护重要之人的执念震撼了在场每一个人。"
+        }
+      ]
     },
     {
       "id": "canon_1999_03_02_manga_yugi_mai",
@@ -1622,7 +2296,9 @@
           44095762,
           18807108
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Black Luster Soldier（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "mai",
@@ -1651,7 +2327,9 @@
           58621589,
           98252586
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Harpie Lady 1（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         12206212,
@@ -1660,7 +2338,41 @@
         55761792,
         5405694
       ],
-      "coreUnlockNote": "核心卡：鹰身女郎三姐妹、鹰身女妖的宠物龙、混沌的仪式、混沌战士（Jump Festa PP2 首发）"
+      "coreUnlockNote": "核心卡：鹰身女郎三姐妹、鹰身女妖的宠物龙、混沌的仪式、混沌战士（Jump Festa PP2 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "决斗者王国半决赛第一场！已经彻底觉醒为真正决斗者的孔雀舞，率领「鹰身女妖的宠物龙」与「银幕之镜壁」迎战暗游戏！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "孔雀舞",
+          "emotion": "determined",
+          "text": "游戏，现在的我不再是为了金钱和虚荣而战。我要凭自己的实力堂堂正正打败你！见识一下鹰身女郎与宠物龙的真正威力吧！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "determined",
+          "text": "我感受到你的觉悟了，舞！为了不负你的全力一战，我也会唤醒仪式最强战士——「混沌战士」与你一决胜负！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "在绝境中信任卡片的心意——混沌战士，斩断一切迷惘吧！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "孔雀舞",
+          "emotion": "victory",
+          "text": "……是我输了。但能与你打出这么痛快的一战，我一点也不后悔。决赛加油啊，游戏！"
+        }
+      ]
     },
     {
       "id": "canon_1999_03_06_movie_yugi_kaiba",
@@ -1705,7 +2417,9 @@
         "canonExtraIds": [
           90660762,
           66889139
-        ]
+        ],
+        "lotdDeckName": "1999 Movie Meteor B. Dragon（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "seto_kaiba",
@@ -1734,7 +2448,9 @@
         ],
         "canonExtraIds": [
           23995346
-        ]
+        ],
+        "lotdDeckName": "1999 Movie Blue-Eyes Fusion（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "coreCardIds": [
         74677422,
@@ -1742,7 +2458,47 @@
         90660762,
         23995346
       ],
-      "coreUnlockNote": "核心卡：真红眼黑龙、流星之龙、流星黑龙、青眼究极龙（东京巨蛋大会首发）"
+      "coreUnlockNote": "核心卡：真红眼黑龙、流星之龙、流星黑龙、青眼究极龙（东京巨蛋大会首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "1999年东映剧场版《真红眼黑龙》！海马为了夺取少年青山翔吾抽到的「真红眼黑龙」，设下陷阱逼迫暗游戏与自己展开三体青眼决战！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "smirk",
+          "text": "青眼白龙代表「胜利」，而真红眼黑龙不过是软弱的「可能性」罢了！看我用三只青眼彻底碾碎你的幻想！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "fierce",
+          "text": "正因为怀揣着「可能性」，决斗者才能不断超越极限！翔吾托付给我的真红眼黑龙，一定能与「流星之龙」融合成最耀眼的奇迹！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "A",
+          "speakerName": "暗游戏",
+          "emotion": "victory",
+          "text": "融合召唤——「流星黑龙」！真红眼的可能性与流星之力融为一体，一举击破三体青眼吧！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "海马濑人",
+          "emotion": "shock",
+          "text": "竟然突破了青眼白龙的攻势……？！真红眼黑龙的「可能性」……竟有如此力量……！"
+        },
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "victory",
+          "text": "翔吾终于鼓起勇气直面决斗，真红眼黑龙的传说成为了1999年东映剧场版最经典的一幕！"
+        }
+      ]
     },
     {
       "id": "canon_1999_11_09_manga_joey_rarehunter",
@@ -1782,7 +2538,9 @@
         "canonExtraIds": [
           41462083,
           45231177
-        ]
+        ],
+        "lotdDeckName": "Battle City Joey（1999适配）",
+        "lotdEraPaddingIds": []
       },
       "sideB": {
         "characterId": "rare_hunter",
@@ -1812,7 +2570,37 @@
           78010363,
           72302403
         ],
-        "canonExtraIds": []
+        "canonExtraIds": [],
+        "lotdDeckName": "Cheating Exodia（1999适配）",
+        "lotdEraPaddingIds": [
+          26202165,
+          26202165,
+          78010363,
+          78010363,
+          60694662,
+          60694662,
+          60694662,
+          31560081,
+          31560081,
+          13039848,
+          13039848,
+          13039848,
+          15025844,
+          15025844,
+          85639257,
+          85639257,
+          55144522,
+          55144522,
+          79571449,
+          72302403,
+          72302403,
+          53129443,
+          12580477,
+          41420027,
+          41420027,
+          4206964,
+          66788016
+        ]
       },
       "coreCardIds": [
         74677422,
@@ -1821,7 +2609,47 @@
         78010363,
         41462083
       ],
-      "coreUnlockNote": "核心卡：真红眼黑龙、被封印的艾克佐迪亚、三眼怪、黑森林的魔女、千年龙（Vol.6 首发）"
+      "coreUnlockNote": "核心卡：真红眼黑龙、被封印的艾克佐迪亚、三眼怪、黑森林的魔女、千年龙（Vol.6 首发）",
+      "introDialogue": [
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "决斗都市开幕前夕！神秘稀有卡猎人组织「古鲁斯」的爪牙在街头拦住了城之内克也，企图抢走他的王牌「真红眼黑龙」！"
+        },
+        {
+          "speakerSide": "B",
+          "speakerName": "古鲁斯·稀罕猎人",
+          "emotion": "smirk",
+          "text": "哼哼哼，城之内克也……你的「真红眼黑龙」我就笑纳了。我卡组里沉睡的，可是连神都畏惧的「被封印的艾克佐迪亚」！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "城之内克也",
+          "emotion": "fierce",
+          "text": "古鲁斯的家伙竟然偷偷印了假卡？！少做梦了，我绝不会把真红眼黑龙交给你们这群卑鄙小人！决斗！"
+        }
+      ],
+      "outroDialogue": [
+        {
+          "speakerSide": "B",
+          "speakerName": "古鲁斯·稀罕猎人",
+          "emotion": "smirk",
+          "text": "哈哈哈哈！在三眼怪、黑森林的魔女与天使的施舍的疯狂滤抽面前，任何猛攻都只是徒劳！"
+        },
+        {
+          "speakerSide": "A",
+          "speakerName": "城之内克也",
+          "emotion": "fierce",
+          "text": "可恶……竟然靠着堆叠假冒艾克佐迪亚与高速滤抽！你们给我记住了，真红眼黑龙的羁绊绝不会被古鲁斯夺走！"
+        },
+        {
+          "speakerSide": "NARRATOR",
+          "speakerName": "旁白",
+          "emotion": "normal",
+          "text": "古鲁斯组织的阴影正式笼罩童实野市，波澜壮阔的「决斗都市」大赛即将拉开帷幕！"
+        }
+      ]
     }
   ]
 }

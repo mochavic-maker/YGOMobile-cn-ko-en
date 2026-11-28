@@ -40,6 +40,7 @@ public final class CanonDuelDeckBuilder {
         public final int canonMainCount;
         public final int paddedMainCount;
         public final String poolDate;
+        public final String lotdDeckName;
 
         public BuiltCanonDeck(String duelId,
                               String characterId,
@@ -52,7 +53,8 @@ public final class CanonDuelDeckBuilder {
                               Set<Integer> canonCardIds,
                               int canonMainCount,
                               int paddedMainCount,
-                              String poolDate) {
+                              String poolDate,
+                              String lotdDeckName) {
             this.duelId = duelId;
             this.characterId = characterId;
             this.characterName = characterName;
@@ -67,6 +69,7 @@ public final class CanonDuelDeckBuilder {
             this.canonMainCount = canonMainCount;
             this.paddedMainCount = paddedMainCount;
             this.poolDate = poolDate;
+            this.lotdDeckName = lotdDeckName;
         }
     }
 
@@ -114,6 +117,7 @@ public final class CanonDuelDeckBuilder {
         }
 
         int canonMainCount = main.size();
+        String lotdName = side != null ? side.lotdDeckName : null;
         if (catalog == null || side == null || main.size() >= TARGET_MAIN_SIZE) {
             return new BuiltCanonDeck(
                     duel != null ? duel.id : "",
@@ -122,12 +126,13 @@ public final class CanonDuelDeckBuilder {
                     side != null ? side.avatarId : "",
                     side != null ? side.deckName : "",
                     side != null && side.fillStyle != null ? side.fillStyle : "GOOD_STUFF",
-                    main, extra, canonCardIds, canonMainCount, Math.max(0, main.size() - canonMainCount), poolDate);
+                    main, extra, canonCardIds, canonMainCount, Math.max(0, main.size() - canonMainCount), poolDate, lotdName);
         }
 
         // 2. Pad remaining slots up to 40 from OCG cards released on or before poolDate
-        //    Priority order: (a) character's own canon cards in this era, (b) cards strongly
-        //    synergistic with the duel's core cards, (c) race/attribute theme matches, (d) era staples.
+        //    Priority order: (0) LotD Story Deck era-adapted blueprint cards (strictly validated against poolDate/banlist/safety),
+        //    (a) character's own canon cards in this era, (b) cards directly synergistic with core cards,
+        //    (c) era-strength cards matching the event date's card pool.
         //    Rival characters' exclusive signature aces are strictly excluded from padding.
         final List<Integer> coreMain = new ArrayList<>(main);
         final String charId = side.characterId;
@@ -166,23 +171,49 @@ public final class CanonDuelDeckBuilder {
                 : ("BURN_WALL".equals(style) ? 16 : 14);
         int targetMonsters = TARGET_MAIN_SIZE - targetSpellsTraps;
 
+        // 2a. Apply Legacy of the Duelist Story Deck blueprint padding (1999/era-adapted),
+        //     strictly respecting event-date release legality, banlist caps, rival-ace exclusion, and safety guards.
+        if (side.lotdEraPaddingIds != null && !side.lotdEraPaddingIds.isEmpty()) {
+            for (Integer pid : side.lotdEraPaddingIds) {
+                if (main.size() >= TARGET_MAIN_SIZE) break;
+                if (pid == null || pid <= 0) continue;
+                if (!TimelineEngine.isCardReleased(catalog, pid, poolDate)) continue;
+                if (CanonCharacterCardRegistry.isForbiddenRivalAce(charId, pid)) continue;
+                RpgCard pc = catalog.findCard(pid);
+                if (pc == null || pc.isExtraDeckCard()) continue;
+                if (AiDeckGenerator.isUnsafeFillerCard(pc, main, extra, catalog, style)) continue;
+                int cur = copies.getOrDefault(pid, 0);
+                if (cur >= banlist.getMaxCopies(pid)) continue;
+                main.add(pid);
+                copies.put(pid, cur + 1);
+                if (pc.isMonster()) curMonsters++;
+                else curSpellsTraps++;
+            }
+        }
+
         // Guarantee Polymerization support if Extra Deck has fusions and deck lacks it
         if (hasExtraFusions && copies.getOrDefault(RpgAiCardKnowledge.POLYMERIZATION, 0) < 2) {
             int added = tryAddFromPool(RpgAiCardKnowledge.POLYMERIZATION, 2, poolDate, catalog, banlist, main, copies);
             curSpellsTraps += added;
         }
-        // For Exodia decks, prioritize draw/search helpers from the current pool (respecting rival exclusion)
+        // For Exodia decks, prioritize LotD Exodia Obliterate / 1999 draw-stall helpers from the current pool
         if ("EXODIA_DRAW".equals(style)) {
             int[] exodiaHelpers = {
                     RpgAiCardKnowledge.POT_OF_GREED, RpgAiCardKnowledge.GRACEFUL_CHARITY,
+                    RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT,
                     RpgAiCardKnowledge.SANGAN, RpgAiCardKnowledge.WITCH_OF_BLACK_FOREST,
-                    RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT, RpgAiCardKnowledge.DARK_HOLE,
-                    RpgAiCardKnowledge.SKELENGEL, RpgAiCardKnowledge.WALL_OF_ILLUSION
+                    RpgAiCardKnowledge.SKELENGEL, RpgAiCardKnowledge.MAGICIAN_OF_FAITH,
+                    RpgAiCardKnowledge.WALL_OF_ILLUSION, RpgAiCardKnowledge.MAN_EATER_BUG,
+                    RpgAiCardKnowledge.DARK_HOLE, RpgAiCardKnowledge.RAIGEKI,
+                    RpgAiCardKnowledge.WABOKU,
+                    13039848, // 岩石巨兵 (1300/2000)
+                    15025844  // 圣精灵 (800/2000)
             };
             for (int hid : exodiaHelpers) {
                 if (main.size() >= TARGET_MAIN_SIZE) break;
                 if (CanonCharacterCardRegistry.isForbiddenRivalAce(charId, hid)) continue;
-                int added = tryAddFromPool(hid, 2, poolDate, catalog, banlist, main, copies);
+                int desired = (hid == RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT || hid == 13039848) ? 3 : 2;
+                int added = tryAddFromPool(hid, desired, poolDate, catalog, banlist, main, copies);
                 if (added > 0) {
                     RpgCard hc = catalog.findCardOrCanon(hid);
                     if (hc != null && hc.isMonster()) curMonsters += added;
@@ -337,7 +368,8 @@ public final class CanonDuelDeckBuilder {
                 canonCardIds,
                 canonMainCount,
                 Math.max(0, main.size() - canonMainCount),
-                poolDate);
+                poolDate,
+                lotdName);
     }
 
     private static int tryAddFromPool(int cardId, int desiredTotal, String poolDate,

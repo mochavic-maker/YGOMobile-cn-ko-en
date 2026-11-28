@@ -537,6 +537,8 @@ public class RpgHomeActivity extends AppCompatActivity {
             selectTabById(TAB_TOURNAMENT);
         }
         final RpgSessionManager.SavedLiveReplay liveReplay = RpgSessionManager.consumeLastLiveReplay();
+        final RpgSessionManager.CanonDuelOutcome canonOutcome = RpgSessionManager.consumeLastCanonDuelOutcome();
+        Runnable showSettlementPopup = null;
         if (settlement != null) {
             String extraMsg = (tournamentOutcome != null && activeBracket != null && activeBracket.finished)
                     ? ("\n\n🏆 锦标赛完赛：" + activeBracket.playerPlacementLabel
@@ -547,16 +549,34 @@ public class RpgHomeActivity extends AppCompatActivity {
                     + (liveReplay != null ? "\n\n（已保存本局录像，可直接点下方「回放」或「日志」）" : "");
             Runnable onReplay = liveReplay != null ? () -> launchLiveReplay(liveReplay) : null;
             Runnable onCopyLog = liveReplay != null ? () -> copyReplayFileLog(liveReplay.replayFilePath) : null;
-            showDuelSettlementDialog("RPG 决斗结算 · " + settlement.outcomeLabel, bodyMsg, onReplay, onCopyLog);
+            String titleStr = "RPG 决斗结算 · " + settlement.outcomeLabel;
+            showSettlementPopup = () -> showDuelSettlementDialog(titleStr, bodyMsg, onReplay, onCopyLog);
         } else if (liveReplay != null) {
             String pInfo = (liveReplay.player0Name != null && liveReplay.player1Name != null)
                     ? (liveReplay.player0Name + " vs " + liveReplay.player1Name + "\n")
                     : "";
-            showDuelSettlementDialog(
+            showSettlementPopup = () -> showDuelSettlementDialog(
                     "🎬 对局录像已保存",
                     pInfo + "可直接点下方「回放」重温本局，或点「日志」一键复制双方策略、卡组与完整操作日志。",
                     () -> launchLiveReplay(liveReplay),
                     () -> copyReplayFileLog(liveReplay.replayFilePath));
+        }
+
+        OcgCanonDuel wonCanonDuel = null;
+        if (canonOutcome != null && canonOutcome.playerWon && !canonOutcome.isDraw && catalog != null) {
+            for (OcgCanonDuel cd : catalog.getCanonDuels()) {
+                if (cd != null && canonOutcome.duelId != null && canonOutcome.duelId.equals(cd.id)) {
+                    if (cd.outroDialogue != null && !cd.outroDialogue.isEmpty()) {
+                        wonCanonDuel = cd;
+                    }
+                    break;
+                }
+            }
+        }
+        if (wonCanonDuel != null) {
+            CanonStoryDialog.showOutro(this, wonCanonDuel, showSettlementPopup);
+        } else if (showSettlementPopup != null) {
+            showSettlementPopup.run();
         }
         if (catalog != null) {
             refreshAll();
@@ -3039,15 +3059,24 @@ public class RpgHomeActivity extends AppCompatActivity {
                     launchCanonDuelWithOwnDeck(duel, deckB, RpgProfile.CANON_MODE_OWN_VS_B));
             card.addView(makeBadgeableButtonRow(6, ownVsABtn, clearedOwnVsA, ownVsBBtn, clearedOwnVsB));
 
-            // Row 3: Inspect both reconstructed decks visually (same split-screen viewer as AI Duel)
-            Button viewABtn = makeActionButton("🃏 查看 " + duel.sideA.characterName + " 卡组", "#0284C7");
+            // Row 3: Inspect both reconstructed decks visually + Replay AVG Story Dialogue anytime
+            Button viewABtn = makeActionButton("🃏 " + duel.sideA.characterName + " 卡组", "#0284C7");
             viewABtn.setOnClickListener(v -> RpgPackVisualDialogs.showCanonDeckVisualDialog(
                     this, catalog, profile, deckA, duel.episodeLabel));
 
-            Button viewBBtn = makeActionButton("🃏 查看 " + duel.sideB.characterName + " 卡组", "#475569");
+            Button viewBBtn = makeActionButton("🃏 " + duel.sideB.characterName + " 卡组", "#475569");
             viewBBtn.setOnClickListener(v -> RpgPackVisualDialogs.showCanonDeckVisualDialog(
                     this, catalog, profile, deckB, duel.episodeLabel));
-            card.addView(makeEqualWeightButtonRow(6, viewABtn, viewBBtn));
+
+            boolean hasStory = (duel.introDialogue != null && !duel.introDialogue.isEmpty())
+                    || (duel.outroDialogue != null && !duel.outroDialogue.isEmpty());
+            if (hasStory) {
+                Button storyBtn = makeActionButton("📖 剧情", "#B45309");
+                storyBtn.setOnClickListener(v -> CanonStoryDialog.showFullStoryReplay(this, duel));
+                card.addView(makeEqualWeightButtonRow(6, viewABtn, viewBBtn, storyBtn));
+            } else {
+                card.addView(makeEqualWeightButtonRow(6, viewABtn, viewBBtn));
+            }
 
             layoutContent.addView(card);
         }
@@ -3183,33 +3212,36 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
             return;
         }
-        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
-        OcgBanlist activeBanlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
-        AiOpponent syntheticOpp = buildCanonSyntheticOpponent(duel, oppCanonDeck);
-        try {
-            File playerYdk = DeckValidator.exportToYdk(
-                    repository.getAiDeckYdkFile("canon_player_" + playerCanonDeck.characterId),
-                    playerCanonDeck.main, playerCanonDeck.extra);
-            File aiYdk = DeckValidator.exportToYdk(
-                    repository.getAiDeckYdkFile("canon_opp_" + oppCanonDeck.characterId),
-                    oppCanonDeck.main, oppCanonDeck.extra);
+        Runnable proceed = () -> {
+            OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+            OcgBanlist activeBanlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+            AiOpponent syntheticOpp = buildCanonSyntheticOpponent(duel, oppCanonDeck);
+            try {
+                File playerYdk = DeckValidator.exportToYdk(
+                        repository.getAiDeckYdkFile("canon_player_" + playerCanonDeck.characterId),
+                        playerCanonDeck.main, playerCanonDeck.extra);
+                File aiYdk = DeckValidator.exportToYdk(
+                        repository.getAiDeckYdkFile("canon_opp_" + oppCanonDeck.characterId),
+                        oppCanonDeck.main, oppCanonDeck.extra);
 
-            RpgSessionManager.beginRpgCanonDuel(syntheticOpp, duel.id, canonMode, TAB_CANON_DUELS);
-            bridge.startRpgCanonDuel(
-                    this,
-                    playerCanonDeck.characterName,
-                    playerCanonDeck.avatarId,
-                    playerYdk.getAbsolutePath(),
-                    syntheticOpp,
-                    oppCanonDeck.avatarId,
-                    aiYdk.getAbsolutePath(),
-                    activeBanlist,
-                    activeRule,
-                    profile.currentTimelineDate);
-            finish();
-        } catch (IOException e) {
-            Toast.makeText(this, "导出还原卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
+                RpgSessionManager.beginRpgCanonDuel(syntheticOpp, duel.id, canonMode, TAB_CANON_DUELS);
+                bridge.startRpgCanonDuel(
+                        this,
+                        playerCanonDeck.characterName,
+                        playerCanonDeck.avatarId,
+                        playerYdk.getAbsolutePath(),
+                        syntheticOpp,
+                        oppCanonDeck.avatarId,
+                        aiYdk.getAbsolutePath(),
+                        activeBanlist,
+                        activeRule,
+                        profile.currentTimelineDate);
+                finish();
+            } catch (IOException e) {
+                Toast.makeText(this, "导出还原卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        };
+        CanonStoryDialog.showIntro(this, duel, proceed);
     }
 
     private void launchCanonDuelWithOwnDeck(OcgCanonDuel duel,
@@ -3236,32 +3268,35 @@ public class RpgHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "未连接到 YGOMobile 主程序，请从游戏主菜单进入 RPG 模式", Toast.LENGTH_LONG).show();
             return;
         }
-        OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
-        OcgBanlist activeBanlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
-        AiOpponent syntheticOpp = buildCanonSyntheticOpponent(duel, oppCanonDeck);
-        try {
-            File playerYdk = DeckValidator.exportToYdk(
-                    repository.getPlayerDeckYdkFile(), profile.activeDeckMain, profile.activeDeckExtra);
-            File aiYdk = DeckValidator.exportToYdk(
-                    repository.getAiDeckYdkFile("canon_opp_" + oppCanonDeck.characterId),
-                    oppCanonDeck.main, oppCanonDeck.extra);
+        Runnable proceed = () -> {
+            OcgRuleSet activeRule = TimelineEngine.getActiveRuleSet(catalog, profile.currentTimelineDate);
+            OcgBanlist activeBanlist = TimelineEngine.getActiveBanlist(catalog, profile.currentTimelineDate);
+            AiOpponent syntheticOpp = buildCanonSyntheticOpponent(duel, oppCanonDeck);
+            try {
+                File playerYdk = DeckValidator.exportToYdk(
+                        repository.getPlayerDeckYdkFile(), profile.activeDeckMain, profile.activeDeckExtra);
+                File aiYdk = DeckValidator.exportToYdk(
+                        repository.getAiDeckYdkFile("canon_opp_" + oppCanonDeck.characterId),
+                        oppCanonDeck.main, oppCanonDeck.extra);
 
-            RpgSessionManager.beginRpgCanonDuel(syntheticOpp, duel.id, canonMode, TAB_CANON_DUELS);
-            bridge.startRpgCanonDuel(
-                    this,
-                    null,
-                    null,
-                    playerYdk.getAbsolutePath(),
-                    syntheticOpp,
-                    oppCanonDeck.avatarId,
-                    aiYdk.getAbsolutePath(),
-                    activeBanlist,
-                    activeRule,
-                    profile.currentTimelineDate);
-            finish();
-        } catch (IOException e) {
-            Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
+                RpgSessionManager.beginRpgCanonDuel(syntheticOpp, duel.id, canonMode, TAB_CANON_DUELS);
+                bridge.startRpgCanonDuel(
+                        this,
+                        null,
+                        null,
+                        playerYdk.getAbsolutePath(),
+                        syntheticOpp,
+                        oppCanonDeck.avatarId,
+                        aiYdk.getAbsolutePath(),
+                        activeBanlist,
+                        activeRule,
+                        profile.currentTimelineDate);
+                finish();
+            } catch (IOException e) {
+                Toast.makeText(this, "导出卡组失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        };
+        CanonStoryDialog.showIntro(this, duel, proceed);
     }
 
     private void launchAiDuel(AiOpponent opponent) {

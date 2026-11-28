@@ -23,6 +23,19 @@ public class OcgCanonDuel {
     public String summary;
     public DuelSide sideA;
     public DuelSide sideB;
+    /** Pre-duel AVG dialogue lines (Legacy of the Duelist style Intro cutscene). */
+    public List<DialogueLine> introDialogue = new ArrayList<>();
+    /** Post-duel victory AVG dialogue lines (Legacy of the Duelist style Outro cutscene). */
+    public List<DialogueLine> outroDialogue = new ArrayList<>();
+
+    public static class DialogueLine {
+        /** "A" (sideA portrait), "B" (sideB portrait), or "NARRATOR" (centered narration). */
+        public String speakerSide;
+        public String speakerName;
+        /** Optional mood tint: normal, fierce, shock, smirk, determined, victory. */
+        public String emotion;
+        public String text;
+    }
 
     public static class DuelSide {
         public String characterId;
@@ -30,6 +43,8 @@ public class OcgCanonDuel {
         /** Asset filename stem under assets/rpg/avatars/<avatarId>.webp */
         public String avatarId;
         public String deckName;
+        /** Reference Yu-Gi-Oh! Legacy of the Duelist Story Deck name (adapted to event-date OCG pool). */
+        public String lotdDeckName;
         /** Tactical AI style registered in RpgAiStrategy.SUPPORTED_STYLES */
         public String fillStyle;
         public List<String> preferredRaces = new ArrayList<>();
@@ -38,6 +53,8 @@ public class OcgCanonDuel {
         public List<Integer> canonCardIds = new ArrayList<>();
         /** Mandatory canon Extra Deck (Fusion/etc.) card passcodes. */
         public List<Integer> canonExtraIds = new ArrayList<>();
+        /** Optional ordered event-date OCG padding card passcodes adapted from LotD Story Deck blueprint. */
+        public List<Integer> lotdEraPaddingIds = new ArrayList<>();
     }
 
     /** Wrapper root JSON object for rpg/ocg_canon_duels.json. */

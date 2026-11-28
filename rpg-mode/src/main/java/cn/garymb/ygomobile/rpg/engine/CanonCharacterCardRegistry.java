@@ -423,9 +423,24 @@ public final class CanonCharacterCardRegistry {
         if (mainSet.contains(23424603) && (id == 23424603 || id == 51267887)) {
             bonus += 850; // 荒野 / 体温上升
         }
-        if ((mainSet.contains(46986414) || mainSet.contains(70781052))
+        boolean isExodiaCore = mainSet.contains(33396948);
+        if (!isExodiaCore
+                && (mainSet.contains(46986414) || mainSet.contains(70781052))
                 && (id == 59197169 || id == 91595718 || id == 37120512)) {
-            bonus += 600; // 暗 / 秘术之书 / 暗之破神剑
+            bonus += 600; // 暗 / 秘术之书 / 暗之破神剑 (only for Beatdown/Dark Magician decks, NEVER Exodia!)
+        }
+        if (isExodiaCore) {
+            if (id == RpgAiCardKnowledge.POT_OF_GREED || id == RpgAiCardKnowledge.GRACEFUL_CHARITY
+                    || id == RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT
+                    || id == RpgAiCardKnowledge.SANGAN || id == RpgAiCardKnowledge.WITCH_OF_BLACK_FOREST
+                    || id == RpgAiCardKnowledge.SKELENGEL || id == RpgAiCardKnowledge.MAGICIAN_OF_FAITH) {
+                bonus += 950;
+            } else if (id == RpgAiCardKnowledge.WABOKU || id == RpgAiCardKnowledge.DARK_HOLE
+                    || id == RpgAiCardKnowledge.RAIGEKI || id == RpgAiCardKnowledge.WALL_OF_ILLUSION
+                    || id == RpgAiCardKnowledge.MAN_EATER_BUG || id == RpgAiCardKnowledge.HANE_HANE
+                    || id == 13039848 || id == 15025844) {
+                bonus += 650;
+            }
         }
         if (mainSet.contains(57728570)
                 && candidate.isMonster()
@@ -477,8 +492,8 @@ public final class CanonCharacterCardRegistry {
                     if (raceCounts.getOrDefault(cRace, 0) >= 3) bonus += 220;
                     if (attrCounts.getOrDefault(cAttr, 0) >= 4) bonus += 100;
                 }
-            } else {
-                // Equip spells matching the predominant core race/attribute
+            } else if (!isExodiaCore) {
+                // Equip spells matching the predominant core race/attribute (never for Exodia decks)
                 String req = AiDeckGenerator.getEquipTargetRequirement(id);
                 if (req != null) {
                     int targets = AiDeckGenerator.countEquipCompatibleMonsters(req,

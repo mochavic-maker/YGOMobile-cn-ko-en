@@ -69,6 +69,7 @@ public final class RpgSessionManager {
         sLastSettlement = null;
         sLastDuelWasTournament = false;
         sLastLiveReplay = null;
+        sLastCanonDuelOutcome = null;
     }
 
     public static synchronized void beginRpgCanonDuel(AiOpponent opponent,
@@ -83,6 +84,7 @@ public final class RpgSessionManager {
         sLastSettlement = null;
         sLastDuelWasTournament = false;
         sLastLiveReplay = null;
+        sLastCanonDuelOutcome = null;
     }
 
     public static synchronized boolean hasActiveRpgDuel() {
@@ -132,7 +134,32 @@ public final class RpgSessionManager {
         sLastDuelWasTournament = wasTournament;
         sLastDuelReturnTab = returnTab;
         sLastDuelPlayerWon = playerWon;
+        sLastCanonDuelOutcome = (canonDuelId != null)
+                ? new CanonDuelOutcome(canonDuelId, canonDuelMode, playerWon, isDraw)
+                : null;
         return settlement;
+    }
+
+    public static class CanonDuelOutcome {
+        public final String duelId;
+        public final String canonMode;
+        public final boolean playerWon;
+        public final boolean isDraw;
+
+        public CanonDuelOutcome(String duelId, String canonMode, boolean playerWon, boolean isDraw) {
+            this.duelId = duelId;
+            this.canonMode = canonMode;
+            this.playerWon = playerWon;
+            this.isDraw = isDraw;
+        }
+    }
+
+    private static volatile CanonDuelOutcome sLastCanonDuelOutcome;
+
+    public static synchronized CanonDuelOutcome consumeLastCanonDuelOutcome() {
+        CanonDuelOutcome o = sLastCanonDuelOutcome;
+        sLastCanonDuelOutcome = null;
+        return o;
     }
 
     public static class EditedDeckResult {

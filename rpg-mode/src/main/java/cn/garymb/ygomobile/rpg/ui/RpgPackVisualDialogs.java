@@ -500,10 +500,12 @@ public final class RpgPackVisualDialogs {
         List<RpgCard> orderedCards = new ArrayList<>();
         collectDeckCards(catalog, builtDeck.main, deckCopies, orderedCards);
         collectDeckCards(catalog, builtDeck.extra, deckCopies, orderedCards);
+        String lotdNote = (builtDeck.lotdDeckName != null && !builtDeck.lotdDeckName.isEmpty())
+                ? (" · 决斗者遗产蓝本: " + builtDeck.lotdDeckName) : "";
         String subNote = (episodeSubtitle != null ? episodeSubtitle + " · " : "")
                 + "原著卡 " + builtDeck.canonMainCount + " 张 + 当期卡池补足 " + builtDeck.paddedMainCount + " 张"
                 + "（主卡 " + builtDeck.main.size() + " / 额外 " + builtDeck.extra.size()
-                + " · AI风格: " + RpgAiStrategy.getStyleDisplayName(builtDeck.fillStyle) + "）";
+                + " · AI风格: " + RpgAiStrategy.getStyleDisplayName(builtDeck.fillStyle) + lotdNote + "）";
         showCardPoolSplitDialog(
                 activity,
                 catalog,

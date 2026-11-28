@@ -149,21 +149,27 @@
    - 从 Fandom Wiki / Yugipedia 对应集数/话数页面检索双方使用过的全部卡片，核对 `mobile/assets/data/cards.cdb` 密码（凡在 OCG 中属于融合/同调/超量/连接怪兽的卡必须放入 `canonExtraIds`，不可放入主卡组 `canonCardIds`）；
    - **尽量完整保留原著用卡（禁止剔除非核心未来卡）**：原著单局中提及的卡牌数量本来就不多，因此在通过 `coreCardIds` 确定合理的 `timelineDate` 后，**不要剔除该对决中出现的非核心未来卡**（允许保留少量晚于 `timelineDate` 甚至跨年的非核心原著用卡，以最大程度忠实还原原著对决风味）；
    - 对于晚于当前时间轴上限的非核心原著用卡，将其中/日/英文元信息收录进 `ocg_canon_duels.json` 的 `canonCardCatalog`（通过 `RpgCatalog.findCardOrCanon` 仅用于还原卡组展示与 AI 识别，**严禁泄漏进商店/合成/玩家组卡池**；卡图在联网时由 `RpgIntegration.loadCardImageBytes` 自动从萌卡图床拉取并缓存）；
-    - **补位卡原著还原、核心联动与事件日期环境强度校准原则（`CanonCharacterCardRegistry` + `CanonDuelDeckBuilder`）**：
-      - 不足 40 张的**补位卡**严格参考该对决事件日期（`timelineDate`）的当期 OCG 实卡池，按严格 3 级优先级挑选：
+    - **《游戏王：决斗者遗产（链接进化）》Story Deck 蓝本参考、事件日期适配与主题纯净度原则（`CanonCharacterCardRegistry` + `CanonDuelDeckBuilder`）**：
+      - **官方剧情卡组蓝本（`lotdDeckName` + `lotdEraPaddingIds`）**：构建原著对决卡组时，优先检索官方游戏《游戏王：决斗者遗产（Legacy of the Duelist / Link Evolution）》的 **Story Campaign（剧情模式 Story Deck）** 作为战术结构蓝本（如 `Exodia Obliterate`、`Legendary Blue-Eyes`、`Moth Evolution`、`Harpie Lady`、`Legendary Ocean`、`Red-Eyed Dinosaurs`、`Kuriboh Power`、`The Ultimate Dragon`、`Black Luster Soldier`、`Cheating Exodia` 等）；
+      - **事件日期 OCG 卡池同定位适配**：因《决斗者遗产》剧情模式常为现代大师规则混入 2003~2017 年补强卡（如 2003《凡骨的意地》、2007《古之规则》、2017《超进化之茧》、2012《鹰身通灵师》），**不得为了照搬现代补强而将 1999/早期原著对决推迟至 2007~2017 年，也不得将现代卡直接泄漏入当期补位**；应将蓝本中的未来补强卡替换为事件日期（`timelineDate`）OCG 卡池内的**同定位强力卡**（例如 `Exodia Obliterate` 中用当期《骸骨天使》《圣魔术师》《三眼怪》《黑森林的魔女》《岩石巨兵》《圣精灵》《强欲之壶》《天使的施舍》《光之护封剑》替代 2003《凡骨的意地》）；
+      - **战术主题纯净度硬守卫（`AiDeckGenerator.isUnsafeFillerCard`）**：例如 `EXODIA_DRAW`（黑暗大法师主题）补位池**严禁塞入场地魔法、装备魔法以及会丢弃手牌部件的自毁卡**（《手牌抹杀》《变形壶》《对死者的供奉》），`BURN_WALL`/`MILL_MORPHING` 严禁塞入装备魔法；
+      - 其余不足 40 张的**补位卡**严格参考该对决事件日期（`timelineDate`）的当期 OCG 实卡池，按严格 3 级优先级挑选：
         1. **第一优先（角色原著用卡）**：优先挑选当期 OCG 卡池内**该人物在原著漫画/动画中真实使用过的卡牌**（由 [`CanonCharacterCardRegistry`](../src/main/java/cn/garymb/ygomobile/rpg/engine/CanonCharacterCardRegistry.java) 统一维护并动态汇总该角色跨集数原著卡池；**严禁将角色未在原著用过的 Vol.1/Starter 弱势凑数白板混入角色卡池**；在 1800+ 打点的后期事件日期中，若角色早期原著白板已严重落后环境，优先选用该角色符合当期强度的原著用卡与效果怪）；
         2. **第二优先（核心卡高度联动）**：优先挑选与该局 `canonCardIds` / `canonExtraIds` 核心卡高度联动的配套卡（例如：羽蛾带《进化之茧》必优先补《飞蛾宝宝》《森》与昆虫装备；额外含融合怪必优先补《融合》及缺失的正规融合素材如迷宫兄弟的《加农炮兵》《高科技狼》、城之内的《传说的剑豪 正树》《火焰操纵者》；渔太补《海》与水属性鱼/水/海龙族及《波塞冬之力》；龙崎补《荒野》与《体温上升》；孔雀舞补《万华镜》《电子紧身衣》《随风翼》与风属性鸟兽族；《死毒》祭品仅加权暗属性功能效果怪或高防盾墙，不加权低攻防白板）；
         3. **第三优先（符合事件日期卡池强度的主题与当期泛用卡）**：由 `CanonDuelDeckBuilder` 动态计算 `timelineDate` 当期 OCG 卡池的下级最高攻防（`eraTopLowerAtk` / `eraTopLowerDef`），自动导出当期强度基线（`eraAtkFloor = max(800, eraTopLowerAtk - 400)`、`eraDefFloor = max(1000, eraTopLowerDef - 300)`、高星 `eraTributeAtkFloor = eraTopLowerAtk + 400`）：**所有非原著、非核心联动的其他补位卡必须符合事件日期的卡池强度，严禁塞入落后环境的低攻防通常怪（例如在 1999-08-26 1800~1900 攻环境中塞入攻防 <1000~1400 的凑数白板）或非烧血卡组中的低效烧血/回血凑数魔陷**；种族/属性主题加分仅作用于符合当期强度或具实际效果/联动的卡牌，防止低攻匹配种族白板反超当期强力下级；
       - **严禁敌对/其他角色专属王牌串场**：补位池强制过滤其他原著人物的专属招牌卡（如暗游戏绝不补位《青眼白龙》《灯之魔精》《机械猎手》《死毒》，海马绝不补位《黑魔术师》《暗黑骑士 盖亚》《诅咒之龙》《恶魔召唤》《真红眼黑龙》，城之内/羽蛾/孔雀舞/渔太/龙崎/迷宫兄弟亦严禁混入其他角色的专属王牌；单局显式登记的 `canonCardIds` 仍 100% 忠实保留）。
       - 先补足怪兽、再做魔法/陷阱合理性判定与补位，保证种族/属性装备魔法能准确统计全卡组目标数，既不漏掉原著招牌装备、也不塞入废装备。
-3. **当日限定展示、日历 🎬 特殊标记与四模式通关记录**：
+3. **仿《决斗者遗产》战前/战后 AVG 对话场景（`CanonStoryDialog` + `introDialogue` / `outroDialogue`）**：
+   - 每场原著对决必须在 `ocg_canon_duels.json` 中配置忠实于原作漫画/动画名台词的**战前开场对话（`introDialogue`，≥3 句）**与**战后胜利尾声（`outroDialogue`，≥2 句）**，每句标注 `speakerSide`（`A`/`B`/`NARRATOR`）、`speakerName`、`emotion`（`normal`/`fierce`/`shock`/`smirk`/`determined`/`victory`）与中文台词 `text`；
+   - 演出形式对标《决斗者遗产》：左右角色动画立绘聚焦高亮（说话方放大亮框、倾听方柔和变暗）、情绪边框色调、点击推进 / 上一句 / 一键跳过，战前开打前自动演出、获胜返场时自动演出尾声，且对决卡片提供 **`📖 剧情`** 按钮随时回看完整开场+尾声（由 `RpgEnginesTest#canonDuelsHaveLotdBlueprintsThemePureExodiaAndAvgDialogues` 自动守卫校验）。
+4. **当日限定展示、日历 🎬 特殊标记与四模式通关记录**：
    - 「🎬 对决还原」页**仅显示当前选定日期当日的对决还原**（`TimelineEngine.getCanonDuelsOnDate`，当日多场按原著日期 `originalDate` 升序排列），既避免后期列表冗长难查，也强制保证玩家自组挑战时**只能使用当时环境的卡池与规则/禁限表，无法携带未来卡**；当日无对决还原时提供一键打开日历与全对决日期快捷跳转按钮；
    - 每场新对决的 `timelineDate` 自动进入 `TimelineEngine.getTimelineEventDates`、`TimelineEngine.getCanonDuelDates` 与 `TimelineDigest.newCanonDuels`：**时间轴日历弹窗中含对决还原的日期采用专属粉框 + `🎬` 图标背景高亮**（月份下拉菜单同样附带 `🎬` 标识），与普通浅绿圆点 OCG 事件一眼区分；
-   - 每场对决提供 4 种挑战模式（`ROLE_A` 扮演 A、`ROLE_B` 扮演 B、`OWN_VS_A` 自组挑战 A、`OWN_VS_B` 自组挑战 B）及与 AI 对战一致的分屏可视化查看卡组弹窗（带 `原著` 筛选与徽章）；玩家在任意模式下获胜后，通过 `RpgProfile.clearedCanonDuelModes` 持久化记录，并在对应挑战按钮右上角显示绿色 **`✔ 成功`** 标签。
-4. **角色头像复用与新角色补绘**：
+   - 每场对决提供 4 种挑战模式（`ROLE_A` 扮演 A、`ROLE_B` 扮演 B、`OWN_VS_A` 自组挑战 A、`OWN_VS_B` 自组挑战 B）、`📖 剧情` 回看及与 AI 对战一致的分屏可视化查看卡组弹窗（带 `原著` 筛选徽章与决斗者遗产蓝本标注）；玩家在任意模式下获胜后，通过 `RpgProfile.clearedCanonDuelModes` 持久化记录，并在对应挑战按钮右上角显示绿色 **`✔ 成功`** 标签。
+5. **角色头像复用与新角色补绘**：
    - 同一角色在不同集数的对决中复用同一头像 ID（如 `ai_vol1_yugi`、`ai_starter_kaiba`、`ai_weekend_challenger`、`char_pegasus` 等）；
    - 凡新登场的原著角色，必须为其绘制 1:1 游戏王动画风格头像并压缩为 `256×256` WebP 放入 `rpg-mode/src/main/assets/rpg/avatars/char_<id>.webp`（由 `RpgEnginesTest#canonDuels1999LoadReconstruct40CardsHaveAvatarsAndRegisterTimelineDates` 自动守卫校验）。
-5. **专属战术 AI 补充**：
+6. **专属战术 AI 补充**：
    - 为原著卡组中引入的新标志性单卡（如仪式、卡通、纳祭之魔、银幕镜壁、左轮手枪龙、神之卡等）在 `RpgAiCardKnowledge.java` 和 `RpgAiStrategy.java` 中补充单卡知识与战术逻辑，确保 AI 能流畅发挥还原卡组的特色打法。
 
 ---

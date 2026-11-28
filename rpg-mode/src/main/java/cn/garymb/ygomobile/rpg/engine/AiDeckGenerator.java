@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import cn.garymb.ygomobile.rpg.ai.RpgAiCardKnowledge;
 import cn.garymb.ygomobile.rpg.model.AiOpponent;
 import cn.garymb.ygomobile.rpg.model.OcgBanlist;
 import cn.garymb.ygomobile.rpg.model.OcgRuleSet;
@@ -620,10 +621,27 @@ public final class AiDeckGenerator {
         return false;
     }
 
+    /** Returns true if {@code c} is a Field Spell (e.g. Yami, Forest, Umi, Wasteland, Mountain, Sogen). */
+    public static boolean isFieldSpell(RpgCard c) {
+        if (c == null || c.isMonster()) return false;
+        int id = c.id;
+        if (id == 59197169    // 暗
+                || id == 23424603 // 荒野
+                || id == 50913601 // 山
+                || id == 87430998 // 森
+                || id == 22702055 // 海
+                || id == 86318356 // 草原
+        ) {
+            return true;
+        }
+        return c.race != null && "Field".equalsIgnoreCase(c.race);
+    }
+
     /**
      * Shared rationality guard used by both {@link AiDeckGenerator} and {@link CanonDuelDeckBuilder}
      * to guarantee that filler slots NEVER contain unplayable Nomi monsters, unmatched Ritual/Fusion
-     * cards, named-partner bricks, Exodia leaks, unsupported Crush Card Virus, or dead Equip Spells.
+     * cards, named-partner bricks, Exodia leaks, unsupported Crush Card Virus, dead Equip Spells,
+     * or off-theme Equip/Field/self-discard cards in Exodia / Burn / Mill strategies.
      */
     public static boolean isUnsafeFillerCard(RpgCard c,
                                              List<Integer> curMain,
@@ -637,6 +655,25 @@ public final class AiDeckGenerator {
 
         // Never pad Exodia pieces into non-Exodia decks
         if (isExodiaPieceId(id) && !"EXODIA_DRAW".equals(style)) return true;
+
+        // Strategy-coherence guard: Exodia decks must NEVER pad off-theme Equip Spells, Field Spells,
+        // or hand-wiping self-discard cards (Card Destruction / Morphing Jar / Tribute to the Doomed)
+        if ("EXODIA_DRAW".equals(style)) {
+            if (isFieldSpell(c)) return true;
+            if (RpgAiCardKnowledge.EQUIP_SPELLS.contains(id) || getEquipTargetRequirement(id) != null) {
+                return true;
+            }
+            if (id == 72892473    // 手牌抹杀 (discards Exodia pieces!)
+                    || id == 33508719 // 变形壶 (discards Exodia pieces!)
+                    || id == 79759861 // 对死者的供奉 (discards hand!)
+            ) {
+                return true;
+            }
+        }
+        if (("BURN_WALL".equals(style) || "MILL_MORPHING".equals(style))
+                && (RpgAiCardKnowledge.EQUIP_SPELLS.contains(id) || getEquipTargetRequirement(id) != null)) {
+            return true;
+        }
 
         // Never pad Fusion spells / fusion searchers / Cyber-Stein / fusion substitutes into non-Fusion decks
         boolean hasExtra = curExtra != null && !curExtra.isEmpty();

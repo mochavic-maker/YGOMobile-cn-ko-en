@@ -1600,6 +1600,81 @@ public class RpgEnginesTest {
     }
 
     @Test
+    public void canonDuelsHaveLotdBlueprintsThemePureExodiaAndAvgDialogues() {
+        int exodiaDecksChecked = 0;
+        for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel duel : catalog.canonDuels) {
+            // 1) AVG Dialogue scenes (Legacy of the Duelist style Intro + Outro)
+            assertNotNull("Missing introDialogue for " + duel.id, duel.introDialogue);
+            assertTrue("introDialogue must have >= 3 lines for " + duel.id, duel.introDialogue.size() >= 3);
+            assertNotNull("Missing outroDialogue for " + duel.id, duel.outroDialogue);
+            assertTrue("outroDialogue must have >= 2 lines for " + duel.id, duel.outroDialogue.size() >= 2);
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DialogueLine dl : duel.introDialogue) {
+                assertTrue("Invalid speakerSide in intro of " + duel.id,
+                        "A".equals(dl.speakerSide) || "B".equals(dl.speakerSide) || "NARRATOR".equals(dl.speakerSide));
+                assertNotNull(dl.speakerName);
+                assertFalse(dl.speakerName.trim().isEmpty());
+                assertNotNull(dl.text);
+                assertFalse(dl.text.trim().isEmpty());
+            }
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DialogueLine dl : duel.outroDialogue) {
+                assertTrue("Invalid speakerSide in outro of " + duel.id,
+                        "A".equals(dl.speakerSide) || "B".equals(dl.speakerSide) || "NARRATOR".equals(dl.speakerSide));
+                assertNotNull(dl.speakerName);
+                assertFalse(dl.speakerName.trim().isEmpty());
+                assertNotNull(dl.text);
+                assertFalse(dl.text.trim().isEmpty());
+            }
+
+            for (cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide side
+                    : new cn.garymb.ygomobile.rpg.model.OcgCanonDuel.DuelSide[]{duel.sideA, duel.sideB}) {
+                // 2) LotD blueprint label + event-date legality of lotdEraPaddingIds
+                assertNotNull("Missing lotdDeckName for " + duel.id + "/" + side.characterId, side.lotdDeckName);
+                assertFalse(side.lotdDeckName.trim().isEmpty());
+                if (side.lotdEraPaddingIds != null) {
+                    for (Integer pid : side.lotdEraPaddingIds) {
+                        assertTrue("lotdEraPaddingId " + pid + " in " + duel.id + "/" + side.characterId
+                                        + " must be released <= " + duel.timelineDate,
+                                TimelineEngine.isCardReleased(catalog, pid, duel.timelineDate));
+                        assertFalse("lotdEraPaddingId " + pid + " must not be rival ace",
+                                cn.garymb.ygomobile.rpg.engine.CanonCharacterCardRegistry
+                                        .isForbiddenRivalAce(side.characterId, pid));
+                    }
+                }
+
+                // 3) Theme-pure EXODIA_DRAW guard: ZERO padded Field/Equip/self-discard cards!
+                cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.BuiltCanonDeck built =
+                        cn.garymb.ygomobile.rpg.engine.CanonDuelDeckBuilder.buildDeck(catalog, duel, side, duel.timelineDate);
+                assertEquals(40, built.main.size());
+                if ("EXODIA_DRAW".equals(side.fillStyle)) {
+                    exodiaDecksChecked++;
+                    for (int id : built.main) {
+                        if (built.canonCardIds.contains(id)) continue;
+                        RpgCard c = catalog.findCardOrCanon(id);
+                        assertNotNull(c);
+                        assertFalse("EXODIA_DRAW " + duel.id + "/" + side.characterName
+                                        + " must NOT pad Field Spell " + c.nameCn,
+                                AiDeckGenerator.isFieldSpell(c));
+                        assertFalse("EXODIA_DRAW " + duel.id + "/" + side.characterName
+                                        + " must NOT pad Equip Spell " + c.nameCn,
+                                cn.garymb.ygomobile.rpg.ai.RpgAiCardKnowledge.EQUIP_SPELLS.contains(id)
+                                        || AiDeckGenerator.getEquipTargetRequirement(id) != null);
+                        assertFalse("EXODIA_DRAW " + duel.id + "/" + side.characterName
+                                        + " must NOT pad self-discard card " + c.nameCn,
+                                id == 72892473 || id == 33508719 || id == 79759861);
+                    }
+                    assertTrue("EXODIA_DRAW deck should include Pot of Greed (55144522)",
+                            built.main.contains(55144522));
+                    assertTrue("EXODIA_DRAW deck should include Swords of Revealing Light (72302403)",
+                            built.main.contains(72302403));
+                    assertTrue("EXODIA_DRAW deck should include Giant Soldier of Stone (13039848)",
+                            built.main.contains(13039848));
+                }
+            }
+        }
+        assertTrue("Should validate all 3 EXODIA_DRAW canon decks", exodiaDecksChecked >= 3);
+    }
+
+    @Test
     public void dynamicJenksTieringSeparatesNaturalClustersAndLocksTies() {
         // 1) 1999-11-18 real field: Jenks Natural Breaks cleanly partitions S/A/B/C/D
         //    instead of wasting 3 cuts on the sparse bottom decks like naive Top-4-Gaps.
