@@ -158,6 +158,7 @@ public class RpgAiStrategy {
     private int idleActionsThisTurn = 0;
     private int pendingAttackerSeq = -1;
     private int pendingActivatingCode = 0;
+    private int deferredTributeToMain2Turn = -1;
 
     public RpgAiStrategy(RpgAiDuelState state, AiOpponent opponent, String fillStyle) {
         this.state = state;
@@ -1000,12 +1001,139 @@ public class RpgAiStrategy {
         if (bestSummonScore < 0 && bestSetScore < 0) return null;
 
         if (bestSummon != null && bestSummonScore >= bestSetScore) {
+            int bestTributes = state.tributesNeededForLevel(state.getCardLevel(bestSummon.code));
+            if (bestTributes > 0 && !state.isMain2() && p.canBattle
+                    && shouldDeferTributeSummonToMain2(bestSummon, bestTributes)) {
+                deferredTributeToMain2Turn = state.turnCount;
+                return null;
+            }
             return bestSummon.index << 16;
         }
         if (bestSet != null) {
             return (bestSet.index << 16) + 3;
         }
         return null;
+    }
+
+    /**
+     * Pro Yu-Gi-Oh! fundamental ("Attack first, Tribute Summon in Main Phase 2"):
+     * When in Main Phase 1 with Battle Phase available, checks whether attacking with our current
+     * face-up ATK monsters BEFORE tributing deals strictly more guaranteed battle damage than
+     * Tribute Summoning immediately in Main Phase 1 (e.g., two 1900 ATK Gemini Elves dealing
+     * 3800 direct damage before tributing both for 3000 ATK Blue-Eyes White Dragon in Main 2!).
+     */
+    private boolean shouldDeferTributeSummonToMain2(CmdEntry tributeEntry, int tributesNeeded) {
+        if (tributeEntry == null || tributesNeeded <= 0) return false;
+        if (state.isMain2() || state.turnCount <= 1) return false;
+        if (state.hasFaceUpCardOnField(1, RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT)) return false;
+
+        List<RpgAiDuelState.CardSlot> myMons = new ArrayList<>(state.getMonsters(0));
+        if (myMons.size() < tributesNeeded) return false;
+
+        List<RpgAiDuelState.CardSlot> oppMons = state.getMonsters(1);
+        // Only defer when all opponent monsters are face-up (or opponent field is empty) so attacks
+        // cannot hit an unknown face-down Man-Eater Bug / high-DEF wall and lose our tributes before M2.
+        for (RpgAiDuelState.CardSlot om : oppMons) {
+            if (!om.isFaceUp()) return false;
+        }
+
+        // Rank our monsters in the exact order chooseSelectTribute sacrifices them:
+        // stolen opponent monsters first -> Sangan/Witch -> lowest ATK.
+        Collections.sort(myMons, (a, b) -> {
+            int pa = tributeSacrificeRank(a);
+            int pb = tributeSacrificeRank(b);
+            if (pa != pb) return Integer.compare(pb, pa);
+            return Integer.compare(getSlotEffectiveAtk(a), getSlotEffectiveAtk(b));
+        });
+
+        List<Integer> attackersNow = new ArrayList<>();
+        List<Integer> attackersAfter = new ArrayList<>();
+        for (int i = 0; i < myMons.size(); i++) {
+            RpgAiDuelState.CardSlot m = myMons.get(i);
+            if (m.isFaceUp() && m.isAttackPos()) {
+                int atk = getSlotEffectiveAtk(m);
+                attackersNow.add(atk);
+                if (i >= tributesNeeded) {
+                    attackersAfter.add(atk);
+                }
+            }
+        }
+        if (attackersNow.isEmpty()) return false;
+
+        int tributeEffectiveAtk = state.getCardBaseAtk(tributeEntry.code)
+                + getBestHandEquipBonusFor(tributeEntry.code);
+        attackersAfter.add(tributeEffectiveAtk);
+
+        int[] simNow = simulateCleanBattleDamage(attackersNow, oppMons);
+        int[] simAfter = simulateCleanBattleDamage(attackersAfter, oppMons);
+        int dmgNow = simNow[0];
+        int remainingOppNow = simNow[1];
+        int dmgAfter = simAfter[0];
+        int remainingOppAfter = simAfter[1];
+
+        // If our current board leaves an opponent monster alive that the Tribute monster could kill,
+        // summon the Tribute monster immediately in M1 to clear that threat.
+        if (remainingOppNow > remainingOppAfter) {
+            return false;
+        }
+        return dmgNow > dmgAfter;
+    }
+
+    private int tributeSacrificeRank(RpgAiDuelState.CardSlot slot) {
+        if (slot.isStolenFromOpponent()) return 3;
+        if (RpgAiCardKnowledge.isSearcherMonster(slot.code)) return 2;
+        return 1;
+    }
+
+    private int getSlotEffectiveAtk(RpgAiDuelState.CardSlot slot) {
+        return (slot.atk > 0 || slot.statsQueried) ? slot.atk : state.getCardBaseAtk(slot.code);
+    }
+
+    /**
+     * Deterministic battle simulation assuming only clean kills (myAtk > oppThreat so no attacker dies)
+     * and direct attacks once all opponent monsters are cleared.
+     * Returns {@code {totalDamage, remainingOpponentMonsters}}.
+     */
+    private int[] simulateCleanBattleDamage(List<Integer> attackerAtks, List<RpgAiDuelState.CardSlot> oppFaceUp) {
+        List<Integer> pool = new ArrayList<>(attackerAtks);
+        Collections.sort(pool); // smallest first so weakest capable monster clears each blocker
+        int totalDmg = 0;
+        int remainingOpp = 0;
+
+        if (!oppFaceUp.isEmpty()) {
+            List<RpgAiDuelState.CardSlot> targets = new ArrayList<>(oppFaceUp);
+            // Prioritize killing highest-ATK face-up threats first
+            Collections.sort(targets, (a, b) -> {
+                int va = a.isAttackPos() ? a.atk : a.def;
+                int vb = b.isAttackPos() ? b.atk : b.def;
+                return Integer.compare(vb, va);
+            });
+            for (RpgAiDuelState.CardSlot opp : targets) {
+                int needed = opp.isAttackPos() ? opp.atk : opp.def;
+                int pickIdx = -1;
+                for (int i = 0; i < pool.size(); i++) {
+                    if (pool.get(i) > needed) {
+                        pickIdx = i;
+                        break;
+                    }
+                }
+                if (pickIdx >= 0) {
+                    int usedAtk = pool.remove(pickIdx);
+                    if (opp.isAttackPos()) {
+                        totalDmg += (usedAtk - opp.atk);
+                    }
+                } else {
+                    remainingOpp++;
+                }
+            }
+        }
+
+        if (remainingOpp == 0) {
+            for (int directAtk : pool) {
+                totalDmg += directAtk;
+            }
+        }
+        return new int[]{totalDmg, remainingOpp};
     }
 
     private int scoreNormalSummon(CmdEntry e, int oppStrongest, int oppStrongestFaceUpAtk, int myStrongestOnField,
@@ -1196,8 +1324,9 @@ public class RpgAiStrategy {
     }
 
     private Integer tryEquipSpells(IdleCmdPrompt p) {
-        // Anti-2-for-1 discipline: NEVER equip in Main 2 or Turn 1 when we cannot attack with the boost!
-        if (state.isMain2() || !p.canBattle || state.turnCount == 1) {
+        // Anti-2-for-1 discipline: NEVER equip in Main 2, Turn 1, or when deferring a Tribute Summon to M2!
+        if (state.isMain2() || !p.canBattle || state.turnCount == 1
+                || deferredTributeToMain2Turn == state.turnCount) {
             return null;
         }
         int freeSzone = state.getFreeMainSzoneCount(0);

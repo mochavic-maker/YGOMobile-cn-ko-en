@@ -1492,6 +1492,82 @@ public class RpgAiStrategyTest {
                 2, lwResp[1] & 0xFF);
     }
 
+    @Test
+    public void defersTributeSummonToMain2WhenAttackingFirstDealsMoreDamage() {
+        final int GEMINI_ELF = 69140098;      // 1900/900 Lv4
+        final int MECHANICALCHASER = 7359741; // 1850/800 Lv4
+        final int SUMMONED_SKULL = 70781052;  // 2500/1200 Lv6
+
+        // Case 1 (Exact user replay T6): AI has 1 own Gemini Elf (1900) + 1 stolen Gemini Elf (1900),
+        // empty opponent board, Blue-Eyes White Dragon (3000) in hand.
+        // Attacking first deals 1900 + 1900 = 3800 > 3000! AI MUST enter Battle Phase (6) in Main 1,
+        // then Tribute Summon Blue-Eyes (0) in Main Phase 2!
+        RpgAiDuelState state = new RpgAiDuelState(catalog, tributeRule, "1999-09-23");
+        state.turnPlayer = 0;
+        state.turnCount = 6;
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        state.lp[0] = 7950;
+        state.lp[1] = 4250;
+        placeMonster(state, 0, 2, GEMINI_ELF, RpgAiDuelState.POS_FACEUP_ATTACK, 1900, 900);
+        placeMonster(state, 0, 3, GEMINI_ELF, RpgAiDuelState.POS_FACEUP_ATTACK, 1900, 900);
+        state.mzone[0][3].owner = 1;
+        state.mzone[0][3].temporaryControl = true;
+        addHandCard(state, RpgAiCardKnowledge.BLUE_EYES);
+
+        RpgAiStrategy strategy = new RpgAiStrategy(state, null, "GOOD_STUFF");
+        RpgAiStrategy.IdleCmdPrompt m1Prompt = new RpgAiStrategy.IdleCmdPrompt();
+        m1Prompt.summonable.add(new RpgAiStrategy.CmdEntry(
+                RpgAiCardKnowledge.BLUE_EYES, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        m1Prompt.canBattle = true;
+        m1Prompt.canEnd = true;
+
+        assertEquals("In M1 with 2x Gemini Elf (3800) vs Blue-Eyes (3000) on empty board, MUST enter Battle Phase (6) first!",
+                6, strategy.chooseIdleCmd(m1Prompt));
+
+        // Now advance to Main Phase 2 -> AI MUST Tribute Summon Blue-Eyes (0), sacrificing both Gemini Elves!
+        state.phase = RpgAiDuelState.PHASE_MAIN2;
+        RpgAiStrategy.IdleCmdPrompt m2Prompt = new RpgAiStrategy.IdleCmdPrompt();
+        m2Prompt.summonable.add(new RpgAiStrategy.CmdEntry(
+                RpgAiCardKnowledge.BLUE_EYES, 0, 0, RpgAiDuelState.LOC_HAND, 0, 0, 0, 0));
+        m2Prompt.canBattle = false;
+        m2Prompt.canEnd = true;
+        assertEquals("In M2 after dealing 3800 damage, MUST Tribute Summon Blue-Eyes (0) before stolen Elf returns!",
+                0, strategy.chooseIdleCmd(m2Prompt));
+
+        // Case 2: Opponent has face-up Mechanicalchaser (1850 ATK) -> 2x Gemini Elf deals (1900-1850)+1900 = 1950 > (3000-1850)=1150 -> defer to M2!
+        state.phase = RpgAiDuelState.PHASE_MAIN1;
+        placeMonster(state, 1, 2, MECHANICALCHASER, RpgAiDuelState.POS_FACEUP_ATTACK, 1850, 800);
+        assertEquals("Against face-up 1850 ATK, 2x Gemini Elf deals 1950 > 1150, so MUST enter Battle Phase (6) first!",
+                6, strategy.chooseIdleCmd(m1Prompt));
+
+        // Case 3: Opponent has face-up Summoned Skull (2500 ATK) -> Gemini Elves CANNOT beat 2500 -> MUST Tribute Summon Blue-Eyes in M1 (0)!
+        state.mzone[1][2] = null;
+        placeMonster(state, 1, 2, SUMMONED_SKULL, RpgAiDuelState.POS_FACEUP_ATTACK, 2500, 1200);
+        assertEquals("Against 2500 ATK Summoned Skull, MUST Tribute Summon Blue-Eyes immediately in M1 (0)!",
+                0, strategy.chooseIdleCmd(m1Prompt));
+
+        // Case 4: Weak tributes (1900 stolen + 1000 Sangan = 2900 < 3000 Blue-Eyes) on empty board -> MUST Tribute Summon Blue-Eyes in M1 (0)!
+        state.mzone[1][2] = null;
+        state.mzone[0][2] = null;
+        placeMonster(state, 0, 2, RpgAiCardKnowledge.SANGAN, RpgAiDuelState.POS_FACEUP_ATTACK, 1000, 600);
+        assertEquals("With 1900 + 1000 = 2900 < 3000 Blue-Eyes, MUST Tribute Summon Blue-Eyes in M1 (0)!",
+                0, strategy.chooseIdleCmd(m1Prompt));
+
+        // Case 5: Opponent has face-up Swords of Revealing Light -> cannot attack in BP -> MUST Tribute Summon Blue-Eyes in M1 (0)!
+        state.mzone[0][2] = null;
+        placeMonster(state, 0, 2, GEMINI_ELF, RpgAiDuelState.POS_FACEUP_ATTACK, 1900, 900);
+        RpgAiDuelState.CardSlot oppSwords = new RpgAiDuelState.CardSlot();
+        oppSwords.code = RpgAiCardKnowledge.SWORDS_OF_REVEALING_LIGHT;
+        oppSwords.controller = 1;
+        oppSwords.location = RpgAiDuelState.LOC_SZONE;
+        oppSwords.sequence = 2;
+        oppSwords.position = RpgAiDuelState.POS_FACEUP_ATTACK;
+        oppSwords.type = RpgAiDuelState.TYPE_SPELL;
+        state.szone[1][2] = oppSwords;
+        assertEquals("When opponent Swords blocks Battle Phase, MUST Tribute Summon Blue-Eyes immediately in M1 (0)!",
+                0, strategy.chooseIdleCmd(m1Prompt));
+    }
+
     private static void sendPacket(OutputStream out, int proto, byte[] body) throws Exception {
         int len = 1 + body.length;
         ByteBuffer b = ByteBuffer.allocate(2 + len).order(ByteOrder.LITTLE_ENDIAN);
